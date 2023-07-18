@@ -4,6 +4,8 @@ termimg tries to draw images into terminals.
 
 **VERY EXPERIMENTAL!!**
 
+implemented drawing methods: sixel, iTerm2, kitty, Terminology, DomTerm, urxvt, X11, GDI+, block characters
+
 ## example cli tool
 
 ```sh
