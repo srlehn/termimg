@@ -88,13 +88,12 @@ func conf() (*config, error) {
 
 	// ptyName := `/dev/stdin`
 	ptyName := `/dev/tty`
-	ttyProv := func(ptyName string) (term.TTY, error) { return gotty.New(ptyName) }
 	rsz := &rdefault.Resizer{}
 
 	wm.SetImpl(wmimpl.Impl())
 	cr := &term.Creator{
 		PTYName:         ptyName,
-		TTYProvFallback: ttyProv,
+		TTYProvFallback: gotty.New,
 		Querier:         qdefault.NewQuerier(),
 		WindowProvider:  wm.NewWindow,
 		Resizer:         rsz,
