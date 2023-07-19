@@ -176,8 +176,6 @@ func (i *Image) GetInband(placementCells image.Rectangle, d Drawer, t *Terminal)
 	if !ok {
 		return ``, errorsGo.New(`no entry`)
 	}
-	// fmt.Println(v.placementCells, placementCells) // TODO rm
-	// fmt.Printf("%+#v\n", v) // TODO rm
 	if v.placementCells != placementCells {
 		return ``, errorsGo.New(`different image placement`)
 	}

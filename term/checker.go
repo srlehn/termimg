@@ -94,7 +94,7 @@ func (c *Creator) CreateTerminal(ch TermChecker) (*Terminal, error) {
 	if ch == nil {
 		return ComposeTerminal(c)
 	}
-	return ch.NewTerminal(c)
+	return ch.CreateTerminal(c)
 }
 
 type termCheckerCore struct {

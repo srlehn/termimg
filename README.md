@@ -8,12 +8,35 @@ implemented drawing methods: sixel, iTerm2, kitty, Terminology, DomTerm, urxvt, 
 
 ## example cli tool
 
+<details><summary>timg cli tool</summary>
+
 ```sh
 go install github.com/srlehn/termimg/cmd/timg@latest
 timg --debug=true runterm -t mlterm -d sixel -p 10,10,15x15 picture.png
 ```
+</details>
 
 ## library usage
+
+<details><summary>one-off image draw</summary>
+
+```go
+import (
+    _ "github.com/srlehn/termimg/drawers"
+	_ "github.com/srlehn/termimg/terminals"
+)
+
+func main(){
+    defer termimg.CleanUp()
+    _ = termimg.DrawFile(`picture.png`, image.Rect(10,10,40,25))
+}
+```
+</details>
+
+---
+
+For repeated image drawing create a term.Image via the NewImage…() functions. This allows caching of the encoded image.
+<details><summary>with NewImage…()</summary>
 
 ```go
 import (
@@ -28,9 +51,11 @@ func main(){
     _ = tm.Draw(timg, image.Rect(10,10,40,25))
 }
 ```
+</details>
 
 ### advanced
 
+<details><summary>adanced</summary>
 ```go
 import (
     _ "github.com/srlehn/termimg/drawers"
@@ -57,3 +82,4 @@ func main(){
     }
 }
 ```
+</details>

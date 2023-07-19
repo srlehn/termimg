@@ -69,8 +69,6 @@ func (t *ttyMattN) TTYDevName() string {
 	return t.fileName
 }
 
-var TTYProv term.TTYProvider = func(ptyName string) (term.TTY, error) { return New(ptyName) }
-
 // Close ...
 func (t *ttyMattN) Close() error {
 	if t == nil || t.TTY == nil {

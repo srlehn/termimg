@@ -93,8 +93,6 @@ func (t *ttyContD) TTYDevName() string {
 	return t.fileName
 }
 
-var TTYProv term.TTYProvider = func(ptyName string) (term.TTY, error) { return New(ptyName) }
-
 // Close ...
 func (t *ttyContD) Close() error {
 	if t == nil || t.Console == nil {

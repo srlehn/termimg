@@ -1,7 +1,6 @@
 package termimg
 
 import (
-	"bytes"
 	"image"
 
 	// _ "image/jpeg" // ...
@@ -18,7 +17,7 @@ import (
 
 var (
 	// chosen defaults
-	ttyProvider                   = gotty.TTYProv
+	ttyProvider                   = gotty.New
 	windowProvider                = wm.NewWindow
 	querier                       = qdefault.NewQuerier()
 	wmImplementation              = wmimpl.Impl()
@@ -87,7 +86,7 @@ func Draw(img image.Image, bounds image.Rectangle) error {
 	if err != nil {
 		return err
 	}
-	return term.Draw(img, bounds, resizer, tm)
+	return tm.Draw(img, bounds)
 }
 
 // DrawBytes - for use with "embed", etc.
@@ -95,23 +94,20 @@ func Draw(img image.Image, bounds image.Rectangle) error {
 //
 //	import _ "image/png"
 func DrawBytes(imgBytes []byte, bounds image.Rectangle) error {
-	img, _, err := image.Decode(bytes.NewReader(imgBytes))
-	if err != nil {
-		return err
-	}
 	tm, err := Terminal()
 	if err != nil {
 		return err
 	}
-	return term.Draw(img, bounds, resizer, tm)
+	return tm.Draw(NewImageBytes(imgBytes), bounds)
 }
 
 // DrawFile ...
 func DrawFile(imgFile string, bounds image.Rectangle) error {
-	if err := initTerm(); err != nil {
+	tm, err := Terminal()
+	if err != nil {
 		return err
 	}
-	return termActive.Draw(term.NewImageFileName(imgFile), bounds)
+	return tm.Draw(term.NewImageFileName(imgFile), bounds)
 }
 
 // CleanUp ...

@@ -74,7 +74,7 @@ type Terminal struct {
 	w wm.Window
 	closer
 	drawers  []Drawer
-	rsz      Resizer // TODO
+	rsz      Resizer
 	passages mux.Muxers
 
 	name    string
@@ -92,14 +92,15 @@ func ResetTerminalCheckerList() {
 // NewTerminal tries to recognize the terminal that manages the device ptyName and matches w.
 // It will use non-zero implementations provided by the optional TerminalChecker methods:
 //
-//   - TTY(pytName string, ci environ.Proprietor) (TTY, error)
+//   - TTY(ptyName string, ci environ.Proprietor) (TTY, error)
 //   - Querier(environ.Proprietor) Querier
 //   - Surveyor(environ.Proprietor) PartialSurveyor
 //   - Window(environ.Proprietor) (wm.Window, error)
 //   - Args(environ.Proprietor) []string
 //   - Exe(environ.Proprietor) string // alternative executable name if it differs from Name()
 //
-// Fallback options: ttyProvDefault (mandatory), quDefault, survPartDefault (optional)
+// The optional Creator.…Fallback fields are applied in case the enforced Creator fields are nil and
+// the TermChecker also doesn't return a suggestion.
 func NewTerminal(cr *Creator) (*Terminal, error) {
 	if cr == nil {
 		return nil, errorsGo.New(internal.ErrNilParam)
