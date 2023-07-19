@@ -1,11 +1,9 @@
 /testdata/
 /termui
-/termimg
-/showimg
 /timg
-/listtermprops
 /screenshot*.png
 *.code-workspace
 .vscode
 *.exe
-/TODO
+/go.work
+/go.work.sum
