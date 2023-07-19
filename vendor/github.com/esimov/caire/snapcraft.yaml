@@ -1,0 +1,50 @@
+name: caire
+version: '1.4.4'
+summary: Content aware image resize library
+description: |
+  Content aware image resize library
+grade: stable
+confinement: strict
+base: core18
+parts:
+  caire:
+    plugin: go
+    source: https://github.com/esimov/caire.git
+    go-importpath: github.com/esimov/caire
+    stage-packages:
+      - libegl1
+      - libglvnd0
+      - libwayland-client0
+      - libwayland-cursor0
+      - libwayland-egl1
+      - libx11-6
+      - libx11-xcb1
+      - libxau6
+      - libxcb-xkb1
+      - libxcb1
+      - libxcursor1
+      - libxdmcp6
+      - libxfixes3
+      - libxkbcommon-x11-0
+      - libxkbcommon0
+      - libxrender1
+
+    build-packages:
+      - gcc
+      - pkg-config
+      - libwayland-dev
+      - libx11-dev
+      - libx11-xcb-dev
+      - libxkbcommon-x11-dev
+      - libgles2-mesa-dev
+      - libegl1-mesa-dev
+      - libffi-dev
+      - libxcursor-dev
+      - libvulkan-dev
+
+apps:
+  caire:
+    command: bin/caire
+    plugs:
+      - home
+      - x11
