@@ -212,8 +212,8 @@ func (s *SurveyorDefault) SetCursorQuery(xPosCells, yPosCells uint, qu Querier, 
 ////////////////////////////////////////////////////////////////////////////////
 
 // TODO rm: make linter shut up
-var _ = (*SurveyorNoANSI)(nil)
-var _ = (*SurveyorNoANSI)(nil).SizeInCellsAndPixels
+// var _ = (*SurveyorNoANSI)(nil)
+// var _ = (*SurveyorNoANSI)(nil).SizeInCellsAndPixels
 
 type SurveyorNoANSI struct{}
 

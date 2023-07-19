@@ -99,17 +99,8 @@ func Must5[T, U, V, W any](o1 T, o2 U, o3 V, o4 W, err error) (T, U, V, W) {
 	}
 	return o1, o2, o3, o4
 }
-func Maybe2[T any](obj T, err error) T {
+func Maybe[T any](obj T, err error) T {
 	return obj
-}
-func Maybe3[T, U any](obj1 T, obj2 U, err error) (T, U) {
-	return obj1, obj2
-}
-func Maybe4[T, U, V any](o1 T, o2 U, o3 V, err error) (T, U, V) {
-	return o1, o2, o3
-}
-func Maybe5[T, U, V, W any](o1 T, o2 U, o3 V, o4 W, err error) (T, U, V, W) {
-	return o1, o2, o3, o4
 }
 
 func Println(a ...any) {

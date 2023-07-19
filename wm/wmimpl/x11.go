@@ -107,12 +107,12 @@ func (c *connX11) getWindows() ([]*windowX11, error) {
 
 	// Iterate through each client, find its name and find its size.
 	for _, window := range clientIDs {
-		class, instance := util.Maybe3(c.getWindowClass(window))
+		class, instance, _ := c.getWindowClass(window)
 		windows = append(
 			windows,
 			&windowX11{
 				id:       uint64(window),
-				name:     util.Maybe2(c.getWindowName(window)),
+				name:     util.Maybe(c.getWindowName(window)),
 				class:    class,
 				instance: instance,
 			},

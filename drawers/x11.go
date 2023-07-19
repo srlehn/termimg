@@ -119,7 +119,6 @@ func (d *drawerX11) Draw(img image.Image, bounds image.Rectangle, rsz term.Resiz
 	}
 
 	cw, ch, err := tm.CellSize()
-	_, _ = cw, ch // TODO rm
 	if err != nil {
 		return err
 	}
