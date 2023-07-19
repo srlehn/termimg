@@ -53,9 +53,12 @@ func main(){
 ```
 </details>
 
+---
+
 ### advanced
 
-<details><summary>adanced</summary>
+<details><summary>advanced</summary>
+
 ```go
 import (
     _ "github.com/srlehn/termimg/drawers"
