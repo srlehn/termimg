@@ -20,6 +20,11 @@ termui: ${SRC}
 	@CGO_ENABLED=0 go build -trimpath -ldflags '-w -s' -o termui${EXT} cmd/termui_test/main.go
 
 
+.PHONY: dev
+dev: ${SRC}
+	@CGO_ENABLED=0 go build -tags 'dev' -trimpath -ldflags '-w -s' -o timg${EXT} ./cmd/timg
+
+
 .PHONY: clean
 clean:
 	@rm -f -- timg termui
