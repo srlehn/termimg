@@ -61,7 +61,15 @@ func (t *termCheckerXTerm) CheckIsWindow(w wm.Window) (is bool, p environ.Propri
 	return isWindow, p
 }
 
+func (t *termCheckerXTerm) Args(ci environ.Proprietor) []string {
+	return []string{
+		`-fbx`, // enforce direct drawing (not font glyphs) of VT100 line-drawing characters
+	}
+}
+
 func (t *termCheckerXTerm) Surveyor(ci environ.Proprietor) term.PartialSurveyor {
+	// TODO when is term.SurveyorDefault enough and when is surveyorXTerm required?
+	// return &term.SurveyorDefault{}
 	return &surveyorXTerm{}
 }
 
@@ -78,6 +86,7 @@ func (s *surveyorXTerm) CellSizeQuery(qu term.Querier, tty term.TTY) (width, hei
 }
 
 func queryCellSize16t(qu term.Querier, tty term.TTY) (width, heigth uint, _ error) {
+	// TODO xterm doesn't reply to this on some systems. why?
 	if qu == nil || tty == nil {
 		return 0, 0, errors.New(internal.ErrNilParam)
 	}
