@@ -7,6 +7,7 @@ import (
 	"github.com/jezek/xgb/xproto"
 	"github.com/srlehn/xgbutil"
 	"github.com/srlehn/xgbutil/xwindow"
+
 	"github.com/srlehn/termimg/internal"
 )
 

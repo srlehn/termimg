@@ -112,7 +112,7 @@ func (c *connX11) getWindows() ([]*windowX11, error) {
 			windows,
 			&windowX11{
 				id:       uint64(window),
-				name:     util.Maybe(c.getWindowName(window)),
+				name:     util.IgnoreError(c.getWindowName(window)),
 				class:    class,
 				instance: instance,
 			},
