@@ -1,8 +1,6 @@
 package util
 
 import (
-	"encoding/json"
-	"fmt"
 	"log"
 	"path"
 	"reflect"
@@ -50,10 +48,14 @@ func MaybeCastDefault[T any](obj any, fallback T) T {
 
 func TryClose(obj any) error {
 	closer, ok := any(obj).(interface{ Close() error })
-	if !ok {
-		return nil
+	if ok {
+		return closer.Close()
 	}
-	return closer.Close()
+	closerIrregular, okIrregular := any(obj).(interface{ Close() })
+	if okIrregular {
+		closerIrregular.Close()
+	}
+	return nil
 }
 
 func Must(err error) {
@@ -99,58 +101,26 @@ func Must5[T, U, V, W any](o1 T, o2 U, o3 V, o4 W, err error) (T, U, V, W) {
 	}
 	return o1, o2, o3, o4
 }
-func Maybe[T any](obj T, err error) T {
+func IgnoreError[T any](obj T, err error) T {
 	return obj
 }
 
-func Println(a ...any) {
-	_, modulepath, _, _ := runtime.Caller(0)
-	modulepath = path.Dir(path.Dir(path.Dir(modulepath)))
-	_, filename, line, _ := runtime.Caller(1)
-	fmt.Println(append([]any{strings.TrimPrefix(filename, modulepath+`/`) + `:` + strconv.Itoa(line) + `: `}, a...)...)
-}
+var modulePath string
 
-func Printf(format string, a ...any) {
-	_, modulepath, _, _ := runtime.Caller(0)
-	modulepath = path.Dir(path.Dir(path.Dir(modulepath)))
-	_, filename, line, _ := runtime.Caller(1)
-	fmt.Printf(strings.TrimPrefix(filename, modulepath+`/`)+`:`+strconv.Itoa(line)+`: `+format, a...)
-}
-
-func Printfv(a ...any) {
-	_, modulepath, _, _ := runtime.Caller(0)
-	modulepath = path.Dir(path.Dir(path.Dir(modulepath)))
-	_, filename, line, _ := runtime.Caller(1)
-	sep := ` - `
-	format := strings.TrimSuffix(strings.Repeat(`%+#v`+sep, len(a)), sep) + "\n"
-	fmt.Printf(strings.TrimPrefix(filename, modulepath+`/`)+`:`+strconv.Itoa(line)+`: `+format, a...)
-}
-
-func Printfq(a ...any) {
-	_, modulepath, _, _ := runtime.Caller(0)
-	modulepath = path.Dir(path.Dir(path.Dir(modulepath)))
-	_, filename, line, _ := runtime.Caller(1)
-	sep := ` - `
-	format := strings.TrimSuffix(strings.Repeat(`%q`+sep, len(a)), sep) + "\n"
-	fmt.Printf(strings.TrimPrefix(filename, modulepath+`/`)+`:`+strconv.Itoa(line)+`: `+format, a...)
-}
-
-func Printfj(a ...any) {
-	_, modulepath, _, _ := runtime.Caller(0)
-	modulepath = path.Dir(path.Dir(path.Dir(modulepath)))
-	_, filename, line, _ := runtime.Caller(1)
-	sep := "\n"
-	prefix := strings.TrimPrefix(filename, modulepath+`/`) + `:` + strconv.Itoa(line) + `: `
-	var strs []string
-	for _, o := range a {
-		b, err := json.MarshalIndent(o, ``, `  `)
-		if err != nil {
-			strs = append(strs, prefix+fmt.Sprintf("error: %q\n  %v", err.Error(), o))
-		} else {
-			strs = append(strs, prefix+string(b))
+func fileLinePrefix(skip int) string {
+	if len(modulePath) == 0 {
+		_, mp, _, okModule := runtime.Caller(0)
+		if !okModule {
+			return ``
 		}
+		mp = path.Dir(path.Dir(path.Dir(mp))) // depends of depth of this source file within the module!
+		modulePath = mp
 	}
-	fmt.Println(strings.Join(strs, sep))
+	_, filename, line, okCaller := runtime.Caller(skip)
+	if !okCaller {
+		return ``
+	}
+	return strings.TrimPrefix(filename, modulePath+`/`) + `:` + strconv.Itoa(line) + `: `
 }
 
 /*
