@@ -7,6 +7,8 @@
 
 termimg tries to draw images into terminals.
 
+The rectangular drawing area is given in cell coordinates (not pixels). Origin is the upper left corner.
+
 **VERY EXPERIMENTAL!!**
 
 implemented drawing methods: sixel, iTerm2, kitty, Terminology, DomTerm, urxvt, X11, GDI+, block characters
@@ -15,14 +17,25 @@ implemented drawing methods: sixel, iTerm2, kitty, Terminology, DomTerm, urxvt, 
 
 <blockquote><details open><summary><h3>timg cli tool</h3></summary>
 
+installation:
 ```sh
-go install github.com/srlehn/termimg/cmd/timg@latest
+go install github.com/srlehn/termimg/cmd/timg@master
+```
+The cell coordinates are passed in this format: `<x>,<y>,<w>x<h>` where x is the column, y the row, w the width and h the height.
+
+The `show` command draws the image in the current terminal:
+```sh
+timg show picture.png 10,10,15x15
+```
+If an error occurs the `--debug=true` argument shows where in the code it happens.
+
+The `runterm` command starts the terminal specified with the `-t` flag. If no drawer is enforced by the optional `-d` flag, the best fitting one is used. This command is probably only useful for testing.
+```sh
 timg --debug=true runterm -t mlterm -d sixel -p 10,10,15x15 picture.png
 ```
 </details>
 
 <blockquote></details>
-
 
 <details open><summary><h2>library usage</h2></summary>
 
