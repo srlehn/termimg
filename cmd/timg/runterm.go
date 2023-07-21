@@ -44,15 +44,15 @@ var runTermCmd = &cobra.Command{
 	Long:  `open image in new terminal and screenshot`,
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		run(runTerm(cmd, args))
+		run(runTermFunc(cmd, args))
 	},
 }
 
 var runTermCmdStr = "runterm"
 
-var errRunTermUsage = errors.New(`usage: ` + os.Args[0] + ` ` + runTermCmdStr + ` -t <terminal> -d drawer -p <x>,<y>,<w>x<h> /path/to/image.png`)
+var errRunTermUsage = errors.New(`usage: ` + os.Args[0] + ` ` + runTermCmdStr + ` -t <terminal> -d <drawer> -p <x>,<y>,<w>x<h> /path/to/image.png`)
 
-func runTerm(cmd *cobra.Command, args []string) func() error {
+func runTermFunc(cmd *cobra.Command, args []string) func() error {
 	return func() error {
 		runTermImage = args[0]
 		imgFileBytes, err := os.ReadFile(runTermImage)

@@ -27,49 +27,64 @@ import (
 
 func init() { rootCmd.AddCommand(showCmd) }
 
+var (
+	showDrawer   string
+	showPosition string
+	showImage    string
+)
+
+func init() {
+	showCmd.PersistentFlags().StringVarP(&showDrawer, `drawer`, `d`, ``, `drawer to use`)
+	showCmd.PersistentFlags().StringVarP(&showPosition, `position`, `p`, ``, `image position in cell coordinates <x>,<y>,<w>x<h>`)
+	rootCmd.AddCommand(showCmd)
+}
+
 var showCmd = &cobra.Command{
 	Use:   showCmdStr,
 	Short: "display image",
 	Long:  `display image`,
+	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		run(draw)
+		run(showFunc(cmd, args))
 	},
 }
 
 var showCmdStr = "show"
 
-var errShowUsage = errors.New(`usage: ` + os.Args[0] + ` ` + showCmdStr + ` /path/to/image.png <x>,<y>,<w>x<h> (drawer)`)
+var errShowUsage = errors.New(`usage: ` + os.Args[0] + ` ` + showCmdStr + `-d <drawer> -p <x>,<y>,<w>x<h> /path/to/image.png`)
 
-func draw() error {
-	if l := len(os.Args); l < 4 || l > 5 {
-		return errorsGo.New(errShowUsage)
-	}
-	imgFilename := os.Args[2]
-	x, y, w, h, err := splitDimArg(os.Args[3])
-	if err != nil {
-		return errorsGo.New(errShowUsage)
-	}
-	bounds := image.Rect(x, y, x+w, y+h)
-	defer termimg.CleanUp()
-	if len(os.Args) == 5 {
-		drawer := term.GetRegDrawerByName(os.Args[4])
-		if drawer == nil {
-			return errorsGo.New(`unknown drawer "` + os.Args[4] + `"`)
-		}
-		tm, err := termimg.Terminal()
+func showFunc(cmd *cobra.Command, args []string) func() error {
+	return func() error {
+		showImage = args[0]
+
+		x, y, w, h, err := splitDimArg(showPosition)
 		if err != nil {
-			return err
+			return errorsGo.New(errShowUsage)
 		}
-		if err := drawer.Draw(termimg.NewImageFileName(imgFilename), bounds, &imaging.Resizer{}, tm); err != nil {
-			return err
+		bounds := image.Rect(x, y, x+w, y+h)
+
+		defer termimg.CleanUp()
+		if len(showDrawer) == 0 {
+			if err := termimg.DrawFile(showImage, bounds); err != nil {
+				return err
+			}
+		} else {
+			drawer := term.GetRegDrawerByName(showDrawer)
+			if drawer == nil {
+				return errorsGo.New(`unknown drawer "` + showDrawer + `"`)
+			}
+			tm, err := termimg.Terminal()
+			if err != nil {
+				return err
+			}
+			if err := drawer.Draw(termimg.NewImageFileName(showImage), bounds, &imaging.Resizer{}, tm); err != nil {
+				return err
+			}
+
 		}
-	} else {
-		if err := termimg.DrawFile(imgFilename, bounds); err != nil {
-			return err
-		}
+		time.Sleep(2 * time.Second) // TODO rm
+		return nil
 	}
-	time.Sleep(2 * time.Second) // TODO
-	return nil
 }
 
 func splitDimArg(dim string) (x, y, w, h int, e error) {
