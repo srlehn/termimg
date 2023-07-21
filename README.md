@@ -25,7 +25,7 @@ The cell coordinates are passed in this format: `<x>,<y>,<w>x<h>` where x is the
 
 The `show` command draws the image in the current terminal:
 ```sh
-timg show picture.png 10,10,15x15
+timg show -p 10,10,15x15 picture.png
 ```
 If an error occurs the `--debug=true` argument shows where in the code it happens.
 
