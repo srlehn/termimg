@@ -17,7 +17,6 @@ import (
 	errorsGo "github.com/go-errors/errors"
 	"github.com/spf13/cobra"
 
-	_ "github.com/srlehn/termimg/drawers"
 	_ "github.com/srlehn/termimg/drawers/all"
 	"github.com/srlehn/termimg/internal/testutil"
 	_ "github.com/srlehn/termimg/terminals"
@@ -60,7 +59,7 @@ func runTermFunc(cmd *cobra.Command, args []string) func() error {
 			return errorsGo.New(err)
 		}
 
-		x, y, w, h, err := splitDimArg(runTermPosition)
+		x, y, w, h, err := splitDimArg(runTermPosition, nil, runTermImage) // TODO pass term.Terminal
 		if err != nil {
 			return errorsGo.New(errRunTermUsage)
 		}

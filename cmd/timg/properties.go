@@ -3,7 +3,7 @@ package main
 import (
 	"github.com/spf13/cobra"
 
-	_ "github.com/srlehn/termimg/drawers"
+	_ "github.com/srlehn/termimg/drawers/all"
 	"github.com/srlehn/termimg/internal/testutil/routines"
 	_ "github.com/srlehn/termimg/terminals"
 )

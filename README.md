@@ -13,9 +13,9 @@ The rectangular drawing area is given in cell coordinates (not pixels). Origin i
 
 implemented drawing methods: sixel, iTerm2, kitty, Terminology, DomTerm, urxvt, X11, GDI+, block characters
 
-<details open><summary><h2>example cli tool</h2></summary>
+<details open><summary><h2>Example CLI Tool</h2></summary>
 
-<blockquote><details open><summary><h3>timg cli tool</h3></summary>
+<blockquote><details open><summary><h3><span style="color:mediumseagreen">timg</span> CLI Tool</h3></summary>
 
 installation:
 ```sh
@@ -37,13 +37,13 @@ timg --debug=true runterm -t mlterm -d sixel -p 10,10,15x15 picture.png
 
 <blockquote></details>
 
-<details open><summary><h2>library usage</h2></summary>
+<details open><summary><h2>Library Usage</h2></summary>
 
-<blockquote><details><summary><h3>one-off image draw</h3></summary>
+<blockquote><details><summary><h3>One-Off Image Draw</h3></summary>
 
 ```go
 import (
-    _ "github.com/srlehn/termimg/drawers"
+    _ "github.com/srlehn/termimg/drawers/all"
 	_ "github.com/srlehn/termimg/terminals"
 )
 
@@ -63,7 +63,7 @@ This allows caching of the encoded image.
 
 ```go
 import (
-    _ "github.com/srlehn/termimg/drawers"
+    _ "github.com/srlehn/termimg/drawers/all"
 	_ "github.com/srlehn/termimg/terminals"
 )
 
@@ -78,23 +78,23 @@ func main(){
 
 ---
 
-<details><summary><h3>advanced</h3></summary>
+<details><summary><h3>Advanced</h3></summary>
 
 ```go
 import (
-    _ "github.com/srlehn/termimg/drawers"
+    _ "github.com/srlehn/termimg/drawers/sane"
 	_ "github.com/srlehn/termimg/terminals"
 )
 
 func main(){
 	wm.SetImpl(wmimpl.Impl())
-	cr := &term.Creator{
+	opts := &term.Options{
 		PTYName:         `dev/pts/2`,
 		TTYProvFallback: gotty.New,
 		Querier:         qdefault.NewQuerier(),
 		Resizer:         &rdefault.Resizer{},
 	}
-	tm, err := term.NewTerminal(cr)
+	tm, err := term.NewTerminal(opts)
 	if err != nil {
 		log.Fatal(err)
 	}
