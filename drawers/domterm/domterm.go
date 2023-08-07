@@ -1,4 +1,4 @@
-package drawers
+package domterm
 
 import (
 	"bytes"

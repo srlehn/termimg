@@ -1,6 +1,4 @@
-// //go:build ignore
-
-package drawers
+package sixel
 
 import (
 	"bytes"

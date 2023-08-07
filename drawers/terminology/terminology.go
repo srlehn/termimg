@@ -1,4 +1,4 @@
-package drawers
+package terminology
 
 import (
 	"fmt"

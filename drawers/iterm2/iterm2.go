@@ -1,4 +1,4 @@
-package drawers
+package iterm2
 
 import (
 	"bytes"

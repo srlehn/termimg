@@ -1,4 +1,4 @@
-package drawers
+package kitty
 
 import (
 	"bytes"
@@ -60,6 +60,8 @@ func (d *drawerKitty) Draw(img image.Image, bounds image.Rectangle, rsz term.Res
 		return err
 	}
 
+	// TODO get inband
+
 	tcw, tch, err := tm.SizeInCells()
 	if err != nil {
 		fmt.Println(err)
@@ -112,14 +114,3 @@ func (d *drawerKitty) Draw(img image.Image, bounds image.Rectangle, rsz term.Res
 
 	return nil
 }
-
-/*
-TODO
-clear background image: printf "\033]20;;100x100+1000+1000\a"
-*/
-
-/*
-	executableName, ok1 := t.ExtraProperty(`urxvt_executableName`)
-	versionFirstChar, ok2 := t.ExtraProperty(`urxvt_versionFirstChar`)
-	versionThirdChar, ok3 := t.ExtraProperty(`urxvt_versionThirdChar`)
-*/

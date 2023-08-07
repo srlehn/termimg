@@ -1,4 +1,4 @@
-package all
+package sane
 
 import (
 	_ "github.com/srlehn/termimg/drawers/generic"
@@ -8,7 +8,6 @@ import (
 	_ "github.com/srlehn/termimg/drawers/kitty"
 	_ "github.com/srlehn/termimg/drawers/sixel"
 	_ "github.com/srlehn/termimg/drawers/terminology"
-	_ "github.com/srlehn/termimg/drawers/urxvt"
 )
 
 // don't include Braille drawer by default!

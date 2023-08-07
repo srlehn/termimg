@@ -1,6 +1,6 @@
 //go:build !windows && !android && !darwin && !js
 
-package drawers
+package x11
 
 import (
 	"image"

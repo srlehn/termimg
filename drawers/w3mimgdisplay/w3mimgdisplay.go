@@ -1,4 +1,4 @@
-package drawers
+package w3mimgdisplay
 
 import (
 	"fmt"
