@@ -1,4 +1,8 @@
 // Seam Carving for Content-Aware Image Resizing
+//
+// very slow resizer
+//
+// package requires cgo
 package caire
 
 import (
@@ -12,19 +16,45 @@ import (
 	"github.com/srlehn/termimg/term"
 )
 
-type Resizer struct{}
+type resizer struct {
+	proc caire.Processor
+}
 
-var _ term.Resizer = (*Resizer)(nil)
+var _ term.Resizer = (*resizer)(nil)
 
-func (r *Resizer) Resize(img image.Image, size image.Point) (image.Image, error) {
-	p := &caire.Processor{
-		BlurRadius:     1, // or ie. 4
-		SobelThreshold: 4, // or ie. 2
-		NewWidth:       size.X,
-		NewHeight:      size.Y,
-		FaceDetect:     true,
-		ShapeType:      "circle",
+// shapeType can be "circle" or "line"
+func NewResizer(blurRadius, sobelThreshold int, faceDetect bool, shapeType string) term.Resizer {
+	if blurRadius == 0 {
+		// BlurRadius: 4 - github.com/esimov/caire/cmd/caire/main.go
+		// BlurRadius: 1
+		blurRadius = 4
 	}
+	if sobelThreshold == 0 {
+		// SobelThreshold: 2 - github.com/esimov/caire/cmd/caire/main.go
+		// SobelThreshold: 4
+		sobelThreshold = 2
+	}
+	if len(shapeType) == 0 {
+		// ShapeType: "circle" - github.com/esimov/caire/cmd/caire/main.go
+		shapeType = `circle`
+	}
+	return &resizer{
+		proc: caire.Processor{
+			BlurRadius:     blurRadius,
+			SobelThreshold: sobelThreshold,
+			FaceDetect:     faceDetect,
+			ShapeType:      shapeType,
+		},
+	}
+}
+
+func (r *resizer) Resize(img image.Image, size image.Point) (image.Image, error) {
+	if r == nil {
+		return nil, errors.New(internal.ErrNilReceiver)
+	}
+	// util.PrintfAt(20, 30, "%.03f", float64(size.X)/float64(size.Y)) // TODO rm
+	r.proc.NewWidth = size.X
+	r.proc.NewHeight = size.Y
 	var nimg *image.NRGBA
 	im := img
 	var lvls int
@@ -56,5 +86,5 @@ repeat:
 		draw.Draw(nimg, nimg.Bounds(), img, b.Min, draw.Src)
 	}
 end:
-	return p.Resize(nimg)
+	return r.proc.Resize(nimg)
 }
