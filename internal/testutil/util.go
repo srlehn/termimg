@@ -9,6 +9,8 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/go-errors/errors"
+
 	"github.com/srlehn/termimg"
 	"github.com/srlehn/termimg/internal"
 	"github.com/srlehn/termimg/internal/encoder/encmulti"
@@ -20,8 +22,6 @@ import (
 	"github.com/srlehn/termimg/tty/gotty"
 	"github.com/srlehn/termimg/wm"
 	"github.com/srlehn/termimg/wm/wmimpl"
-
-	"github.com/go-errors/errors"
 )
 
 func PTermPrintImageHelper(
@@ -39,7 +39,7 @@ func PTermPrintImageHelper(
 			return termimg.Terminal()
 		}
 		wm.SetImpl(wmimpl.Impl())
-		cr := &term.Creator{
+		cr := &term.Options{
 			PTYName:         ttyFile,
 			TTYProvFallback: gotty.New,
 			Querier:         qdefault.NewQuerier(),

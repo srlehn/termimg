@@ -1,6 +1,7 @@
 package util
 
 import (
+	"fmt"
 	"log"
 	"path"
 	"reflect"
@@ -113,7 +114,7 @@ func fileLinePrefix(skip int) string {
 		if !okModule {
 			return ``
 		}
-		mp = path.Dir(path.Dir(path.Dir(mp))) // depends of depth of this source file within the module!
+		mp = path.Dir(path.Dir(path.Dir(mp))) // depends on depth of this source file within the module!
 		modulePath = mp
 	}
 	_, filename, line, okCaller := runtime.Caller(skip)
@@ -122,6 +123,10 @@ func fileLinePrefix(skip int) string {
 	}
 	return strings.TrimPrefix(filename, modulePath+`/`) + `:` + strconv.Itoa(line) + `: `
 }
+
+func storePosAndJumpToPosStr(x, y uint) string { return fmt.Sprintf("\033[s\033[%d;%dH", y, x) }
+
+const restorePosStr = "\033[u"
 
 /*
 func RestoreTTY(ptyName string) error {

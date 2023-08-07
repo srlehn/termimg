@@ -15,7 +15,7 @@ import (
 type GpBitmap win.GpBitmap
 
 // based on github.com/AllenDang/w32.GdipCreateBitmapFromStream
-func GetGpBitmapFromBytes(data []byte) (gpBmp *GpBitmap, close func() error, e error) {
+func GetGpBitmapFromBytes(data []byte) (gpBmp *GpBitmap, close func() error, _ error) {
 	imgStreamUintPtr, err := ShCreateMemStream(data)
 	if err != nil {
 		return nil, nil, errors.New(err)
