@@ -2,7 +2,9 @@ package routines
 
 import (
 	"fmt"
+	"os"
 	"strings"
+	"text/tabwriter"
 
 	"github.com/srlehn/termimg"
 	"github.com/srlehn/termimg/internal/propkeys"
@@ -15,15 +17,16 @@ func ListTermChecks() error {
 		return err
 	}
 	defer tm.Close()
-	fmt.Println(tm.Name(), tm.Drawers()[0].Name())
+	w := tabwriter.NewWriter(os.Stdout, 0, 0, 1, ' ', 0)
+	fmt.Fprintln(w, tm.Name(), tm.Drawers()[0].Name())
 	for k, v := range tm.Properties() {
 		if !strings.HasPrefix(k, propkeys.CheckPrefix) {
 			continue
 		}
-		fmt.Printf("%s:\t%q\n", k, v)
+		fmt.Fprintf(w, "%s:\t%q\n", k, v)
 	}
 
-	return nil
+	return w.Flush()
 }
 
 func ListTermProps() error {
@@ -32,11 +35,13 @@ func ListTermProps() error {
 		return err
 	}
 	defer tm.Close()
-	fmt.Println("terminal", tm.Name())
-	for i := range tm.Drawers() {
-		fmt.Println("drawer", tm.Drawers()[i].Name())
+	w := tabwriter.NewWriter(os.Stdout, 0, 0, 1, ' ', 0)
+	fmt.Fprintln(w, "terminal:\t"+tm.Name())
+	drawers := tm.Drawers()
+	for i := range drawers {
+		fmt.Fprintln(w, "drawer:\t"+drawers[i].Name())
 	}
-	fmt.Println()
+	fmt.Fprintln(w)
 	prnt := func(key string) string {
 		val, ok := tm.Property(key)
 		if ok {
@@ -44,37 +49,37 @@ func ListTermProps() error {
 		}
 		return ``
 	}
-	fmt.Println("query DA1 class:", prnt(propkeys.DeviceClass))
-	fmt.Println("query DA1 attrs:", prnt(propkeys.DeviceAttributes))
-	fmt.Println("query DA3 hex:", prnt(`queryCache_G1s9MGM=`)) // DA3 hex
-	fmt.Println("query DA3 ID:", prnt(propkeys.DA3ID))
+	fmt.Fprintln(w, "query DA1 class:\t"+prnt(propkeys.DeviceClass))
+	fmt.Fprintln(w, "query DA1 attrs:\t"+prnt(propkeys.DeviceAttributes))
+	fmt.Fprintln(w, "query DA3 hex:\t"+prnt(`queryCache_G1s9MGM=`)) // DA3 hex
+	fmt.Fprintln(w, "query DA3 ID:\t"+prnt(propkeys.DA3ID))
 
-	fmt.Println()
+	fmt.Fprintln(w)
 	for _, k := range util.MapsKeysSorted(tm.Properties()) {
 		envName, found := strings.CutPrefix(k, propkeys.EnvPrefix)
 		if !found {
 			continue
 		}
 		v, _ := tm.LookupEnv(envName)
-		fmt.Printf("env %s:\t%q\n", envName, v)
+		fmt.Fprintf(w, "env %s:\t%q\n", envName, v)
 	}
 
 	{
 		passages, okPassages := tm.Property(propkeys.Passages)
 		if okPassages && len(passages) > 0 {
-			fmt.Println()
-			fmt.Println("muxers: ", passages)
+			fmt.Fprintln(w)
+			fmt.Fprintln(w, "muxers:\t"+passages)
 		}
 	}
 
 	if tmw := tm.Window(); tmw != nil {
-		fmt.Println()
+		fmt.Fprintln(w)
 		if tmw.WindowFind() == nil {
-			fmt.Println("window name:", tmw.WindowName())
-			fmt.Println("window class:", tmw.WindowClass())
-			fmt.Println("window instance:", tmw.WindowInstance())
+			fmt.Fprintln(w, "window name:\t"+tmw.WindowName())
+			fmt.Fprintln(w, "window class:\t"+tmw.WindowClass())
+			fmt.Fprintln(w, "window instance:\t"+tmw.WindowInstance())
 		}
 	}
 
-	return nil
+	return w.Flush()
 }
