@@ -283,6 +283,14 @@ func windowProc(hwnd syscall.Handle, msg uint32, wParam, lParam uintptr) uintptr
 	case windows.WM_KILLFOCUS:
 		w.focused = false
 		w.w.Event(key.FocusEvent{Focus: false})
+	case windows.WM_NCACTIVATE:
+		if w.stage >= system.StageInactive {
+			if wParam == windows.TRUE {
+				w.setStage(system.StageRunning)
+			} else {
+				w.setStage(system.StageInactive)
+			}
+		}
 	case windows.WM_NCHITTEST:
 		if w.config.Decorated {
 			// Let the system handle it.
@@ -296,16 +304,17 @@ func windowProc(hwnd syscall.Handle, msg uint32, wParam, lParam uintptr) uintptr
 		x, y := coordsFromlParam(lParam)
 		p := f32.Point{X: float32(x), Y: float32(y)}
 		w.w.Event(pointer.Event{
-			Type:     pointer.Move,
-			Source:   pointer.Mouse,
-			Position: p,
-			Buttons:  w.pointerBtns,
-			Time:     windows.GetMessageTime(),
+			Type:      pointer.Move,
+			Source:    pointer.Mouse,
+			Position:  p,
+			Buttons:   w.pointerBtns,
+			Time:      windows.GetMessageTime(),
+			Modifiers: getModifiers(),
 		})
 	case windows.WM_MOUSEWHEEL:
-		w.scrollEvent(wParam, lParam, false)
+		w.scrollEvent(wParam, lParam, false, getModifiers())
 	case windows.WM_MOUSEHWHEEL:
-		w.scrollEvent(wParam, lParam, true)
+		w.scrollEvent(wParam, lParam, true, getModifiers())
 	case windows.WM_DESTROY:
 		w.w.Event(ViewEvent{})
 		w.w.Event(system.DestroyEvent{})
@@ -399,11 +408,12 @@ func windowProc(hwnd syscall.Handle, msg uint32, wParam, lParam uintptr) uintptr
 			comp.Start = state.RunesIndex(state.UTF16Index(comp.Start) + start)
 		}
 		w.w.SetComposingRegion(comp)
+		pos := end
 		if lParam&windows.GCS_CURSORPOS != 0 {
 			rel := windows.ImmGetCompositionValue(imc, windows.GCS_CURSORPOS)
-			pos := state.RunesIndex(state.UTF16Index(rng.Start) + rel)
-			w.w.SetEditorSelection(key.Range{Start: pos, End: pos})
+			pos = state.RunesIndex(state.UTF16Index(rng.Start) + rel)
 		}
+		w.w.SetEditorSelection(key.Range{Start: pos, End: pos})
 		return windows.TRUE
 	case windows.WM_IME_ENDCOMPOSITION:
 		w.w.SetComposingRegion(key.Range{Start: -1, End: -1})
@@ -509,7 +519,7 @@ func coordsFromlParam(lParam uintptr) (int, int) {
 	return x, y
 }
 
-func (w *window) scrollEvent(wParam, lParam uintptr, horizontal bool) {
+func (w *window) scrollEvent(wParam, lParam uintptr, horizontal bool, kmods key.Modifiers) {
 	x, y := coordsFromlParam(lParam)
 	// The WM_MOUSEWHEEL coordinates are in screen coordinates, in contrast
 	// to other mouse events.
@@ -521,15 +531,21 @@ func (w *window) scrollEvent(wParam, lParam uintptr, horizontal bool) {
 	if horizontal {
 		sp.X = dist
 	} else {
-		sp.Y = -dist
+		// support horizontal scroll (shift + mousewheel)
+		if kmods == key.ModShift {
+			sp.X = -dist
+		} else {
+			sp.Y = -dist
+		}
 	}
 	w.w.Event(pointer.Event{
-		Type:     pointer.Scroll,
-		Source:   pointer.Mouse,
-		Position: p,
-		Buttons:  w.pointerBtns,
-		Scroll:   sp,
-		Time:     windows.GetMessageTime(),
+		Type:      pointer.Scroll,
+		Source:    pointer.Mouse,
+		Position:  p,
+		Buttons:   w.pointerBtns,
+		Scroll:    sp,
+		Modifiers: kmods,
+		Time:      windows.GetMessageTime(),
 	})
 }
 

@@ -2,137 +2,151 @@
 
 // Package opentype implements text layout and shaping for OpenType
 // files.
+//
+// NOTE: the OpenType specification allows for fonts to include bitmap images
+// in a variety of formats. In the interest of small binary sizes, the opentype
+// package only automatically imports the PNG image decoder. If you have a font
+// with glyphs in JPEG or TIFF formats, register those decoders with the image
+// package in order to ensure those glyphs are visible in text.
 package opentype
 
 import (
 	"bytes"
 	"fmt"
-	"image"
-	"io"
+	_ "image/png"
 
-	"github.com/benoitkugler/textlayout/fonts"
-	"github.com/benoitkugler/textlayout/fonts/truetype"
-	"github.com/benoitkugler/textlayout/harfbuzz"
-	"github.com/go-text/typesetting/shaping"
-	"golang.org/x/image/font"
-	"golang.org/x/image/math/fixed"
-
-	"gioui.org/f32"
-	"gioui.org/font/opentype/internal"
-	"gioui.org/io/system"
-	"gioui.org/op"
-	"gioui.org/op/clip"
-	"gioui.org/text"
+	giofont "gioui.org/font"
+	"github.com/go-text/typesetting/font"
+	fontapi "github.com/go-text/typesetting/opentype/api/font"
+	"github.com/go-text/typesetting/opentype/api/metadata"
+	"github.com/go-text/typesetting/opentype/loader"
 )
 
-// Font implements the text.Shaper interface using a rich text
-// shaping engine.
-type Font struct {
-	font *truetype.Font
+// Face is a thread-safe representation of a loaded font. For efficiency, applications
+// should construct a face for any given font file once, reusing it across different
+// text shapers.
+type Face struct {
+	face    font.Font
+	aspect  metadata.Aspect
+	family  string
+	variant string
 }
 
-// Parse constructs a Font from source bytes.
-func Parse(src []byte) (*Font, error) {
-	face, err := truetype.Parse(bytes.NewReader(src))
+// Parse constructs a Face from source bytes.
+func Parse(src []byte) (Face, error) {
+	ld, err := loader.NewLoader(bytes.NewReader(src))
 	if err != nil {
-		return nil, fmt.Errorf("failed parsing truetype font: %w", err)
+		return Face{}, err
 	}
-	return &Font{
-		font: face,
+	font, aspect, family, variant, err := parseLoader(ld)
+	if err != nil {
+		return Face{}, fmt.Errorf("failed parsing truetype font: %w", err)
+	}
+	return Face{
+		face:    font,
+		aspect:  aspect,
+		family:  family,
+		variant: variant,
 	}, nil
 }
 
-func (f *Font) Layout(ppem fixed.Int26_6, maxWidth int, lc system.Locale, txt io.RuneReader) ([]text.Line, error) {
-	return internal.Document(shaping.Shape, f.font, ppem, maxWidth, lc, txt), nil
-}
-
-func (f *Font) Shape(ppem fixed.Int26_6, str text.Layout) clip.PathSpec {
-	return textPath(ppem, f, str)
-}
-
-func (f *Font) Metrics(ppem fixed.Int26_6) font.Metrics {
-	metrics := font.Metrics{}
-	font := harfbuzz.NewFont(f.font)
-	font.XScale = int32(ppem.Ceil()) << 6
-	font.YScale = font.XScale
-	// Use any horizontal direction.
-	fontExtents := font.ExtentsForDirection(harfbuzz.LeftToRight)
-	ascender := fixed.I(int(fontExtents.Ascender * 64))
-	descender := fixed.I(int(fontExtents.Descender * 64))
-	gap := fixed.I(int(fontExtents.LineGap * 64))
-	metrics.Height = ascender + descender + gap
-	metrics.Ascent = ascender
-	metrics.Descent = descender
-	// These three are not readily available.
-	// TODO(whereswaldon): figure out how to get these values.
-	metrics.XHeight = ascender
-	metrics.CapHeight = ascender
-	metrics.CaretSlope = image.Pt(0, 1)
-
-	return metrics
-}
-
-func textPath(ppem fixed.Int26_6, font *Font, str text.Layout) clip.PathSpec {
-	var lastPos f32.Point
-	var builder clip.Path
-	ops := new(op.Ops)
-	var x fixed.Int26_6
-	builder.Begin(ops)
-	rune := 0
-	ppemInt := ppem.Round()
-	ppem16 := uint16(ppemInt)
-	scaleFactor := float32(ppemInt) / float32(font.font.Upem())
-	for _, g := range str.Glyphs {
-		advance := g.XAdvance
-		outline, ok := font.font.GlyphData(g.ID, ppem16, ppem16).(fonts.GlyphOutline)
-		if !ok {
-			continue
-		}
-		// Move to glyph position.
-		pos := f32.Point{
-			X: float32(x)/64 - float32(g.XOffset)/64,
-			Y: -float32(g.YOffset) / 64,
-		}
-		builder.Move(pos.Sub(lastPos))
-		lastPos = pos
-		var lastArg f32.Point
-
-		// Convert sfnt.Segments to relative segments.
-		for _, fseg := range outline.Segments {
-			nargs := 1
-			switch fseg.Op {
-			case fonts.SegmentOpQuadTo:
-				nargs = 2
-			case fonts.SegmentOpCubeTo:
-				nargs = 3
-			}
-			var args [3]f32.Point
-			for i := 0; i < nargs; i++ {
-				a := f32.Point{
-					X: fseg.Args[i].X * scaleFactor,
-					Y: -fseg.Args[i].Y * scaleFactor,
-				}
-				args[i] = a.Sub(lastArg)
-				if i == nargs-1 {
-					lastArg = a
-				}
-			}
-			switch fseg.Op {
-			case fonts.SegmentOpMoveTo:
-				builder.Move(args[0])
-			case fonts.SegmentOpLineTo:
-				builder.Line(args[0])
-			case fonts.SegmentOpQuadTo:
-				builder.Quad(args[0], args[1])
-			case fonts.SegmentOpCubeTo:
-				builder.Cube(args[0], args[1], args[2])
-			default:
-				panic("unsupported segment op")
-			}
-		}
-		lastPos = lastPos.Add(lastArg)
-		x += advance
-		rune++
+// ParseCollection parse an Opentype font file, with support for collections.
+// Single font files are supported, returning a slice with length 1.
+// The returned fonts are automatically wrapped in a text.FontFace with
+// inferred font metadata.
+// BUG(whereswaldon): the only Variant that can be detected automatically is
+// "Mono".
+func ParseCollection(src []byte) ([]giofont.FontFace, error) {
+	lds, err := loader.NewLoaders(bytes.NewReader(src))
+	if err != nil {
+		return nil, err
 	}
-	return builder.End()
+	out := make([]giofont.FontFace, len(lds))
+	for i, ld := range lds {
+		face, aspect, family, variant, err := parseLoader(ld)
+		if err != nil {
+			return nil, fmt.Errorf("reading font %d of collection: %s", i, err)
+		}
+		ff := Face{
+			face:    face,
+			aspect:  aspect,
+			family:  family,
+			variant: variant,
+		}
+		out[i] = giofont.FontFace{
+			Face: ff,
+			Font: ff.Font(),
+		}
+	}
+
+	return out, nil
+}
+
+// parseLoader parses the contents of the loader into a face and its metadata.
+func parseLoader(ld *loader.Loader) (_ font.Font, _ metadata.Aspect, family, variant string, _ error) {
+	ft, err := fontapi.NewFont(ld)
+	if err != nil {
+		return nil, metadata.Aspect{}, "", "", err
+	}
+	data := metadata.Metadata(ld)
+	if data.IsMonospace {
+		variant = "Mono"
+	}
+	return ft, data.Aspect, data.Family, variant, nil
+}
+
+// Face returns a thread-unsafe wrapper for this Face suitable for use by a single shaper.
+// Face many be invoked any number of times and is safe so long as each return value is
+// only used by one goroutine.
+func (f Face) Face() font.Face {
+	return &fontapi.Face{Font: f.face}
+}
+
+// FontFace returns a text.Font with populated font metadata for the
+// font.
+// BUG(whereswaldon): the only Variant that can be detected automatically is
+// "Mono".
+func (f Face) Font() giofont.Font {
+	return giofont.Font{
+		Typeface: giofont.Typeface(f.family),
+		Style:    f.style(),
+		Weight:   f.weight(),
+		Variant:  giofont.Variant(f.variant),
+	}
+}
+
+func (f Face) style() giofont.Style {
+	switch f.aspect.Style {
+	case metadata.StyleItalic:
+		return giofont.Italic
+	case metadata.StyleNormal:
+		fallthrough
+	default:
+		return giofont.Regular
+	}
+}
+
+func (f Face) weight() giofont.Weight {
+	switch f.aspect.Weight {
+	case metadata.WeightThin:
+		return giofont.Thin
+	case metadata.WeightExtraLight:
+		return giofont.ExtraLight
+	case metadata.WeightLight:
+		return giofont.Light
+	case metadata.WeightNormal:
+		return giofont.Normal
+	case metadata.WeightMedium:
+		return giofont.Medium
+	case metadata.WeightSemibold:
+		return giofont.SemiBold
+	case metadata.WeightBold:
+		return giofont.Bold
+	case metadata.WeightExtraBold:
+		return giofont.ExtraBold
+	case metadata.WeightBlack:
+		return giofont.Black
+	default:
+		return giofont.Normal
+	}
 }

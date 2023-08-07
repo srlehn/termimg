@@ -8,7 +8,7 @@ require (
 	github.com/containerd/console v1.0.3
 	github.com/disintegration/gift v1.2.1
 	github.com/disintegration/imaging v1.6.2
-	github.com/esimov/caire v1.4.6
+	github.com/esimov/caire v1.4.7-0.20230331122901-fc01f8e08e9e
 	github.com/gdamore/tcell/v2 v2.6.0
 	github.com/gizak/termui/v3 v3.1.0
 	github.com/go-errors/errors v1.4.2
@@ -30,21 +30,19 @@ require (
 )
 
 require (
-	gioui.org v0.0.0-20220801181544-dbbae0519e24 // indirect
-	gioui.org/cpu v0.0.0-20210817075930-8d6a761490d2 // indirect
+	gioui.org v0.1.0 // indirect
+	gioui.org/cpu v0.0.0-20220412190645-f1e9e8c3b1f7 // indirect
 	gioui.org/shader v1.0.6 // indirect
 	github.com/BurntSushi/freetype-go v0.0.0-20160129220410-b763ddbfe298 // indirect
 	github.com/BurntSushi/graphics-go v0.0.0-20160129215708-b43f31a4a966 // indirect
-	github.com/benoitkugler/textlayout v0.1.1 // indirect
-	github.com/esimov/pigo v1.4.5 // indirect
+	github.com/esimov/pigo v1.4.6 // indirect
 	github.com/gdamore/encoding v1.0.0 // indirect
-	github.com/gioui/uax v0.2.1-0.20220325163150-e3d987515a12 // indirect
 	github.com/go-ole/go-ole v1.2.6 // indirect
-	github.com/go-text/typesetting v0.0.0-20220411150340-35994bc27a7b // indirect
+	github.com/go-text/typesetting v0.0.0-20230723131405-1ab587dd27cf // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/lucasb-eyer/go-colorful v1.2.0 // indirect
 	github.com/mattn/go-isatty v0.0.19 // indirect
-	github.com/mattn/go-runewidth v0.0.14 // indirect
+	github.com/mattn/go-runewidth v0.0.15 // indirect
 	github.com/mitchellh/go-wordwrap v1.0.1 // indirect
 	github.com/nsf/termbox-go v1.1.1 // indirect
 	github.com/rivo/uniseg v0.4.4 // indirect
@@ -53,7 +51,7 @@ require (
 	github.com/tklauser/go-sysconf v0.3.11 // indirect
 	github.com/tklauser/numcpus v0.6.1 // indirect
 	github.com/yusufpapurcu/wmi v1.2.3 // indirect
-	golang.org/x/exp/shiny v0.0.0-20220722155223-a9213eeb770e // indirect
-	golang.org/x/term v0.5.0 // indirect
+	golang.org/x/exp/shiny v0.0.0-20230713183714-613f0c0eb8a1 // indirect
+	golang.org/x/term v0.10.0 // indirect
 	golang.org/x/text v0.11.0 // indirect
 )
