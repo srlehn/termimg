@@ -6,7 +6,7 @@ import (
 
 	"github.com/gizak/termui/v3"
 
-	_ "github.com/srlehn/termimg/drawers"
+	_ "github.com/srlehn/termimg/drawers/all"
 	"github.com/srlehn/termimg/query/qdefault"
 	"github.com/srlehn/termimg/resize/rdefault"
 	"github.com/srlehn/termimg/term"
@@ -93,14 +93,14 @@ func conf() (*config, error) {
 	rsz := &rdefault.Resizer{}
 
 	wm.SetImpl(wmimpl.Impl())
-	cr := &term.Creator{
+	opts := &term.Options{
 		PTYName:         ptyName,
 		TTYProvFallback: gotty.New,
 		Querier:         qdefault.NewQuerier(),
 		WindowProvider:  wm.NewWindow,
 		Resizer:         rsz,
 	}
-	tm, err := term.NewTerminal(cr)
+	tm, err := term.NewTerminal(opts)
 	if err != nil {
 		return nil, err
 	}

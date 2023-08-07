@@ -40,14 +40,14 @@ func initTerm() error {
 	ptyName := internal.DefaultTTYDevice()
 	wm.SetImpl(wmImplementation)
 	var err error
-	cr := &term.Creator{
+	opts := &term.Options{
 		PTYName:         ptyName,
 		TTYProvFallback: ttyProvider,
 		Querier:         querier,
 		WindowProvider:  windowProvider,
 		Resizer:         resizer,
 	}
-	termActive, err = term.NewTerminal(cr)
+	termActive, err = term.NewTerminal(opts)
 	if err != nil {
 		return err
 	}
@@ -57,7 +57,7 @@ func initTerm() error {
 // NewTerminal ...
 func NewTerminal(ptyName string) (*term.Terminal, error) {
 	wm.SetImpl(wmImplementation)
-	cr := &term.Creator{
+	cr := &term.Options{
 		PTYName:         ptyName,
 		TTYProvFallback: ttyProvider,
 		Querier:         querier,
