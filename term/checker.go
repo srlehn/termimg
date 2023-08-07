@@ -52,12 +52,14 @@ type TermChecker interface {
 	CheckIsQuery(Querier, TTY, environ.Proprietor) (is bool, p environ.Proprietor)
 	CheckIsWindow(wm.Window) (is bool, p environ.Proprietor)
 	Check(qu Querier, tty TTY, inp environ.Proprietor) (is bool, p environ.Proprietor)
-	NewTerminal(*Creator) (*Terminal, error)
-	CreateTerminal(*Creator) (*Terminal, error)
+	NewTerminal(*Options) (*Terminal, error)
+	CreateTerminal(*Options) (*Terminal, error)
 	Init(tc TermChecker) // called during registration
 }
 
-type Creator struct {
+// TODO use functional options?
+
+type Options struct {
 	PTYName                 string
 	TTY                     TTY
 	TTYFallback             TTY
@@ -78,7 +80,7 @@ type Creator struct {
 	// TODO add logger
 }
 
-func (c *Creator) NewTerminal(ch TermChecker) (*Terminal, error) {
+func (c *Options) NewTerminal(ch TermChecker) (*Terminal, error) {
 	if c == nil {
 		return nil, errors.New(internal.ErrNilReceiver)
 	}
@@ -87,7 +89,7 @@ func (c *Creator) NewTerminal(ch TermChecker) (*Terminal, error) {
 	}
 	return ch.NewTerminal(c)
 }
-func (c *Creator) CreateTerminal(ch TermChecker) (*Terminal, error) {
+func (c *Options) CreateTerminal(ch TermChecker) (*Terminal, error) {
 	if c == nil {
 		return nil, errors.New(internal.ErrNilReceiver)
 	}
@@ -170,11 +172,11 @@ func (c *termCheckerCore) Init(tc TermChecker) {
 	c.parent = tc
 }
 
-func (c *termCheckerCore) NewTerminal(cr *Creator) (*Terminal, error) { return c.createTerminal(cr) }
+func (c *termCheckerCore) NewTerminal(cr *Options) (*Terminal, error) { return c.createTerminal(cr) }
 
-func (c *termCheckerCore) CreateTerminal(cr *Creator) (*Terminal, error) { return c.createTerminal(cr) }
+func (c *termCheckerCore) CreateTerminal(cr *Options) (*Terminal, error) { return c.createTerminal(cr) }
 
-func (c *termCheckerCore) createTerminal(cr *Creator) (*Terminal, error) {
+func (c *termCheckerCore) createTerminal(cr *Options) (*Terminal, error) {
 	if c == nil {
 		return nil, errors.New(internal.ErrNilReceiver)
 	}

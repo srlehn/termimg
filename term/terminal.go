@@ -99,28 +99,28 @@ func ResetTerminalCheckerList() {
 //   - Args(environ.Proprietor) []string
 //   - Exe(environ.Proprietor) string // alternative executable name if it differs from Name()
 //
-// The optional Creator.…Fallback fields are applied in case the enforced Creator fields are nil and
+// The optional Options.…Fallback fields are applied in case the enforced Creator fields are nil and
 // the TermChecker also doesn't return a suggestion.
-func NewTerminal(cr *Creator) (*Terminal, error) {
-	if cr == nil {
+func NewTerminal(opts *Options) (*Terminal, error) {
+	if opts == nil {
 		return nil, errorsGo.New(internal.ErrNilParam)
 	}
-	if len(cr.PTYName) == 0 {
+	if len(opts.PTYName) == 0 {
 		// default if w == nil
-		cr.PTYName = internal.DefaultTTYDevice()
+		opts.PTYName = internal.DefaultTTYDevice()
 	}
-	if cr.TTYProvFallback == nil {
+	if opts.TTYProvFallback == nil {
 		return nil, errorsGo.New(`missing tty provider func`)
 	}
 	// set some package internal defaults
-	if cr.PartialSurveyorFallback == nil {
-		cr.PartialSurveyorFallback = &SurveyorDefault{}
+	if opts.PartialSurveyorFallback == nil {
+		opts.PartialSurveyorFallback = &SurveyorDefault{}
 	}
-	if cr.WindowProviderFallback == nil {
-		cr.WindowProviderFallback = wm.NewWindow
+	if opts.WindowProviderFallback == nil {
+		opts.WindowProviderFallback = wm.NewWindow
 	}
 
-	pr, passages, err := advanced.GetEnv(cr.PTYName)
+	pr, passages, err := advanced.GetEnv(opts.PTYName)
 	if err != nil {
 		return nil, err
 	}
@@ -131,8 +131,8 @@ func NewTerminal(cr *Creator) (*Terminal, error) {
 		if t != nil {
 			return t, nil
 		}
-		if cr.TTYProvFallback != nil {
-			tt, err := cr.TTYProvFallback(cr.PTYName)
+		if opts.TTYProvFallback != nil {
+			tt, err := opts.TTYProvFallback(opts.PTYName)
 			if err != nil {
 				util.Println(err) // TODO log error
 				return nil, err
@@ -145,12 +145,12 @@ func NewTerminal(cr *Creator) (*Terminal, error) {
 	}
 	tty, _ = setDefaultTTY(tty)
 
-	quTemp := cr.Querier
+	quTemp := opts.Querier
 	if quTemp == nil {
-		quTemp = cr.QuerierFallback
+		quTemp = opts.QuerierFallback
 	}
 	if quTemp == nil {
-		return nil, errorsGo.New(`both Creator.Querier and Creator.QuerierFallback are nil`)
+		return nil, errorsGo.New(`both Options.Querier and Options.QuerierFallback are nil`)
 	}
 	checker, prChecker, err := findTermChecker(env, tty, quTemp)
 	_ = err                       // TODO log error
@@ -161,9 +161,9 @@ func NewTerminal(cr *Creator) (*Terminal, error) {
 
 	pr.Merge(prChecker)
 
-	cr.TTY = tty
-	cr.Proprietor = pr
-	tm, err := checker.NewTerminal(cr)
+	opts.TTY = tty
+	opts.Proprietor = pr
+	tm, err := checker.NewTerminal(opts)
 	if err != nil {
 		return nil, err
 	}
@@ -362,7 +362,7 @@ func findTermChecker(env environ.Proprietor, tty TTY, qu Querier) (tc TermChecke
 }
 
 // ComposeTerminal manually composes a Terminal ignoring any incongruities.
-func ComposeTerminal(cr *Creator) (*Terminal, error) {
+func ComposeTerminal(cr *Options) (*Terminal, error) {
 	pr, passages, err := advanced.GetEnv(cr.PTYName)
 	if err != nil {
 		return nil, err

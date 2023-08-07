@@ -107,7 +107,7 @@ type surveyorConhost struct {
 }
 
 // CellSize - cell size in pixels
-func (s *surveyorConhost) CellSize(internal.TTY) (width, height float64, err error) {
+func (s *surveyorConhost) CellSize(term.TTY) (width, height float64, err error) {
 	if s == nil {
 		return 0, 0, errors.New(internal.ErrNilReceiver)
 	}
@@ -125,7 +125,7 @@ func (s *surveyorConhost) CellSize(internal.TTY) (width, height float64, err err
 }
 
 // SizeInCells - terminal size in cells
-func (s *surveyorConhost) SizeInCells(tty internal.TTY) (widthCells, heightCells uint, err error) {
+func (s *surveyorConhost) SizeInCells(tty term.TTY) (widthCells, heightCells uint, err error) {
 	if tty == nil {
 		return 0, 0, errors.New(`nil tty`)
 	}
