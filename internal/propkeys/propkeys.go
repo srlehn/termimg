@@ -61,6 +61,11 @@ const (
 	URXVTExeName          = URXVTPrefix + `executableName`
 	URXVTVerFirstChar     = URXVTPrefix + `versionFirstChar`
 	URXVTVerThirdChar     = URXVTPrefix + `versionThirdChar`
+	VSCodePrefix          = `vscode_`
+	VSCodeVersion         = VSCodePrefix + `version`
+	VSCodeVersionMajor    = VSCodeVersion + `Major`
+	VSCodeVersionMinor    = VSCodeVersion + `Minor`
+	VSCodeVersionPatch    = VSCodeVersion + `Patch`
 	VTEPrefix             = `vte_`
 	VTEVersion            = VTEPrefix + `version`
 	VTEVersionMajor       = VTEVersion + `Major`

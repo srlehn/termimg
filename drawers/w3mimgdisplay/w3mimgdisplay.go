@@ -52,7 +52,8 @@ func (d *drawerW3MImgDisplay) IsApplicable(inp term.DrawerCheckerInput) bool {
 	}
 	switch inp.Name() {
 	case `conhost`,
-		`alacritty`:
+		`alacritty`,
+		`vscode`:
 		return false
 	case `vte`:
 		if _, ok := inp.LookupEnv(`TERMINATOR_UUID`); ok {

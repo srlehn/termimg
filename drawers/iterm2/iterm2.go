@@ -7,10 +7,12 @@ import (
 	"image"
 	"image/jpeg"
 	"image/png"
+	"strconv"
 
 	"github.com/go-errors/errors"
 
 	"github.com/srlehn/termimg/internal"
+	"github.com/srlehn/termimg/internal/propkeys"
 	"github.com/srlehn/termimg/mux"
 	"github.com/srlehn/termimg/term"
 )
@@ -34,6 +36,24 @@ func (d *drawerITerm2) IsApplicable(inp term.DrawerCheckerInput) bool {
 		// `wayst`, // untested
 		`wezterm`:
 		return true
+	case `vscode`:
+		// v1.80.0 required
+		// https://code.visualstudio.com/updates/v1_80#_image-supportm
+		verMajStr, okMaj := inp.Property(propkeys.VSCodeVersionMajor)
+		verMinStr, okMin := inp.Property(propkeys.VSCodeVersionMinor)
+		_, okPtch := inp.Property(propkeys.VSCodeVersionPatch)
+		if !okMaj || !okMin || !okPtch {
+			return false
+		}
+		verMaj, err := strconv.ParseUint(verMajStr, 10, 64)
+		if err != nil || verMaj < 1 {
+			return false
+		}
+		if verMaj > 2 {
+			return true
+		}
+		verMin, err := strconv.ParseUint(verMinStr, 10, 64)
+		return err == nil && verMin >= 80
 	default:
 		return false
 	}
