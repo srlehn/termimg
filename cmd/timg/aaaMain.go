@@ -16,6 +16,7 @@ var rootCmd = &cobra.Command{
 	Long:         "timg display terminal graphics",
 	SilenceUsage: true,
 	Run: func(cmd *cobra.Command, args []string) {
+		_ = cmd.Help()
 		os.Exit(1)
 	},
 }

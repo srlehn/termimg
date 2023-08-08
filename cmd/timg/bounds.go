@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"image"
 	_ "image/gif"
 	_ "image/jpeg"
@@ -126,7 +125,6 @@ func splitDimArg(dim string, surv term.Surveyor, imgFile string) (x, y, w, h int
 	} else {
 		h = int(hu)
 	}
-	fmt.Println(wu, hu, wScaled, hScaled)
 	if w < 1 && h < 1 {
 		return 0, 0, 0, 0, errorsGo.New(`image position outside visible area`)
 	}

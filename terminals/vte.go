@@ -16,9 +16,7 @@ import (
 // VTE
 ////////////////////////////////////////////////////////////////////////////////
 
-func init() {
-	term.RegisterTermChecker(&termCheckerVTE{term.NewTermCheckerCore(termNameVTE)})
-}
+func init() { term.RegisterTermChecker(&termCheckerVTE{term.NewTermCheckerCore(termNameVTE)}) }
 
 const termNameVTE = `vte`
 
