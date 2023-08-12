@@ -6,6 +6,12 @@ import (
 	"golang.org/x/exp/slices"
 )
 
+// ResetTerminalCheckerList
+func ResetTerminalCheckerList() {
+	termCheckerListIsInit = false
+	initTermCheckerList()
+}
+
 // AllTerminals returns all enabled registered dummy terminals
 func AllTerminalCheckers() []TermChecker {
 	initTermCheckerList()
@@ -40,8 +46,8 @@ func GetRegTermChecker(name string) TermChecker {
 
 func initTermCheckerList() {
 	if !termCheckerListIsInit {
-		l := len(terminalCheckersRegistered)
-		terminalCheckers = terminalCheckersRegistered[:l:l]
+		terminalCheckers = make([]TermChecker, len(terminalCheckersRegistered))
+		copy(terminalCheckers, terminalCheckersRegistered)
 		termCheckerListIsInit = true
 	}
 }

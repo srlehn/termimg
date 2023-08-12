@@ -19,7 +19,6 @@ import (
 	"github.com/srlehn/termimg/internal"
 	"github.com/srlehn/termimg/internal/environ"
 	"github.com/srlehn/termimg/internal/propkeys"
-	"github.com/srlehn/termimg/internal/util"
 	"github.com/srlehn/termimg/internal/wminternal"
 	"github.com/srlehn/termimg/mux"
 	"github.com/srlehn/termimg/wm"
@@ -68,8 +67,8 @@ type (
 type Terminal struct {
 	tty
 	querier
-	proprietor
-	surveyor SurveyorLight
+	proprietor // Data
+	surveyor   SurveyorLight
 	arger
 	w wm.Window
 	closer
@@ -83,12 +82,6 @@ type Terminal struct {
 	tempDir string
 }
 
-// ResetTerminalCheckerList
-func ResetTerminalCheckerList() {
-	termCheckerListIsInit = false
-	_ = AllTerminalCheckers()
-}
-
 // NewTerminal tries to recognize the terminal that manages the device ptyName and matches w.
 // It will use non-zero implementations provided by the optional TerminalChecker methods:
 //
@@ -99,7 +92,7 @@ func ResetTerminalCheckerList() {
 //   - Args(environ.Proprietor) []string
 //   - Exe(environ.Proprietor) string // alternative executable name if it differs from Name()
 //
-// The optional Options.…Fallback fields are applied in case the enforced Creator fields are nil and
+// The optional Options.…Fallback fields are applied in case the enforced Options fields are nil and
 // the TermChecker also doesn't return a suggestion.
 func NewTerminal(opts *Options) (*Terminal, error) {
 	if opts == nil {
@@ -134,7 +127,6 @@ func NewTerminal(opts *Options) (*Terminal, error) {
 		if opts.TTYProvFallback != nil {
 			tt, err := opts.TTYProvFallback(opts.PTYName)
 			if err != nil {
-				util.Println(err) // TODO log error
 				return nil, err
 			}
 			if tt != nil {
@@ -575,6 +567,49 @@ func (t *Terminal) draw(img image.Image, bounds image.Rectangle) (e error) {
 		e = errorsGo.New(errors.Join(errs...))
 	}()
 	return t.drawers[0].Draw(img, bounds, t.rsz, t)
+}
+
+// CellScale returns a cell size for pixel size <ptPx> to the cell size <ptDest> while maintaining the scale.
+// With no passed 0 side length values, the largest subarea is returned.
+// With one passed 0 side length value, the other side length will be fixed.
+// With two passed 0 side length values, pixels in source and destination area at the same position correspond to each other.
+func (t *Terminal) CellScale(ptSrcPx, ptDstCl image.Point) (image.Point, error) {
+	var ret image.Point
+	if t == nil {
+		return image.Point{}, errorsGo.New(internal.ErrNilReceiver)
+	}
+	cpw, cph, err := t.CellSize()
+	if err != nil {
+		return image.Point{}, err
+	}
+	if cpw < 1 || cph < 1 {
+		return image.Point{}, errorsGo.New(`received invalid terminal cell size`)
+	}
+	if ptDstCl.X == 0 {
+		if ptDstCl.Y == 0 {
+			ret = image.Point{
+				X: int(float64(ptSrcPx.X) / cpw),
+				Y: int(float64(ptSrcPx.Y) / cph),
+			}
+		} else {
+			ret.Y = ptDstCl.Y
+			ret.X = int((float64(ptSrcPx.X) * float64(cph) * float64(ptDstCl.Y)) / (float64(ptSrcPx.Y) * float64(cpw)))
+		}
+	} else {
+		ret.X = ptDstCl.X
+		yScaled := int((float64(ptSrcPx.Y) * float64(cpw) * float64(ptDstCl.X)) / (float64(ptSrcPx.X) * float64(cph)))
+		if ptDstCl.Y == 0 {
+			ret.Y = yScaled
+		} else {
+			if yScaled <= ptDstCl.Y {
+				ret.Y = yScaled
+			} else {
+				ret.Y = ptDstCl.Y
+				ret.X = int((float64(ptSrcPx.X) * float64(cph) * float64(ptDstCl.Y)) / (float64(ptSrcPx.Y) * float64(cpw)))
+			}
+		}
+	}
+	return ret, nil
 }
 
 func (t *Terminal) CellSize() (width, height float64, err error) {

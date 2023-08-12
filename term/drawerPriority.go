@@ -37,6 +37,7 @@ var (
 		`kitty`,
 		`sixel`,
 		`domterm`,
+		`framebuffer`,
 		`urxvt`,
 		`conhost_gdi`,
 		`x11`,
