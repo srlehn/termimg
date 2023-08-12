@@ -50,7 +50,7 @@ func (d *drawerTerminology) Draw(img image.Image, bounds image.Rectangle, rsz te
 	if err != nil {
 		return err
 	}
-	tm.Write([]byte(terminologyString))
+	tm.WriteString(terminologyString)
 
 	return nil
 }
@@ -63,7 +63,7 @@ func (d *drawerTerminology) getInbandString(timg *term.Image, bounds image.Recta
 	if err == nil {
 		return terminologyString, nil
 	}
-	if timg.Fitted == nil {
+	if timg.Cropped == nil {
 		return ``, errors.New(internal.ErrNilImage)
 	}
 	w, h := uint(bounds.Dx()), uint(bounds.Dy())

@@ -6,20 +6,20 @@ import (
 	"image/draw"
 )
 
-type imageGray2 struct {
+type imageBlackWhite struct {
 	gray     image.Gray
 	avgColor color.Gray
 }
 
-var _ image.Image = (*imageGray2)(nil)
-var _ draw.Image = (*imageGray2)(nil)
-var _ color.Model = (*imageGray2)(nil)
+var _ image.Image = (*imageBlackWhite)(nil)
+var _ draw.Image = (*imageBlackWhite)(nil)
+var _ color.Model = (*imageBlackWhite)(nil)
 
-func newGray2From(img image.Image, doAvgColors bool) *imageGray2 {
+func newGray2From(img image.Image, doAvgColors bool) *imageBlackWhite {
 	if img == nil {
 		return nil
 	}
-	ret := &imageGray2{}
+	ret := &imageBlackWhite{}
 	bounds := img.Bounds()
 	if doAvgColors {
 		_ = ret.averageColor(img)
@@ -31,13 +31,13 @@ func newGray2From(img image.Image, doAvgColors bool) *imageGray2 {
 	return ret
 }
 
-func (m *imageGray2) Set(x, y int, c color.Color) { m.gray.Set(x, y, m.Convert(c)) }
-func (m *imageGray2) At(x, y int) color.Color     { return m.gray.At(x, y) }
-func (m *imageGray2) GrayAt(x, y int) color.Gray  { return m.gray.GrayAt(x, y) }
-func (m *imageGray2) Bounds() image.Rectangle     { return m.gray.Bounds() }
-func (m *imageGray2) ColorModel() color.Model     { return m }
+func (m *imageBlackWhite) Set(x, y int, c color.Color) { m.gray.Set(x, y, m.Convert(c)) }
+func (m *imageBlackWhite) At(x, y int) color.Color     { return m.gray.At(x, y) }
+func (m *imageBlackWhite) GrayAt(x, y int) color.Gray  { return m.gray.GrayAt(x, y) }
+func (m *imageBlackWhite) Bounds() image.Rectangle     { return m.gray.Bounds() }
+func (m *imageBlackWhite) ColorModel() color.Model     { return m }
 
-func (m *imageGray2) averageColor(img image.Image) color.Gray {
+func (m *imageBlackWhite) averageColor(img image.Image) color.Gray {
 	if img == nil {
 		if m.avgColor.Y == 0 {
 			m.avgColor.Y = 128
@@ -61,7 +61,7 @@ func (m *imageGray2) averageColor(img image.Image) color.Gray {
 	return m.avgColor
 }
 
-func (m *imageGray2) Convert(c color.Color) color.Color {
+func (m *imageBlackWhite) Convert(c color.Color) color.Color {
 	avgColor := m.averageColor(nil).Y
 	var y uint8
 	cg, ok := color.GrayModel.Convert(c).(color.Gray)

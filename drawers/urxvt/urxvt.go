@@ -67,7 +67,7 @@ func (d *drawerURXVT) getInbandString(timg *term.Image, bounds image.Rectangle, 
 	if err == nil {
 		return urxvtString, nil
 	}
-	if timg.Fitted == nil {
+	if timg.Cropped == nil {
 		return ``, errors.New(internal.ErrNilImage)
 	}
 
@@ -116,6 +116,7 @@ func (d *drawerURXVT) getInbandString(timg *term.Image, bounds image.Rectangle, 
 }
 
 func (d *drawerURXVT) Clear(term *term.Terminal) error {
+	// TODO doesn't clear but upscales to terminal size
 	clearStr := mux.Wrap("\033]20;;100x100+1000+1000\a", term)
 	_, err := term.WriteString(clearStr)
 	return err

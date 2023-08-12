@@ -105,8 +105,8 @@ func (d *drawerSixel) getInbandString(timg *term.Image, bounds image.Rectangle, 
 	if err := timg.Decode(); err != nil {
 		return ``, err
 	}
-	if timg.Fitted == nil {
-		timg.Fitted = timg.Original
+	if timg.Cropped == nil {
+		timg.Cropped = timg.Original
 	}
 
 	// sixel
@@ -114,7 +114,7 @@ func (d *drawerSixel) getInbandString(timg *term.Image, bounds image.Rectangle, 
 	byteBuf := new(bytes.Buffer)
 	enc := sixel.NewEncoder(byteBuf)
 	enc.Dither = true
-	if err := enc.Encode(timg.Fitted); err != nil {
+	if err := enc.Encode(timg.Cropped); err != nil {
 		return ``, err
 	}
 	sixelString = mux.Wrap("\033[?8452h"+byteBuf.String(), term)

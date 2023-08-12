@@ -64,7 +64,7 @@ func (d *drawerDomTerm) getInbandString(timg *term.Image, bounds image.Rectangle
 	// png seems to cause freeze
 	buf := new(bytes.Buffer)
 	// if err := jpeg.Encode(buf, timg.Prepared, &jpeg.Options{Quality: 100}); err != nil {
-	if err := jpeg.Encode(buf, timg.Fitted, &jpeg.Options{Quality: 50}); err != nil {
+	if err := jpeg.Encode(buf, timg.Cropped, &jpeg.Options{Quality: 50}); err != nil {
 		return ``, err
 	}
 	mimeType := `image/jpeg`
@@ -77,7 +77,7 @@ func (d *drawerDomTerm) getInbandString(timg *term.Image, bounds image.Rectangle
 		attrs += `alt='` + html.EscapeString(timg.FileName) + `" `
 	}
 	attrs += `class='` + internal.LibraryName + `' `
-	attrs += fmt.Sprintf(`width='%d' height='%d'`, timg.Fitted.Bounds().Dx(), timg.Fitted.Bounds().Dy())
+	attrs += fmt.Sprintf(`width='%d' height='%d'`, timg.Cropped.Bounds().Dx(), timg.Cropped.Bounds().Dy())
 	domTermString = mux.Wrap(fmt.Sprintf("\033]72;<img %s src='data:%s;base64,%s\n'/>\a", attrs, mimeType, imgBase64), tm)
 	// domTermString = fmt.Sprintf("\033[%d;%dH%s", bounds.Min.Y, bounds.Min.X, domTermString)
 	timg.SetInband(bounds, domTermString, d, tm)

@@ -126,7 +126,7 @@ func (d *drawerX11) Draw(img image.Image, bounds image.Rectangle, rsz term.Resiz
 	// X11
 
 	w := xwindow.New(connXU, xproto.Window(tmw.WindowID()))
-	ximg := xgraphics.NewConvert(connXU, timg.Fitted)
+	ximg := xgraphics.NewConvert(connXU, timg.Cropped)
 	boundsPx := image.Rect(int(cw)*bounds.Min.X, int(ch)*bounds.Min.Y, int(cw)*bounds.Max.X, int(ch)*bounds.Max.Y)
 
 	go xevent.Main(connXU)

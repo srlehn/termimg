@@ -96,18 +96,14 @@ func (d *drawerGDI) Draw(img image.Image, bounds image.Rectangle, rsz term.Resiz
 	}
 	sp, exists := timg.DrawerSpec[d.Name()]
 	if exists {
-		goto draw
-	}
-	{
 		spt, okTyped := sp.(*GDIImage)
-		if !okTyped && spt != nil {
-			return errorsGo.New(fmt.Sprintf(`termimg.drawerspec[%s] (%T) is not of type %T`, d.Name(), sp, &GDIImage{}))
+		if !okTyped || spt == nil {
+			return errorsGo.New(fmt.Sprintf(`term.DrawerSpec[%s] (%T) is nil or not of type %T`, d.Name(), sp, &GDIImage{}))
 		}
-		if spt != nil {
-			spTyped = spt
-		} else {
-			spTyped = &GDIImage{}
-		}
+		spTyped = spt
+		goto draw
+	} else {
+		spTyped = &GDIImage{}
 	}
 
 createBitmap:

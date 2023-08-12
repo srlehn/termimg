@@ -10,7 +10,6 @@ import (
 	"github.com/go-errors/errors"
 
 	"github.com/srlehn/termimg/internal"
-	"github.com/srlehn/termimg/internal/util"
 	"github.com/srlehn/termimg/term"
 )
 
@@ -33,7 +32,10 @@ type drawerGeneric2 struct {
 func (d *drawerGeneric2) Name() string     { return `generic2` }
 func (d *drawerGeneric2) New() term.Drawer { return &drawerGeneric2{} }
 
-func (d *drawerGeneric2) IsApplicable(inp term.DrawerCheckerInput) bool { return true }
+func (d *drawerGeneric2) IsApplicable(inp term.DrawerCheckerInput) bool {
+	// TODO disable sextants on xterm, terminology (font drawn)
+	return true
+}
 
 func (d *drawerGeneric2) Draw(img image.Image, bounds image.Rectangle, rsz term.Resizer, tm *term.Terminal) error {
 	if d == nil || tm == nil || img == nil {
@@ -61,22 +63,25 @@ func (d *drawerGeneric2) Draw(img image.Image, bounds image.Rectangle, rsz term.
 
 	//
 
-	cimg := util.Must2(rsz.Resize(timg.Fitted, image.Pt(boundsPixelated.Dx(), boundsPixelated.Dy())))
+	cimg, err := rsz.Resize(timg.Cropped, image.Pt(boundsPixelated.Dx(), boundsPixelated.Dy()))
+	if err != nil {
+		return err
+	}
 	doAvgColors := true
 	g := newGray2From(cimg, doAvgColors)
 
 	b := &strings.Builder{}
 	imgHeight := bounds.Dy()
 	imgWidth := bounds.Dx()
-	pix := make([][]coloredRune, imgHeight, imgHeight)
+	pix := make([][]coloredRune, imgHeight)
 	var fgBgDistSum uint64
 	var allPixelsAvgDistSum uint64
 	for y := 0; y < bounds.Dy(); y++ {
 		if d.monochrome || !d.useDistanceThreshold {
-			b.WriteString(fmt.Sprintf("\033[%d;%dH", bounds.Min.Y+y, bounds.Min.X))
+			b.WriteString(fmt.Sprintf("\033[%d;%dH", bounds.Min.Y+y+1, bounds.Min.X+1))
 		}
 		if !d.monochrome {
-			pix[y] = make([]coloredRune, imgWidth, imgWidth)
+			pix[y] = make([]coloredRune, imgWidth)
 		}
 		for x := 0; x < bounds.Dx(); x++ {
 			var pxlRepr uint8
@@ -173,7 +178,7 @@ func (d *drawerGeneric2) Draw(img image.Image, bounds image.Rectangle, rsz term.
 			allPixelsAvgDist = float64(allPixelsAvgDistSum) / (float64(imgWidth * imgHeight))
 		}
 		for y, row := range pix {
-			b.WriteString(fmt.Sprintf("\033[%d;%dH", bounds.Min.Y+y, bounds.Min.X))
+			b.WriteString(fmt.Sprintf("\033[%d;%dH", bounds.Min.Y+y+1, bounds.Min.X+1))
 			for _, cell := range row {
 				if cell.fgPxlCnt == 1 || cell.bgPxlCnt == 1 {
 					colAvg, avgDistSum := getAvgDistSum(append(cell.colsFg, cell.colsBg...))

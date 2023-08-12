@@ -48,7 +48,7 @@ func (d *drawerBraille) Draw(img image.Image, bounds image.Rectangle, rsz term.R
 
 	var monochrome bool = true // TODO colored picture is not recognizable
 
-	cimg := util.Must2(rsz.Resize(timg.Fitted, image.Pt(boundsBraille.Dx(), boundsBraille.Dy())))
+	cimg := util.Must2(rsz.Resize(timg.Cropped, image.Pt(boundsBraille.Dx(), boundsBraille.Dy())))
 
 	doAvgColors := true
 	g := newGray2From(cimg, doAvgColors)

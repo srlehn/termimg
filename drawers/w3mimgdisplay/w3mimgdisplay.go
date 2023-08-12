@@ -42,13 +42,8 @@ func (d *drawerW3MImgDisplay) IsApplicable(inp term.DrawerCheckerInput) bool {
 	// systemd: XDG_SESSION_TYPE == x11
 	sessionType, okST := inp.LookupEnv(`XDG_SESSION_TYPE`)
 	if okST && sessionType != `x11` {
-		switch sessionType {
-		case `x11`:
-		case `tty`: // $XDG_VTNR likely has tty number
-		default:
-			// probably `wayland`
-			return false
-		}
+		// might be `tty`, `wayland`, ...
+		return false
 	}
 	switch inp.Name() {
 	case `conhost`,
@@ -97,9 +92,14 @@ func (d *drawerW3MImgDisplay) Draw(img image.Image, bounds image.Rectangle, rsz 
 		return err
 	}
 
-	w3mImgDisplayString, err := timg.GetInband(bounds, d, tm)
+	var w3mImgDisplayString string
+	w3mImgDisplayObject, err := timg.GetPosObject(bounds, d, tm)
 	if err == nil {
-		goto exc
+		s, ok := w3mImgDisplayObject.(string)
+		if ok {
+			w3mImgDisplayString = s
+			goto exc
+		}
 	}
 
 	cpw, cph, err = tm.CellSize()
@@ -192,7 +192,7 @@ exc:
 		return errors.New(err)
 	}
 
-	timg.SetInband(bounds, w3mImgDisplayString, d, tm)
+	timg.SetPosObject(bounds, w3mImgDisplayString, d, tm)
 
 	return nil
 }

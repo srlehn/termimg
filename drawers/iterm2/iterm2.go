@@ -41,15 +41,14 @@ func (d *drawerITerm2) IsApplicable(inp term.DrawerCheckerInput) bool {
 		// https://code.visualstudio.com/updates/v1_80#_image-supportm
 		verMajStr, okMaj := inp.Property(propkeys.VSCodeVersionMajor)
 		verMinStr, okMin := inp.Property(propkeys.VSCodeVersionMinor)
-		_, okPtch := inp.Property(propkeys.VSCodeVersionPatch)
-		if !okMaj || !okMin || !okPtch {
+		if !okMaj || !okMin {
 			return false
 		}
 		verMaj, err := strconv.ParseUint(verMajStr, 10, 64)
 		if err != nil || verMaj < 1 {
 			return false
 		}
-		if verMaj > 2 {
+		if verMaj >= 2 {
 			return true
 		}
 		verMin, err := strconv.ParseUint(verMinStr, 10, 64)
@@ -88,11 +87,11 @@ func (d *drawerITerm2) Draw(img image.Image, bounds image.Rectangle, rsz term.Re
 	if tm.Name() == `wezterm` {
 		// error for png image:
 		// ERROR  wezterm_gui::glyphcache     > Error decoding image: inconsistent 600x450 -> 810000
-		if err = jpeg.Encode(buf, timg.Fitted, &jpeg.Options{Quality: 100}); err != nil {
+		if err = jpeg.Encode(buf, timg.Cropped, &jpeg.Options{Quality: 100}); err != nil {
 			return err
 		}
 	} else {
-		if err = png.Encode(buf, timg.Fitted); err != nil {
+		if err = png.Encode(buf, timg.Cropped); err != nil {
 			return err
 		}
 	}
