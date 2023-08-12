@@ -113,17 +113,11 @@ func queryCellSize16t(qu term.Querier, tty term.TTY) (width, heigth uint, _ erro
 		return 0, 0, errors.New(errFormatStr)
 	}
 	fontHeigth, err := strconv.ParseUint(replCellSizeParts[1], 10, 64)
-	if err != nil {
-		return 0, 0, errors.New(err)
-	}
-	if fontHeigth > 0 {
+	if err != nil || fontHeigth <= 1 {
 		return 0, 0, errors.New(errFormatStr)
 	}
 	fontWidth, err := strconv.ParseUint(replCellSizeParts[2], 10, 64)
-	if err != nil {
-		return 0, 0, errors.New(err)
-	}
-	if fontWidth > 0 {
+	if err != nil || fontWidth <= 1 {
 		return 0, 0, errors.New(errFormatStr)
 	}
 	return uint(fontWidth), uint(fontHeigth), nil
