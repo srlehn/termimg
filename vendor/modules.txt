@@ -132,6 +132,9 @@ github.com/gdamore/tcell/v2/terminfo/x/xfce
 github.com/gdamore/tcell/v2/terminfo/x/xterm
 github.com/gdamore/tcell/v2/terminfo/x/xterm_kitty
 github.com/gdamore/tcell/v2/terminfo/x/xterm_termite
+# github.com/gen2brain/framebuffer v0.0.4
+## explicit
+github.com/gen2brain/framebuffer
 # github.com/gizak/termui/v3 v3.1.0
 ## explicit
 github.com/gizak/termui/v3
