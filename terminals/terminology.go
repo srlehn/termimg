@@ -1,6 +1,11 @@
 package terminals
 
 import (
+	"strconv"
+	"strings"
+
+	"github.com/go-errors/errors"
+	"github.com/srlehn/termimg/internal"
 	"github.com/srlehn/termimg/internal/environ"
 	"github.com/srlehn/termimg/internal/propkeys"
 	"github.com/srlehn/termimg/term"
@@ -52,6 +57,73 @@ func (t *termCheckerTerminology) CheckIsQuery(qu term.Querier, tty term.TTY, ci 
 	return true, p
 }
 
+func (t *termCheckerTerminology) Surveyor(ci environ.Proprietor) term.PartialSurveyor {
+	// return &term.SurveyorNoANSI{}
+	return &surveyorTerminology{}
+}
+
+var _ term.PartialSurveyor = (*surveyorTerminology)(nil)
+
+type surveyorTerminology struct{}
+
+func (s *surveyorTerminology) IsPartialSurveyor() {}
+func (s *surveyorTerminology) SizeInCellsQuery(qu term.Querier, tty term.TTY) (widthCells, heightCells uint, err error) {
+	tpw, tph, _, _, err := queryTerminalAndCellSizeTerminology(qu, tty)
+	if err != nil {
+		return 0, 0, err
+	}
+	return tpw, tph, nil
+}
+func (s *surveyorTerminology) CellSizeQuery(qu term.Querier, tty term.TTY) (width, height float64, err error) {
+	_, _, fontWidth, fontHeight, err := queryTerminalAndCellSizeTerminology(qu, tty)
+	if err != nil {
+		return 0, 0, err
+	}
+	return float64(fontWidth), float64(fontHeight), nil
+}
+
+func queryTerminalAndCellSizeTerminology(qu term.Querier, tty term.TTY) (tpw, tph, cpw, cph uint, _ error) {
+	// TODO xterm doesn't reply to this on some systems. why?
+	if qu == nil || tty == nil {
+		return 0, 0, 0, 0, errors.New(internal.ErrNilParam)
+	}
+	qsTerminologySize := "\033}qs\000"
+	qs := qsTerminologySize + term.QueryStringDA1
+	var p term.ParserFunc = func(r rune) bool { return r == 'c' }
+	repl, err := qu.Query(qs, tty, p)
+	if err != nil {
+		return 0, 0, 0, 0, errors.New(err)
+	}
+	// "213;58;9;17\n\x1b[?64;1;9;15;18;21;22c"
+	errFormatStr := `terminology terminal size query (CSI }qs\x00): unable to recognize reply format`
+	replParts := strings.SplitN(repl, "\n", 2)
+	if len(replParts) != 2 {
+		return 0, 0, 0, 0, errors.New(errFormatStr)
+	}
+	repl = replParts[0]
+	replParts = strings.SplitN(repl, `;`, 4)
+	if len(replParts) != 4 {
+		return 0, 0, 0, 0, errors.New(errFormatStr)
+	}
+	termWidth, err := strconv.ParseUint(replParts[0], 10, 64)
+	if err != nil || termWidth <= 0 {
+		return 0, 0, 0, 0, errors.New(errFormatStr)
+	}
+	termHeight, err := strconv.ParseUint(replParts[1], 10, 64)
+	if err != nil || termHeight <= 0 {
+		return 0, 0, 0, 0, errors.New(errFormatStr)
+	}
+	fontWidth, err := strconv.ParseUint(replParts[2], 10, 64)
+	if err != nil || fontWidth <= 1 {
+		return 0, 0, 0, 0, errors.New(errFormatStr)
+	}
+	fontHeigth, err := strconv.ParseUint(replParts[3], 10, 64)
+	if err != nil || fontHeigth <= 1 {
+		return 0, 0, 0, 0, errors.New(errFormatStr)
+	}
+	return uint(termWidth), uint(termHeight), uint(fontWidth), uint(fontHeigth), err
+}
+
 // func (t *TermTerminology) X11WindowClass() string { return `terminology` }
 
 /*
@@ -70,8 +142,9 @@ image print
 https://github.com/borisfaure/terminology/blob/master/src/bin/tycat.c#LL69C1-L69C1 # print()
 snprintf(buf, sizeof(buf), "%c}is#%i;%i;%s", 0x1b, w, h, path)
 
-sizes
-https://github.com/borisfaure/terminology/blob/master/src/bin/tyls.c#L926
+query size
+# "\033}qs\000"
+https://github.com/borisfaure/terminology/blob/9f97aaa/src/bin/tyls.c#L926
 snprintf(buf, sizeof(buf), "%c}qs", 0x1b)
 scanf("%i;%i;%i;%i", &tw, &th, &cw, &ch)
 */
