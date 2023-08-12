@@ -3,8 +3,10 @@ package testutil
 import (
 	"fmt"
 	"image"
+	"math"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -325,4 +327,37 @@ func infoHeader(tm *term.Terminal, dr term.Drawer, area image.Rectangle) string 
 	str = posStr + str
 
 	return str
+}
+
+func NumberArea(area image.Rectangle) string {
+	countDecimals := func(d int) int {
+		var sign int
+		if d < 0 {
+			d = -d
+			sign = 1
+		} else if d == 0 {
+			return 1
+		}
+		return int(math.Log10(float64(d))) + 1 + sign
+	}
+	maxDecimalsX := countDecimals(area.Max.X)
+	maxDecimalsY := countDecimals(area.Max.Y)
+	maxDecimalsXStr := strconv.Itoa(maxDecimalsX)
+
+	var line string
+	for y := 0; y < maxDecimalsX; y++ {
+		line += fmt.Sprintf("\033[%d;%dH", area.Min.Y+y+1, area.Min.X+maxDecimalsY+1)
+		for x := area.Min.X + maxDecimalsY; x <= area.Max.X; x++ {
+			decPot := int(math.Pow(float64(10), float64(maxDecimalsX-y-1)))
+			digit := strconv.Itoa((x % (decPot * 10)) / decPot)
+			if len(digit) != 1 || (digit == `0` && (maxDecimalsX-y) > countDecimals(x)) {
+				digit = ` `
+			}
+			line += digit
+		}
+	}
+	for y := area.Min.Y + maxDecimalsX + 1; y <= area.Max.Y; y++ {
+		line += fmt.Sprintf("\033[%d;%dH%"+maxDecimalsXStr+`d`, y, area.Min.X+1, y-1)
+	}
+	return line
 }
