@@ -26,6 +26,8 @@ var (
 	showPosition     string
 	showImage        string
 	showCaire        bool
+	showCoords       bool
+	showGrid         bool
 	showResizerCaire = func() term.Resizer { return nil }
 )
 
@@ -71,7 +73,6 @@ func showFunc(cmd *cobra.Command, args []string) func() error {
 			rsz = rszCaire
 		} else {
 			rsz = &rdefault.Resizer{}
-			// rsz = &imaging.Resizer{}
 		}
 		opts := &term.Options{
 			PTYName:         internal.DefaultTTYDevice(),
@@ -99,8 +100,12 @@ func showFunc(cmd *cobra.Command, args []string) func() error {
 				return errorsGo.New(`unknown drawer "` + showDrawer + `"`)
 			}
 		}
-		fmt.Printf(`%s`, testutil.NumberArea(resizeArea(bounds, 5)))
-		fmt.Printf(`%s`, testutil.ChessPattern(resizeArea(bounds, 3), false))
+		if showCoords {
+			fmt.Printf(`%s`, testutil.NumberArea(resizeArea(bounds, 5)))
+		}
+		if showGrid {
+			fmt.Printf(`%s`, testutil.ChessPattern(resizeArea(bounds, 3), false))
+		}
 		if err := dr.Draw(termimg.NewImageFileName(showImage), bounds, rsz, tm); err != nil {
 			return err
 		}
