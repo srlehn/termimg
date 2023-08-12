@@ -49,8 +49,9 @@ func CleanEnv(envParent, envInner []string) (env Proprietor) {
 		`ANDROID_HOME`:                {},
 	}
 	preserveVars := map[string]struct{}{
-		`TERM`:    {},
-		`DISPLAY`: {},
+		`TERM`:             {},
+		`DISPLAY`:          {},
+		`XDG_SESSION_TYPE`: {},
 	}
 	ep := EnvToProprietor(envParent)
 	ei := EnvToProprietor(envInner)
