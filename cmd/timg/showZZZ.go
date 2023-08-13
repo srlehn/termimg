@@ -1,8 +1,6 @@
 package main
 
 import (
-	"errors"
-	"fmt"
 	"image"
 	"os"
 	"time"
@@ -25,6 +23,7 @@ var (
 	showDrawer       string
 	showPosition     string
 	showImage        string
+	showTTY          string
 	showCaire        bool
 	showCoords       bool
 	showGrid         bool
@@ -55,8 +54,8 @@ If width or height is missing the image will be scaled while preserving its aspe
 
 var (
 	showCmdStr   = "show"
-	showUsageStr = `usage: ` + os.Args[0] + ` ` + showCmdStr + ` -d <drawer> -p <x>,<y>,<w>x<h> /path/to/image.png`
-	errShowUsage = errors.New(showUsageStr)
+	showUsageStr = `usage: ` + os.Args[0] + ` ` + showCmdStr + ` -p <x>,<y>,<w>x<h> (-d <drawer>) (-t <tty>) /path/to/image.png`
+	errShowUsage = errorsGo.New(showUsageStr)
 )
 
 func showFunc(cmd *cobra.Command, args []string) func() error {
@@ -74,8 +73,14 @@ func showFunc(cmd *cobra.Command, args []string) func() error {
 		} else {
 			rsz = &rdefault.Resizer{}
 		}
+		var ptyName string
+		if len(showTTY) > 0 {
+			ptyName = showTTY
+		} else {
+			ptyName = internal.DefaultTTYDevice()
+		}
 		opts := &term.Options{
-			PTYName:         internal.DefaultTTYDevice(),
+			PTYName:         ptyName,
 			TTYProvFallback: gotty.New,
 			Querier:         qdefault.NewQuerier(),
 			WindowProvider:  wm.NewWindow,
@@ -86,7 +91,6 @@ func showFunc(cmd *cobra.Command, args []string) func() error {
 			return err
 		}
 		defer tm.Close()
-
 		x, y, w, h, err := splitDimArg(showPosition, tm, showImage)
 		if err != nil {
 			return err
@@ -101,10 +105,10 @@ func showFunc(cmd *cobra.Command, args []string) func() error {
 			}
 		}
 		if showCoords {
-			fmt.Printf(`%s`, testutil.NumberArea(resizeArea(bounds, 5)))
+			tm.WriteString(testutil.NumberArea(resizeArea(bounds, 5)))
 		}
 		if showGrid {
-			fmt.Printf(`%s`, testutil.ChessPattern(resizeArea(bounds, 3), false))
+			tm.WriteString(testutil.ChessPattern(resizeArea(bounds, 3), false))
 		}
 		if err := dr.Draw(termimg.NewImageFileName(showImage), bounds, rsz, tm); err != nil {
 			return err
