@@ -5,16 +5,7 @@ package main
 import (
 	"errors"
 	"image"
-	_ "image/gif"
-	_ "image/jpeg"
-	_ "image/png"
 	"os"
-
-	_ "golang.org/x/image/bmp"
-	_ "golang.org/x/image/tiff"
-	_ "golang.org/x/image/vp8"
-	_ "golang.org/x/image/vp8l"
-	_ "golang.org/x/image/webp"
 
 	errorsGo "github.com/go-errors/errors"
 	"github.com/spf13/cobra"
@@ -22,7 +13,6 @@ import (
 	_ "github.com/srlehn/termimg/drawers/all"
 	"github.com/srlehn/termimg/internal/testutil"
 	_ "github.com/srlehn/termimg/terminals"
-	// _ "github.com/srlehn/termimg/terminals/all"
 )
 
 var (
