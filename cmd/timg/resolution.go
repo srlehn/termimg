@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"os"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -25,20 +26,25 @@ var resolutionCmd = &cobra.Command{
 	Short: `print terminal resolution`,
 	Long: `print terminal resolution
 
+` + resolutionUsageStr + `
+
     -f <fmt>, --format <fmt>    print format - %<letter> verbs are replaced:
                                 %c    terminal resolution in cells (width)
                                 %d    terminal resolution in cells (height)
                                 %e    terminal resolution in pixels (width)
                                 %f    terminal resolution in pixels (height)
-                                %c    terminal cell resolution in pixels (width) (floating number)
-                                %d    terminal cell resolution in pixels (height) (floating number)`,
+                                %a    terminal cell resolution in pixels (width) (floating number)
+                                %b    terminal cell resolution in pixels (height) (floating number)`,
 	Args: cobra.NoArgs,
 	Run: func(cmd *cobra.Command, args []string) {
 		run(resolutionFunc(cmd, args))
 	},
 }
 
-var resolutionCmdStr = "resolution"
+var (
+	resolutionCmdStr   = "resolution"
+	resolutionUsageStr = `usage: ` + os.Args[0] + ` ` + resolutionCmdStr + ` (-f <format>)`
+)
 
 func resolutionFunc(cmd *cobra.Command, args []string) func() error {
 	return func() error {

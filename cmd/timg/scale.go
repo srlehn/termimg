@@ -21,7 +21,7 @@ var scaleCmd = &cobra.Command{
 	Short: `fit pixel area into a cell area while maintaining scale`,
 	Long: `Fit pixel area into a cell area while maintaining scale.
 
-` + scaleCmdStr + `
+` + scaleUsageStr + `
 
 With no passed 0 side length values, the largest subarea is returned.
 With one passed 0 side length value, the other side length will be fixed.
@@ -34,7 +34,7 @@ With two passed 0 side length values, pixels in source and destination area at t
 
 var (
 	scaleCmdStr   = "scale"
-	scaleUsageStr = `usage: ` + os.Args[0] + ` ` + scaleCmdStr + `<srcSizePixels(<w>x<h>)> <dstSizeCells(<w>x<h>)>`
+	scaleUsageStr = `usage: ` + os.Args[0] + ` ` + scaleCmdStr + ` <srcSizePixels(<w>x<h>)> <dstSizeCells(<w>x<h>)>`
 	errScaleUsage = errors.New(scaleUsageStr)
 )
 

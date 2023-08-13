@@ -22,7 +22,7 @@ import (
 
 func splitDimArg(dim string, surv term.Surveyor, imgFile string) (x, y, w, h int, e error) {
 	dimParts := strings.Split(dim, `,`)
-	if len(dimParts) > 5 {
+	if len(dimParts) > 4 {
 		return 0, 0, 0, 0, errorsGo.New(`image position string not "<x>,<y>,<w>x<h>"`)
 	}
 	var err error
