@@ -195,7 +195,7 @@ func (d *drawerGeneric2) Draw(img image.Image, bounds image.Rectangle, rsz term.
 		}
 	}
 	str := b.String()
-	fmt.Println(str)
+	tm.WriteString(str)
 
 	return nil
 }
