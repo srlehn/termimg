@@ -117,7 +117,7 @@ func SetWindow(w wm.Window) Option {
 var (
 	TUIMode           Option = tuiMode
 	CLIMode           Option = cliMode
-	ManualComposition Option = manualComposition
+	ManualComposition Option = manualComposition // disable terminal detection
 )
 
 var tuiMode Option = OptFunc(func(t *Terminal) error { t.SetProperty(propkeys.Mode, `tui`); return nil })

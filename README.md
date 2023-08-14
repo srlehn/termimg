@@ -88,13 +88,13 @@ import (
 
 func main(){
 	wm.SetImpl(wmimpl.Impl())
-	opts := &term.Options{
-		PTYName:         `dev/pts/2`,
-		TTYProvFallback: gotty.New,
-		Querier:         qdefault.NewQuerier(),
-		Resizer:         &rdefault.Resizer{},
-	}
-	tm, err := term.NewTerminal(opts)
+	opts := []term.Option{
+		term.SetPTYName(`dev/pts/2`),
+		term.SetTTYProvider(gotty.New, false),
+		term.SetQuerier(qdefault.NewQuerier(), true),
+		term.SetResizer(&rdefault.Resizer{}),
+}
+	tm, err := term.NewTerminal(opts...)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -106,6 +106,8 @@ func main(){
     }
 }
 ```
+
+The default options are packed together in `termimg.DefaultConfig`.
 </details>
 
 </blockquote></details>

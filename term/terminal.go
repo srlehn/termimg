@@ -124,7 +124,7 @@ func NewTerminal(opts ...Option) (*Terminal, error) {
 		tm.proprietor.Merge(prChecker)
 		checker = chk
 	} else {
-		checker = &termCheckerCore{}
+		checker = &termCheckerCore{} // dummy
 	}
 	// terminal specific settings
 	tm, err = checker.NewTerminal(replaceTerminal(tm))

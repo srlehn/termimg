@@ -97,7 +97,6 @@ func conf() (*config, error) {
 		term.SetPTYName(ptyName),
 		term.SetTTYProvider(gotty.New, false),
 		term.SetQuerier(qdefault.NewQuerier(), true),
-		term.SetWindowProvider(wm.NewWindow, true),
 		term.SetResizer(rsz),
 		term.TUIMode,
 	}
