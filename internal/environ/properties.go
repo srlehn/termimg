@@ -32,18 +32,18 @@ var _ Proprietor = (*proprietorGeneric)(nil)
 
 type proprietorGeneric struct {
 	sync.Locker
-	propsExtra map[string]string
+	properties map[string]string
 }
 
 func NewProprietor() Proprietor {
-	return &proprietorGeneric{Locker: &sync.Mutex{}, propsExtra: make(map[string]string)}
+	return &proprietorGeneric{Locker: &sync.Mutex{}, properties: make(map[string]string)}
 }
 
 func CloneProprietor(pr PropertyExporter) Proprietor {
 	if pr == nil {
 		return nil
 	}
-	p := &proprietorGeneric{Locker: &sync.Mutex{}, propsExtra: make(map[string]string)}
+	p := &proprietorGeneric{Locker: &sync.Mutex{}, properties: make(map[string]string)}
 	if pr == nil {
 		return nil
 	}
@@ -53,42 +53,42 @@ func CloneProprietor(pr PropertyExporter) Proprietor {
 
 // Property ...
 func (p *proprietorGeneric) Property(key string) (string, bool) {
-	if p == nil || p.propsExtra == nil {
-		p = &proprietorGeneric{Locker: &sync.Mutex{}, propsExtra: make(map[string]string)}
+	if p == nil || p.properties == nil {
+		*p = proprietorGeneric{Locker: &sync.Mutex{}, properties: make(map[string]string)}
 		return ``, false
 	}
 	if p.Locker != nil {
 		p.Lock()
 		defer p.Unlock()
 	}
-	v, ok := p.propsExtra[key]
+	v, ok := p.properties[key]
 	return v, ok
 }
 
 // SetProperty ...
 func (p *proprietorGeneric) SetProperty(key, value string) {
 	if p == nil {
-		p = &proprietorGeneric{Locker: &sync.Mutex{}, propsExtra: make(map[string]string)}
+		*p = proprietorGeneric{Locker: &sync.Mutex{}, properties: make(map[string]string)}
 	}
 	if p.Locker != nil {
 		p.Lock()
 		defer p.Unlock()
 	}
-	if p.propsExtra == nil {
-		p.propsExtra = make(map[string]string)
+	if p.properties == nil {
+		p.properties = make(map[string]string)
 	}
-	p.propsExtra[key] = value
+	p.properties[key] = value
 }
 
 func (p *proprietorGeneric) Properties() map[string]string {
 	if p == nil {
-		p = &proprietorGeneric{Locker: &sync.Mutex{}, propsExtra: make(map[string]string)}
+		*p = proprietorGeneric{Locker: &sync.Mutex{}, properties: make(map[string]string)}
 	}
 	if p.Locker != nil {
 		p.Lock()
 		defer p.Unlock()
 	}
-	return p.propsExtra
+	return p.properties
 }
 
 func (p *proprietorGeneric) LookupEnv(v string) (string, bool) {
@@ -97,14 +97,14 @@ func (p *proprietorGeneric) LookupEnv(v string) (string, bool) {
 
 func (p *proprietorGeneric) Environ() []string {
 	if p == nil {
-		p = &proprietorGeneric{Locker: &sync.Mutex{}, propsExtra: make(map[string]string)}
+		*p = proprietorGeneric{Locker: &sync.Mutex{}, properties: make(map[string]string)}
 	}
 	if p.Locker != nil {
 		p.Lock()
 		defer p.Unlock()
 	}
-	envSep := make([][2]string, 0, len(p.propsExtra))
-	for k, v := range p.propsExtra {
+	envSep := make([][2]string, 0, len(p.properties))
+	for k, v := range p.properties {
 		after, found := strings.CutPrefix(k, propkeys.EnvPrefix)
 		if !found {
 			continue
@@ -131,20 +131,20 @@ func (p *proprietorGeneric) Merge(pr PropertyExporter) {
 		p.Lock()
 		defer p.Unlock()
 	}
-	if p.propsExtra == nil {
-		p.propsExtra = make(map[string]string)
+	if p.properties == nil {
+		p.properties = make(map[string]string)
 	}
 	m := pr.Properties()
 	if m == nil {
 		return
 	}
 	for k, v := range m {
-		p.propsExtra[k] = v
+		p.properties[k] = v
 	}
 }
 
 func (p *proprietorGeneric) String() string {
-	if p == nil || p.propsExtra == nil {
+	if p == nil || p.properties == nil {
 		return `<nil>`
 	}
 	if p.Locker != nil {
@@ -153,9 +153,9 @@ func (p *proprietorGeneric) String() string {
 	}
 	s := &strings.Builder{}
 	_, _ = s.WriteString("properties: {\n")
-	keysSorted := util.MapsKeysSorted(p.propsExtra)
+	keysSorted := util.MapsKeysSorted(p.properties)
 	for _, k := range keysSorted {
-		_, _ = s.WriteString(fmt.Sprintf("\t\"%s\": %q\n", k, p.propsExtra[k]))
+		_, _ = s.WriteString(fmt.Sprintf("\t\"%s\": %q\n", k, p.properties[k]))
 	}
 	_, _ = s.WriteString("}")
 	return s.String()

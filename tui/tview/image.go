@@ -1,3 +1,5 @@
+//go:build dev
+
 package tviewimg
 
 import (

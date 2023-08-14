@@ -52,8 +52,7 @@ type TermChecker interface {
 	CheckIsQuery(Querier, TTY, environ.Proprietor) (is bool, p environ.Proprietor)
 	CheckIsWindow(wm.Window) (is bool, p environ.Proprietor)
 	Check(qu Querier, tty TTY, inp environ.Proprietor) (is bool, p environ.Proprietor)
-	NewTerminal(*Terminal) (*Terminal, error)
-	CreateTerminal(*Terminal) (*Terminal, error)
+	NewTerminal(...Option) (*Terminal, error)
 	Init(tc TermChecker) // called during registration
 }
 
@@ -130,20 +129,33 @@ func (c *termCheckerCore) Init(tc TermChecker) {
 	c.parent = tc
 }
 
-func (c *termCheckerCore) NewTerminal(opts *Terminal) (*Terminal, error) {
-	return c.createTerminal(opts)
-}
-
-func (c *termCheckerCore) CreateTerminal(opts *Terminal) (*Terminal, error) {
-	return c.createTerminal(opts)
-}
-
-func (c *termCheckerCore) createTerminal(tm *Terminal) (*Terminal, error) {
+func (c *termCheckerCore) NewTerminal(opts ...Option) (*Terminal, error) {
 	if c == nil {
 		return nil, errors.New(internal.ErrNilReceiver)
 	}
-	if tm == nil {
-		return nil, errors.New(internal.ErrNilParam)
+	tm := &Terminal{proprietor: environ.NewProprietor()}
+	overwriteEnv := false // likely already set by caller function (NewTerminal())
+	if err := tm.SetOptions(append(opts, setInternalDefaults, setEnvAndMuxers(overwriteEnv))...); err != nil {
+		return nil, err
+	}
+	composeManuallyStr, composeManually := tm.Property(propkeys.ManualComposition)
+	if composeManually && composeManuallyStr == `true` {
+		// manual composition
+		tm.SetOptions(setTTYAndQuerier(nil))
+		tm.surveyor = getSurveyor(tm.partialSurveyor, tm.proprietor)
+		tm.closer = internal.NewCloser()
+		tm.OnClose(func() error {
+			if tm == nil || len(tm.tempDir) == 0 {
+				return nil
+			}
+			return os.RemoveAll(tm.tempDir)
+		})
+		tm.addClosers(tm.tty, tm.querier, tm.w)
+		for _, dr := range tm.drawers {
+			tm.addClosers(dr)
+		}
+		runtime.SetFinalizer(tm, func(t *Terminal) { _ = t.Close() })
+		return tm, nil
 	}
 	if c.parent == nil {
 		return nil, errors.New(`*termCheckerCore.Init was not called`)
@@ -160,32 +172,8 @@ func (c *termCheckerCore) createTerminal(tm *Terminal) (*Terminal, error) {
 	}); okArger {
 		ar = newArger(arg.Args(tm.proprietor))
 	}
-	if tm.tty == nil {
-		if ttyProv, okTTYProv := c.parent.(interface {
-			TTY(pytName string, ci environ.Proprietor) (TTY, error)
-		}); okTTYProv {
-			t, err := ttyProv.TTY(tm.ptyName, tm.proprietor)
-			if err == nil && t != nil {
-				tm.tty = t
-			}
-		}
-	}
-	if tm.tty == nil {
-		if tm.ttyDefault != nil {
-			tm.tty = tm.ttyDefault
-		} else {
-			return nil, errors.New(`nil tty`)
-		}
-	}
-	if tm.querier == nil {
-		if querier, okQuerier := c.parent.(interface {
-			Querier(environ.Proprietor) Querier
-		}); okQuerier {
-			tm.querier = querier.Querier(tm.proprietor)
-		}
-	}
-	if tm.querier == nil {
-		tm.querier = tm.querierDefault
+	if err := tm.SetOptions(setTTYAndQuerier(c)); err != nil {
+		return nil, err
 	}
 	if tm.partialSurveyor == nil {
 		if surver, okSurver := c.parent.(interface {
@@ -193,9 +181,9 @@ func (c *termCheckerCore) createTerminal(tm *Terminal) (*Terminal, error) {
 		}); okSurver {
 			tm.partialSurveyor = surver.Surveyor(tm.proprietor)
 		}
-	}
-	if tm.partialSurveyor == nil {
-		tm.partialSurveyor = tm.partialSurveyorDefault
+		if tm.partialSurveyor == nil {
+			tm.partialSurveyor = tm.partialSurveyorDefault
+		}
 	}
 	var w wm.Window
 	if tm.windowProvider != nil {
@@ -210,9 +198,9 @@ func (c *termCheckerCore) createTerminal(tm *Terminal) (*Terminal, error) {
 				w = wChk
 			}
 		}
-	}
-	if w == nil && tm.windowProviderDefault != nil {
-		w = tm.windowProviderDefault(c.parent.CheckIsWindow, tm.proprietor)
+		if w == nil && tm.windowProviderDefault != nil {
+			w = tm.windowProviderDefault(c.parent.CheckIsWindow, tm.proprietor)
+		}
 	}
 
 	drCkInp := &drawerCheckerInput{
@@ -226,7 +214,11 @@ func (c *termCheckerCore) createTerminal(tm *Terminal) (*Terminal, error) {
 	if err != nil {
 		return nil, err
 	}
-	// if len(drawers) == 0 {drawers = []Drawer{&generic.DrawerGeneric{}}} // TODO import cycle
+	if len(drawers) == 0 {
+		// TODO one drawer should always be provided!
+		// drawers = []Drawer{&generic.DrawerGeneric{}} // TODO import cycle
+		return nil, errors.New(`no drawers found`) // TODO rm
+	}
 	var lessFn func(i, j int) bool
 	drawerMap := make(map[string]struct{})
 	if _, isRemote := tm.proprietor.Property(propkeys.IsRemote); isRemote {

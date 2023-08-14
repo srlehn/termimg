@@ -95,10 +95,11 @@ func conf() (*config, error) {
 	wm.SetImpl(wmimpl.Impl())
 	opts := []term.Option{
 		term.SetPTYName(ptyName),
-		term.SetTTYProvFallback(gotty.New),
-		term.SetQuerier(qdefault.NewQuerier()),
-		term.SetWindowProvider(wm.NewWindow),
+		term.SetTTYProvider(gotty.New, false),
+		term.SetQuerier(qdefault.NewQuerier(), true),
+		term.SetWindowProvider(wm.NewWindow, true),
 		term.SetResizer(rsz),
+		term.TUIMode,
 	}
 	tm, err := term.NewTerminal(opts...)
 	if err != nil {

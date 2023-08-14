@@ -28,9 +28,9 @@ var (
 var (
 	DefaultConfig = term.Options{
 		term.SetPTYName(ttyDefault),
-		term.SetTTYProvFallback(ttyProvider),
-		term.SetQuerier(querier),
-		term.SetWindowProvider(windowProvider),
+		term.SetTTYProvider(ttyProvider, false),
+		term.SetQuerier(querier, true),
+		term.SetWindowProvider(windowProvider, true),
 		term.SetResizer(resizer),
 	}
 )
@@ -55,16 +55,6 @@ func initTerm() error {
 		return err
 	}
 	return nil
-}
-
-// NewTerminal ...
-func NewTerminal(ptyName string) (*term.Terminal, error) {
-	wm.SetImpl(wmImplementation)
-	tm, err := term.NewTerminal(DefaultConfig, term.SetPTYName(ptyName))
-	if err != nil {
-		return nil, err
-	}
-	return tm, nil
 }
 
 // Query ...
@@ -103,7 +93,7 @@ func DrawFile(imgFile string, bounds image.Rectangle) error {
 	if err != nil {
 		return err
 	}
-	return tm.Draw(term.NewImageFileName(imgFile), bounds)
+	return tm.Draw(term.NewImageFilename(imgFile), bounds)
 }
 
 // CleanUp ...
@@ -118,7 +108,10 @@ func CleanUp() error {
 func NewImage(img image.Image) *term.Image { return term.NewImage(img) }
 
 // NewImageFileName ...
-func NewImageFileName(imgfile string) *term.Image { return term.NewImageFileName(imgfile) }
+func NewImageFileName(imgfile string) *term.Image { return term.NewImageFilename(imgfile) }
 
-// NewImageBytes ...
+// NewImageBytes - for use with "embed", etc.
+// requires the prior registration of a decoder. e.g.:
+//
+//	import _ "image/png"
 func NewImageBytes(imgBytes []byte) *term.Image { return term.NewImageBytes(imgBytes) }

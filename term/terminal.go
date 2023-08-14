@@ -15,7 +15,6 @@ import (
 
 	errorsGo "github.com/go-errors/errors"
 
-	"github.com/srlehn/termimg/env/advanced"
 	"github.com/srlehn/termimg/internal"
 	"github.com/srlehn/termimg/internal/environ"
 	"github.com/srlehn/termimg/internal/propkeys"
@@ -76,18 +75,17 @@ type Terminal struct {
 	resizer  Resizer
 	passages mux.Muxers
 
+	ttyDefault                              TTY
+	querierDefault                          Querier
+	ttyProv, ttyProvDefault                 TTYProvider
+	partialSurveyor, partialSurveyorDefault PartialSurveyor
+	windowProvider, windowProviderDefault   wm.WindowProvider
+
 	name    string
 	ptyName string
 	exe     string
 	tempDir string
 
-	ttyDefault             TTY
-	ttyProvDefault         TTYProvider // for NewTerminal()
-	querierDefault         Querier
-	partialSurveyor        PartialSurveyor
-	partialSurveyorDefault PartialSurveyor
-	windowProvider         wm.WindowProvider
-	windowProviderDefault  wm.WindowProvider
 	// TODO add logger
 }
 
@@ -104,75 +102,125 @@ type Terminal struct {
 // The optional Options.…Fallback fields are applied in case the enforced Options fields are nil and
 // the TermChecker also doesn't return a suggestion.
 func NewTerminal(opts ...Option) (*Terminal, error) {
-	tm := &Terminal{}
-	if err := tm.SetOptions(opts...); err != nil {
+	// TODO update comment
+	tm := &Terminal{proprietor: environ.NewProprietor()}
+	if err := tm.SetOptions(append(opts, setInternalDefaults, setEnvAndMuxers(true))...); err != nil {
 		return nil, err
 	}
-	if len(tm.ptyName) == 0 {
-		// default if w == nil
-		tm.ptyName = internal.DefaultTTYDevice()
-	}
-	if tm.ttyProvDefault == nil {
-		return nil, errorsGo.New(`missing tty provider func`)
-	}
-	// set some package internal defaults
-	if tm.partialSurveyorDefault == nil {
-		tm.partialSurveyorDefault = &SurveyorDefault{}
-	}
-	if tm.windowProviderDefault == nil {
-		tm.windowProviderDefault = wm.NewWindow
-	}
 
-	pr, passages, err := advanced.GetEnv(tm.ptyName)
+	ttyTmp, quTmp, err := getTTYAndQuerier(tm, nil)
 	if err != nil {
 		return nil, err
 	}
-	env := environ.CloneProprietor(pr)
 
-	var tty TTY
-	setDefaultTTY := func(t TTY) (TTY, error) {
+	var checker TermChecker
+	composeManuallyStr, composeManually := tm.Property(propkeys.ManualComposition)
+	if !composeManually || composeManuallyStr != `true` {
+		// find terminal checker
+		chk, prChecker, err := findTermChecker(tm.proprietor, ttyTmp, quTmp)
+		if err != nil {
+			return nil, err
+		}
+		tm.proprietor.Merge(prChecker)
+		checker = chk
+	} else {
+		checker = &termCheckerCore{}
+	}
+	// terminal specific settings
+	tm, err = checker.NewTerminal(replaceTerminal(tm))
+	if err != nil {
+		return nil, err
+	}
+
+	return tm, nil
+}
+
+func getTTYAndQuerier(tm *Terminal, tc *termCheckerCore) (TTY, Querier, error) {
+	// tty order: tm.tty, tm.ttyProv, tc.TTY, tm.ttyDefault, tm.ttyProvDefault
+	// querier order: tm.querier, tc.Querier, tm.querierDefault
+
+	setDefaultTTY := func(t TTY, ttyProv TTYProvider) (TTY, error) {
 		if t != nil {
 			return t, nil
 		}
-		if tm.ttyProvDefault != nil {
-			tt, err := tm.ttyProvDefault(tm.ptyName)
-			if err != nil {
-				return nil, err
-			}
-			if tt != nil {
-				return tt, nil
+		if ttyProv == nil {
+			return nil, errorsGo.New(`nil tty provider`)
+		}
+		tt, err := ttyProv(tm.ptyName)
+		if err != nil {
+			return nil, err
+		}
+		if tt == nil {
+			return nil, errorsGo.New(`nil tty received from tty provider`)
+		}
+		return tt, nil
+	}
+
+	var ttyTemp TTY
+	var errs []error
+	tty, err := setDefaultTTY(tm.tty, tm.ttyProv)
+	if err != nil {
+		errs = append(errs, err)
+	} else if tty != nil {
+		tm.tty = tty
+	}
+	if tm.tty != nil {
+		ttyTemp = tm.tty
+	} else {
+		if tc != nil {
+			if ttyProv, okTTYProv := tc.parent.(interface {
+				TTY(pytName string, ci environ.Proprietor) (TTY, error)
+			}); okTTYProv {
+				tty, err := ttyProv.TTY(tm.ptyName, tm.proprietor)
+				if err != nil {
+					errs = append(errs, err)
+				} else if tty != nil {
+					if tm.proprietor != nil {
+						tm.tty = tty
+					}
+					ttyTemp = tty
+				}
 			}
 		}
-		return nil, errorsGo.New(`nil tty provider`)
+		if ttyTemp == nil {
+			ttyDefault, err := setDefaultTTY(tm.ttyDefault, tm.ttyProvDefault)
+			if err != nil {
+				errs = append(errs, err)
+			} else if ttyDefault != nil {
+				tm.ttyDefault = ttyDefault
+				ttyTemp = ttyDefault
+			}
+		}
 	}
-	tty, _ = setDefaultTTY(tty)
-
-	quTemp := tm.querier
-	if quTemp == nil {
-		quTemp = tm.querierDefault
-	}
-	if quTemp == nil {
-		return nil, errorsGo.New(`both Options.Querier and Options.QuerierFallback are nil`)
-	}
-	checker, prChecker, err := findTermChecker(env, tty, quTemp)
-	_ = err                       // TODO log error
-	tty, err = setDefaultTTY(tty) // making sure...
-	if err != nil {
-		return nil, errorsGo.New(err)
-	}
-
-	pr.Merge(prChecker)
-
-	tm.tty = tty
-	tm.proprietor = pr
-	tm, err = checker.NewTerminal(tm)
-	if err != nil {
-		return nil, err
+	if ttyTemp == nil {
+		errTTYRet := errors.Join(errs...)
+		if errTTYRet != nil {
+			errTTYRet = errorsGo.WrapPrefix(errTTYRet, `no/failed tty provision;`, 0)
+		} else {
+			errTTYRet = errorsGo.New(`no tty provided`)
+		}
+		return nil, nil, errTTYRet
 	}
 
-	tm.passages = passages
+	var quTemp Querier
+	if tm.querier != nil {
+		quTemp = tm.querier
+	} else {
+		if tc != nil {
+			if querier, okQuerier := tc.parent.(interface {
+				Querier(environ.Proprietor) Querier
+			}); okQuerier {
+				quTemp = querier.Querier(tm.proprietor)
+			}
+		}
+		if quTemp == nil && tm.querierDefault != nil {
+			quTemp = tm.querierDefault
+		} else {
+			return nil, nil, errorsGo.New(`nil querier`)
+		}
+	}
 
-	return tm, nil
+	return ttyTemp, quTemp, nil
 }
 
 func findTermChecker(env environ.Proprietor, tty TTY, qu Querier) (tc TermChecker, _ environ.Proprietor, e error) {
@@ -361,38 +409,6 @@ func findTermChecker(env environ.Proprietor, tty TTY, qu Querier) (tc TermChecke
 	}
 
 	return checker, pr, nil
-}
-
-// ComposeTerminal manually composes a Terminal ignoring any incongruities.
-func ComposeTerminal(opts ...Option) (*Terminal, error) {
-	tm := &Terminal{}
-	if err := tm.SetOptions(opts...); err != nil {
-		return nil, err
-	}
-	pr, passages, err := advanced.GetEnv(tm.ptyName)
-	if err != nil {
-		return nil, err
-	}
-	tm.proprietor = pr
-	tm.passages = passages
-	tm.surveyor = getSurveyor(tm.partialSurveyor, pr)
-	tm.closer = internal.NewCloser()
-	tm.OnClose(func() error {
-		if tm == nil || len(tm.tempDir) == 0 {
-			return nil
-		}
-		return os.RemoveAll(tm.tempDir)
-	})
-	tm.addClosers(tm.tty, tm.querier, tm.w)
-	for _, dr := range tm.drawers {
-		tm.addClosers(dr)
-	}
-	runtime.SetFinalizer(tm, func(tc *Terminal) {
-		// if tc == nil {return}
-		_ = tc.Close()
-	})
-
-	return tm, nil
 }
 
 func (t *Terminal) Name() string {

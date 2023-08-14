@@ -18,10 +18,8 @@ import (
 	"github.com/srlehn/termimg/internal/encoder/encmulti"
 	"github.com/srlehn/termimg/internal/exc"
 	"github.com/srlehn/termimg/pty"
-	"github.com/srlehn/termimg/query/qdefault"
 	"github.com/srlehn/termimg/resize/rdefault"
 	"github.com/srlehn/termimg/term"
-	"github.com/srlehn/termimg/tty/gotty"
 	"github.com/srlehn/termimg/wm"
 	"github.com/srlehn/termimg/wm/wmimpl"
 )
@@ -42,11 +40,8 @@ func PTermPrintImageHelper(
 		}
 		wm.SetImpl(wmimpl.Impl())
 		opts := []term.Option{
+			termimg.DefaultConfig,
 			term.SetPTYName(ttyFile),
-			term.SetTTYProvFallback(gotty.New),
-			term.SetQuerier(qdefault.NewQuerier()),
-			term.SetWindowProvider(wm.NewWindow),
-			term.SetResizer(rsz),
 		}
 		tm, err := term.NewTerminal(opts...)
 		return tm, err

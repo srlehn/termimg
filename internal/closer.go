@@ -28,7 +28,9 @@ type initObjKey struct {
 	t string
 }
 
-func NewCloser() Closer {
+func NewCloser() Closer { return newLifoCloser() }
+
+func newLifoCloser() *lifoCloser {
 	closer := &lifoCloser{}
 	runtime.SetFinalizer(closer, func(cl *lifoCloser) { _ = cl.Close() })
 	return closer
@@ -53,18 +55,18 @@ func (c *lifoCloser) Close() error {
 
 func (c *lifoCloser) OnClose(onClose func() error) {
 	if c == nil {
-		closer, ok := NewCloser().(*lifoCloser)
-		if ok {
-			c = closer
-		} else {
-			c = &lifoCloser{}
-		}
+		// TODO log
+		return
 	}
 	c.onCloseFuncs = append(c.onCloseFuncs, onClose)
 }
 
 func (c *lifoCloser) AddClosers(closers ...interface{ Close() error }) {
-	if c == nil || len(closers) == 0 {
+	if c == nil {
+		// TODO log
+		return
+	}
+	if len(closers) == 0 {
 		return
 	}
 	c.initObjsMu.Lock()

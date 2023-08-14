@@ -47,6 +47,17 @@ func MaybeCastDefault[T any](obj any, fallback T) T {
 	return ret
 }
 
+// AnyOf returns first non-nil object
+func AnyOf[T any](objs ...T) (_ T, found bool) {
+	var ret T
+	for _, obj := range objs {
+		if any(obj) != nil {
+			return obj, true
+		}
+	}
+	return ret, false
+}
+
 func TryClose(obj any) error {
 	closer, ok := any(obj).(interface{ Close() error })
 	if ok {

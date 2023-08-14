@@ -51,8 +51,8 @@ func NewImage(img image.Image) *Image {
 	}
 }
 
-// NewImageFileName - for lazy loading the file
-func NewImageFileName(imgFile string) *Image {
+// NewImageFilename - for lazy loading the file
+func NewImageFilename(imgFile string) *Image {
 	if imgFilenameAbs, err := filepath.Abs(imgFile); err == nil {
 		imgFile = imgFilenameAbs
 	}

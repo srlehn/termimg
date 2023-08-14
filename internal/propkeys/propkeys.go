@@ -11,6 +11,9 @@ const (
 	EnvPrefix                   = `env_`
 	PreservedOuterEnvPrefix     = GeneralPrefix + `envOuterPreserved_`
 	GeneralPrefix               = `general_`
+	EnvIsLoaded                 = GeneralPrefix + `envIsLoaded`
+	Mode                        = GeneralPrefix + `mode` /// "tui", "cli" (default)
+	ManualComposition           = GeneralPrefix + `manualComposition`
 	TerminalPID                 = GeneralPrefix + `termPID`
 	TerminalTTY                 = GeneralPrefix + `termTTY` // directly provided tty by the terminal
 	Passages                    = GeneralPrefix + `passages`

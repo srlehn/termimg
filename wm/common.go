@@ -38,6 +38,11 @@ type Window interface {
 
 type IsWindowFunc = func(Window) (is bool, p environ.Proprietor)
 
+// WindowProvider...
+//
+// env contains infos about the window:
+// env.LookupEnv(): "WINDOWID"
+// env.Property(): propkeys.TerminalPID ("general_termPID")
 type WindowProvider = func(isWindow IsWindowFunc, env environ.Proprietor) Window
 
 var implem Implementation
