@@ -20,6 +20,7 @@ require (
 	github.com/mattn/go-sixel v0.0.5
 	github.com/mattn/go-tty v0.0.5
 	github.com/nfnt/resize v0.0.0-20180221191011-83c6a9932646
+	github.com/pkg/term v1.1.0
 	github.com/rivo/tview v0.0.0-20230621164836-6cc0565babaf
 	github.com/rkoesters/xdg v0.0.1
 	github.com/shirou/gopsutil v3.21.11+incompatible

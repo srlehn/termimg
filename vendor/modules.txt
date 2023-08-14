@@ -206,6 +206,10 @@ github.com/nfnt/resize
 # github.com/nsf/termbox-go v1.1.1
 ## explicit; go 1.15
 github.com/nsf/termbox-go
+# github.com/pkg/term v1.1.0
+## explicit; go 1.14
+github.com/pkg/term
+github.com/pkg/term/termios
 # github.com/rivo/tview v0.0.0-20230621164836-6cc0565babaf
 ## explicit; go 1.18
 github.com/rivo/tview
