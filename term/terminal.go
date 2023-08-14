@@ -73,13 +73,22 @@ type Terminal struct {
 	w wm.Window
 	closer
 	drawers  []Drawer
-	rsz      Resizer
+	resizer  Resizer
 	passages mux.Muxers
 
 	name    string
 	ptyName string
 	exe     string
 	tempDir string
+
+	ttyDefault             TTY
+	ttyProvDefault         TTYProvider // for NewTerminal()
+	querierDefault         Querier
+	partialSurveyor        PartialSurveyor
+	partialSurveyorDefault PartialSurveyor
+	windowProvider         wm.WindowProvider
+	windowProviderDefault  wm.WindowProvider
+	// TODO add logger
 }
 
 // NewTerminal tries to recognize the terminal that manages the device ptyName and matches w.
@@ -94,26 +103,27 @@ type Terminal struct {
 //
 // The optional Options.…Fallback fields are applied in case the enforced Options fields are nil and
 // the TermChecker also doesn't return a suggestion.
-func NewTerminal(opts *Options) (*Terminal, error) {
-	if opts == nil {
-		return nil, errorsGo.New(internal.ErrNilParam)
+func NewTerminal(opts ...Option) (*Terminal, error) {
+	tm := &Terminal{}
+	if err := tm.SetOptions(opts...); err != nil {
+		return nil, err
 	}
-	if len(opts.PTYName) == 0 {
+	if len(tm.ptyName) == 0 {
 		// default if w == nil
-		opts.PTYName = internal.DefaultTTYDevice()
+		tm.ptyName = internal.DefaultTTYDevice()
 	}
-	if opts.TTYProvFallback == nil {
+	if tm.ttyProvDefault == nil {
 		return nil, errorsGo.New(`missing tty provider func`)
 	}
 	// set some package internal defaults
-	if opts.PartialSurveyorFallback == nil {
-		opts.PartialSurveyorFallback = &SurveyorDefault{}
+	if tm.partialSurveyorDefault == nil {
+		tm.partialSurveyorDefault = &SurveyorDefault{}
 	}
-	if opts.WindowProviderFallback == nil {
-		opts.WindowProviderFallback = wm.NewWindow
+	if tm.windowProviderDefault == nil {
+		tm.windowProviderDefault = wm.NewWindow
 	}
 
-	pr, passages, err := advanced.GetEnv(opts.PTYName)
+	pr, passages, err := advanced.GetEnv(tm.ptyName)
 	if err != nil {
 		return nil, err
 	}
@@ -124,8 +134,8 @@ func NewTerminal(opts *Options) (*Terminal, error) {
 		if t != nil {
 			return t, nil
 		}
-		if opts.TTYProvFallback != nil {
-			tt, err := opts.TTYProvFallback(opts.PTYName)
+		if tm.ttyProvDefault != nil {
+			tt, err := tm.ttyProvDefault(tm.ptyName)
 			if err != nil {
 				return nil, err
 			}
@@ -137,9 +147,9 @@ func NewTerminal(opts *Options) (*Terminal, error) {
 	}
 	tty, _ = setDefaultTTY(tty)
 
-	quTemp := opts.Querier
+	quTemp := tm.querier
 	if quTemp == nil {
-		quTemp = opts.QuerierFallback
+		quTemp = tm.querierDefault
 	}
 	if quTemp == nil {
 		return nil, errorsGo.New(`both Options.Querier and Options.QuerierFallback are nil`)
@@ -153,9 +163,9 @@ func NewTerminal(opts *Options) (*Terminal, error) {
 
 	pr.Merge(prChecker)
 
-	opts.TTY = tty
-	opts.Proprietor = pr
-	tm, err := checker.NewTerminal(opts)
+	tm.tty = tty
+	tm.proprietor = pr
+	tm, err = checker.NewTerminal(tm)
 	if err != nil {
 		return nil, err
 	}
@@ -354,33 +364,27 @@ func findTermChecker(env environ.Proprietor, tty TTY, qu Querier) (tc TermChecke
 }
 
 // ComposeTerminal manually composes a Terminal ignoring any incongruities.
-func ComposeTerminal(cr *Options) (*Terminal, error) {
-	pr, passages, err := advanced.GetEnv(cr.PTYName)
+func ComposeTerminal(opts ...Option) (*Terminal, error) {
+	tm := &Terminal{}
+	if err := tm.SetOptions(opts...); err != nil {
+		return nil, err
+	}
+	pr, passages, err := advanced.GetEnv(tm.ptyName)
 	if err != nil {
 		return nil, err
 	}
-	tm := &Terminal{
-		tty:        cr.TTY,
-		querier:    cr.Querier,
-		surveyor:   getSurveyor(cr.PartialSurveyor, pr),
-		proprietor: pr,
-		arger:      cr.Arger,
-		w:          cr.Window,
-		closer:     internal.NewCloser(),
-		passages:   passages,
-		drawers:    cr.Drawers,
-		name:       cr.TerminalName,
-		ptyName:    cr.PTYName,
-		exe:        cr.Exe,
-	}
+	tm.proprietor = pr
+	tm.passages = passages
+	tm.surveyor = getSurveyor(tm.partialSurveyor, pr)
+	tm.closer = internal.NewCloser()
 	tm.OnClose(func() error {
 		if tm == nil || len(tm.tempDir) == 0 {
 			return nil
 		}
 		return os.RemoveAll(tm.tempDir)
 	})
-	tm.addClosers(cr.TTY, cr.Querier, cr.Window)
-	for _, dr := range cr.Drawers {
+	tm.addClosers(tm.tty, tm.querier, tm.w)
+	for _, dr := range tm.drawers {
 		tm.addClosers(dr)
 	}
 	runtime.SetFinalizer(tm, func(tc *Terminal) {
@@ -566,7 +570,7 @@ func (t *Terminal) draw(img image.Image, bounds image.Rectangle) (e error) {
 		} */
 		e = errorsGo.New(errors.Join(errs...))
 	}()
-	return t.drawers[0].Draw(img, bounds, t.rsz, t)
+	return t.drawers[0].Draw(img, bounds, t.resizer, t)
 }
 
 // CellScale returns a cell size for pixel size <ptPx> to the cell size <ptDest> while maintaining the scale.
@@ -676,18 +680,18 @@ func (t *Terminal) Window() wm.Window {
 
 type TTYProvider func(ptyName string) (TTY, error)
 
-var _ internal.Arger = (*args)(nil)
+var _ internal.Arger = (*arguments)(nil)
 
-type args []string
+type arguments []string
 
-func (a *args) Args() []string {
+func (a *arguments) Args() []string {
 	if a == nil {
 		return nil
 	}
 	return *a
 }
 
-func newArger(arguments []string) internal.Arger {
-	a := args(arguments)
+func newArger(args []string) internal.Arger {
+	a := arguments(args)
 	return &a
 }

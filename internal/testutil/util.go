@@ -41,15 +41,14 @@ func PTermPrintImageHelper(
 			return termimg.Terminal()
 		}
 		wm.SetImpl(wmimpl.Impl())
-		cr := &term.Options{
-			PTYName:         ttyFile,
-			TTYProvFallback: gotty.New,
-			Querier:         qdefault.NewQuerier(),
-			WindowProvider:  wm.NewWindow,
-			Resizer:         rsz,
+		opts := []term.Option{
+			term.SetPTYName(ttyFile),
+			term.SetTTYProvFallback(gotty.New),
+			term.SetQuerier(qdefault.NewQuerier()),
+			term.SetWindowProvider(wm.NewWindow),
+			term.SetResizer(rsz),
 		}
-		// return term.NewTerminal(cr)
-		tm, err := term.NewTerminal(cr)
+		tm, err := term.NewTerminal(opts...)
 		return tm, err
 	}
 	img, err := pty.TakeScreenshot(termName, termProvider, drawerName, drawFuncProvider, imgBytes, cellBounds, rsz)

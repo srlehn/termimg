@@ -11,10 +11,8 @@ import (
 	"github.com/srlehn/termimg"
 	"github.com/srlehn/termimg/internal"
 	"github.com/srlehn/termimg/internal/testutil"
-	"github.com/srlehn/termimg/query/qdefault"
 	"github.com/srlehn/termimg/resize/rdefault"
 	"github.com/srlehn/termimg/term"
-	"github.com/srlehn/termimg/tty/gotty"
 	"github.com/srlehn/termimg/wm"
 	"github.com/srlehn/termimg/wm/wmimpl"
 )
@@ -79,14 +77,11 @@ func showFunc(cmd *cobra.Command, args []string) func() error {
 		} else {
 			ptyName = internal.DefaultTTYDevice()
 		}
-		opts := &term.Options{
-			PTYName:         ptyName,
-			TTYProvFallback: gotty.New,
-			Querier:         qdefault.NewQuerier(),
-			WindowProvider:  wm.NewWindow,
-			Resizer:         rsz,
+		opts := []term.Option{
+			termimg.DefaultConfig,
+			term.SetPTYName(ptyName),
 		}
-		tm, err := term.NewTerminal(opts)
+		tm, err := term.NewTerminal(opts...)
 		if err != nil {
 			return err
 		}

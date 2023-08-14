@@ -52,51 +52,9 @@ type TermChecker interface {
 	CheckIsQuery(Querier, TTY, environ.Proprietor) (is bool, p environ.Proprietor)
 	CheckIsWindow(wm.Window) (is bool, p environ.Proprietor)
 	Check(qu Querier, tty TTY, inp environ.Proprietor) (is bool, p environ.Proprietor)
-	NewTerminal(*Options) (*Terminal, error)
-	CreateTerminal(*Options) (*Terminal, error)
+	NewTerminal(*Terminal) (*Terminal, error)
+	CreateTerminal(*Terminal) (*Terminal, error)
 	Init(tc TermChecker) // called during registration
-}
-
-// TODO use functional options?
-
-type Options struct {
-	PTYName                 string
-	TTY                     TTY
-	TTYFallback             TTY
-	TTYProvFallback         TTYProvider // for NewTerminal()
-	Querier                 Querier
-	QuerierFallback         Querier
-	PartialSurveyor         PartialSurveyor
-	PartialSurveyorFallback PartialSurveyor
-	WindowProvider          wm.WindowProvider
-	WindowProviderFallback  wm.WindowProvider
-	Resizer                 Resizer
-	Proprietor              environ.Proprietor
-	TerminalName            string         // for ComposeTerminal()
-	Exe                     string         // for ComposeTerminal()
-	Arger                   internal.Arger // for ComposeTerminal()
-	Drawers                 []Drawer       // for ComposeTerminal()
-	Window                  wm.Window      // for ComposeTerminal()
-	// TODO add logger
-}
-
-func (c *Options) NewTerminal(ch TermChecker) (*Terminal, error) {
-	if c == nil {
-		return nil, errors.New(internal.ErrNilReceiver)
-	}
-	if ch == nil {
-		return NewTerminal(c)
-	}
-	return ch.NewTerminal(c)
-}
-func (c *Options) CreateTerminal(ch TermChecker) (*Terminal, error) {
-	if c == nil {
-		return nil, errors.New(internal.ErrNilReceiver)
-	}
-	if ch == nil {
-		return ComposeTerminal(c)
-	}
-	return ch.CreateTerminal(c)
 }
 
 type termCheckerCore struct {
@@ -172,19 +130,19 @@ func (c *termCheckerCore) Init(tc TermChecker) {
 	c.parent = tc
 }
 
-func (c *termCheckerCore) NewTerminal(opts *Options) (*Terminal, error) {
+func (c *termCheckerCore) NewTerminal(opts *Terminal) (*Terminal, error) {
 	return c.createTerminal(opts)
 }
 
-func (c *termCheckerCore) CreateTerminal(opts *Options) (*Terminal, error) {
+func (c *termCheckerCore) CreateTerminal(opts *Terminal) (*Terminal, error) {
 	return c.createTerminal(opts)
 }
 
-func (c *termCheckerCore) createTerminal(opts *Options) (*Terminal, error) {
+func (c *termCheckerCore) createTerminal(tm *Terminal) (*Terminal, error) {
 	if c == nil {
 		return nil, errors.New(internal.ErrNilReceiver)
 	}
-	if opts == nil {
+	if tm == nil {
 		return nil, errors.New(internal.ErrNilParam)
 	}
 	if c.parent == nil {
@@ -194,73 +152,73 @@ func (c *termCheckerCore) createTerminal(opts *Options) (*Terminal, error) {
 	if ex, okExe := c.parent.(interface {
 		Exe(environ.Proprietor) string
 	}); okExe {
-		exe = ex.Exe(opts.Proprietor)
+		exe = ex.Exe(tm.proprietor)
 	}
 	var ar internal.Arger
 	if arg, okArger := c.parent.(interface {
 		Args(environ.Proprietor) []string
 	}); okArger {
-		ar = newArger(arg.Args(opts.Proprietor))
+		ar = newArger(arg.Args(tm.proprietor))
 	}
-	if opts.TTY == nil {
+	if tm.tty == nil {
 		if ttyProv, okTTYProv := c.parent.(interface {
 			TTY(pytName string, ci environ.Proprietor) (TTY, error)
 		}); okTTYProv {
-			t, err := ttyProv.TTY(opts.PTYName, opts.Proprietor)
+			t, err := ttyProv.TTY(tm.ptyName, tm.proprietor)
 			if err == nil && t != nil {
-				opts.TTY = t
+				tm.tty = t
 			}
 		}
 	}
-	if opts.TTY == nil {
-		if opts.TTYFallback != nil {
-			opts.TTY = opts.TTYFallback
+	if tm.tty == nil {
+		if tm.ttyDefault != nil {
+			tm.tty = tm.ttyDefault
 		} else {
 			return nil, errors.New(`nil tty`)
 		}
 	}
-	if opts.Querier == nil {
+	if tm.querier == nil {
 		if querier, okQuerier := c.parent.(interface {
 			Querier(environ.Proprietor) Querier
 		}); okQuerier {
-			opts.Querier = querier.Querier(opts.Proprietor)
+			tm.querier = querier.Querier(tm.proprietor)
 		}
 	}
-	if opts.Querier == nil {
-		opts.Querier = opts.QuerierFallback
+	if tm.querier == nil {
+		tm.querier = tm.querierDefault
 	}
-	if opts.PartialSurveyor == nil {
+	if tm.partialSurveyor == nil {
 		if surver, okSurver := c.parent.(interface {
 			Surveyor(environ.Proprietor) PartialSurveyor
 		}); okSurver {
-			opts.PartialSurveyor = surver.Surveyor(opts.Proprietor)
+			tm.partialSurveyor = surver.Surveyor(tm.proprietor)
 		}
 	}
-	if opts.PartialSurveyor == nil {
-		opts.PartialSurveyor = opts.PartialSurveyorFallback
+	if tm.partialSurveyor == nil {
+		tm.partialSurveyor = tm.partialSurveyorDefault
 	}
 	var w wm.Window
-	if opts.WindowProvider != nil {
-		w = opts.WindowProvider(c.parent.CheckIsWindow, opts.Proprietor)
+	if tm.windowProvider != nil {
+		w = tm.windowProvider(c.parent.CheckIsWindow, tm.proprietor)
 	}
 	if w == nil {
 		if wdwer, okWdwer := c.parent.(interface {
 			Window(environ.Proprietor) (wm.Window, error)
 		}); okWdwer {
-			wChk, err := wdwer.Window(opts.Proprietor)
+			wChk, err := wdwer.Window(tm.proprietor)
 			if err == nil && wChk != nil {
 				w = wChk
 			}
 		}
 	}
-	if w == nil && opts.WindowProviderFallback != nil {
-		w = opts.WindowProviderFallback(c.parent.CheckIsWindow, opts.Proprietor)
+	if w == nil && tm.windowProviderDefault != nil {
+		w = tm.windowProviderDefault(c.parent.CheckIsWindow, tm.proprietor)
 	}
 
 	drCkInp := &drawerCheckerInput{
-		Proprietor: opts.Proprietor,
-		Querier:    opts.Querier,
-		TTY:        opts.TTY,
+		Proprietor: tm.proprietor,
+		Querier:    tm.querier,
+		TTY:        tm.tty,
 		w:          w,
 		name:       c.parent.Name(),
 	}
@@ -271,7 +229,7 @@ func (c *termCheckerCore) createTerminal(opts *Options) (*Terminal, error) {
 	// if len(drawers) == 0 {drawers = []Drawer{&generic.DrawerGeneric{}}} // TODO import cycle
 	var lessFn func(i, j int) bool
 	drawerMap := make(map[string]struct{})
-	if _, isRemote := opts.Proprietor.Property(propkeys.IsRemote); isRemote {
+	if _, isRemote := tm.proprietor.Property(propkeys.IsRemote); isRemote {
 		lessFn = func(i, j int) bool {
 			return slices.Index(drawersPriorityOrderedRemote, drawers[i].Name()) < slices.Index(drawersPriorityOrderedRemote, drawers[j].Name())
 		}
@@ -308,45 +266,45 @@ func (c *termCheckerCore) createTerminal(opts *Options) (*Terminal, error) {
 	drawers = drawersPrunedAndNew
 	sort.SliceStable(drawers, lessFn)
 
-	if opts.Resizer == nil {
-		opts.Resizer = ResizerDefault()
+	if tm.resizer == nil {
+		tm.resizer = ResizerDefault()
 	}
 
-	tm := &Terminal{
-		tty:        opts.TTY,
-		querier:    opts.Querier,
-		surveyor:   getSurveyor(opts.PartialSurveyor, opts.Proprietor),
-		proprietor: opts.Proprietor,
+	tmm := &Terminal{
+		tty:        tm.tty,
+		querier:    tm.querier,
+		surveyor:   getSurveyor(tm.partialSurveyor, tm.proprietor),
+		proprietor: tm.proprietor,
 		arger:      ar,
 		w:          w,
 		closer:     internal.NewCloser(),
 		drawers:    drawers,
-		rsz:        opts.Resizer,
+		resizer:    tm.resizer,
 		name:       c.parent.Name(),
-		ptyName:    opts.PTYName,
+		ptyName:    tm.ptyName,
 		exe:        exe,
 	}
-	tm.OnClose(func() error {
+	tmm.OnClose(func() error {
 		// last closer function
-		tm = nil
+		tmm = nil
 		return nil
 	})
-	tm.OnClose(func() error {
-		if tm == nil || len(tm.tempDir) == 0 {
+	tmm.OnClose(func() error {
+		if tmm == nil || len(tmm.tempDir) == 0 {
 			return nil
 		}
-		return os.RemoveAll(tm.tempDir)
+		return os.RemoveAll(tmm.tempDir)
 	})
-	tm.addClosers(opts.TTY, opts.Querier, opts.WindowProvider)
+	tmm.addClosers(tm.tty, tm.querier, tm.windowProvider)
 	for _, dr := range drawers {
-		tm.addClosers(dr)
+		tmm.addClosers(dr)
 	}
-	runtime.SetFinalizer(tm, func(tc *Terminal) {
+	runtime.SetFinalizer(tmm, func(tc *Terminal) {
 		// if tc == nil {return}
 		_ = tc.Close()
 	})
 
-	return tm, nil
+	return tmm, nil
 
 }
 

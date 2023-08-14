@@ -17,11 +17,22 @@ import (
 
 var (
 	// chosen defaults
+	ttyDefault                    = internal.DefaultTTYDevice()
 	ttyProvider                   = gotty.New
 	windowProvider                = wm.NewWindow
 	querier                       = qdefault.NewQuerier()
 	wmImplementation              = wmimpl.Impl()
 	resizer          term.Resizer = &rdefault.Resizer{}
+)
+
+var (
+	DefaultConfig = term.Options{
+		term.SetPTYName(ttyDefault),
+		term.SetTTYProvFallback(ttyProvider),
+		term.SetQuerier(querier),
+		term.SetWindowProvider(windowProvider),
+		term.SetResizer(resizer),
+	}
 )
 
 var (
@@ -37,17 +48,9 @@ func initTerm() error {
 	if termActive != nil {
 		return nil
 	}
-	ptyName := internal.DefaultTTYDevice()
 	wm.SetImpl(wmImplementation)
 	var err error
-	opts := &term.Options{
-		PTYName:         ptyName,
-		TTYProvFallback: ttyProvider,
-		Querier:         querier,
-		WindowProvider:  windowProvider,
-		Resizer:         resizer,
-	}
-	termActive, err = term.NewTerminal(opts)
+	termActive, err = term.NewTerminal(DefaultConfig)
 	if err != nil {
 		return err
 	}
@@ -57,14 +60,7 @@ func initTerm() error {
 // NewTerminal ...
 func NewTerminal(ptyName string) (*term.Terminal, error) {
 	wm.SetImpl(wmImplementation)
-	cr := &term.Options{
-		PTYName:         ptyName,
-		TTYProvFallback: ttyProvider,
-		Querier:         querier,
-		WindowProvider:  windowProvider,
-		Resizer:         resizer,
-	}
-	tm, err := term.NewTerminal(cr)
+	tm, err := term.NewTerminal(DefaultConfig, term.SetPTYName(ptyName))
 	if err != nil {
 		return nil, err
 	}

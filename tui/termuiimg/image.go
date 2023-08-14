@@ -93,14 +93,14 @@ func conf() (*config, error) {
 	rsz := &rdefault.Resizer{}
 
 	wm.SetImpl(wmimpl.Impl())
-	opts := &term.Options{
-		PTYName:         ptyName,
-		TTYProvFallback: gotty.New,
-		Querier:         qdefault.NewQuerier(),
-		WindowProvider:  wm.NewWindow,
-		Resizer:         rsz,
+	opts := []term.Option{
+		term.SetPTYName(ptyName),
+		term.SetTTYProvFallback(gotty.New),
+		term.SetQuerier(qdefault.NewQuerier()),
+		term.SetWindowProvider(wm.NewWindow),
+		term.SetResizer(rsz),
 	}
-	tm, err := term.NewTerminal(opts)
+	tm, err := term.NewTerminal(opts...)
 	if err != nil {
 		return nil, err
 	}

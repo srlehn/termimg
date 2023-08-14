@@ -59,6 +59,7 @@ func (t *ttyContD) Write(b []byte) (n int, err error) {
 }
 
 func (t *ttyContD) ReadRune() (r rune, size int, err error) {
+	// TODO store remaining bytes
 	r = '\uFFFD'
 	if t == nil {
 		return r, len(string(r)), errorsGo.New(internal.ErrNilReceiver)
