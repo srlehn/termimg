@@ -10,7 +10,6 @@ require (
 	github.com/disintegration/imaging v1.6.2
 	github.com/esimov/caire v1.4.7-0.20230331122901-fc01f8e08e9e
 	github.com/gdamore/tcell/v2 v2.6.0
-	github.com/gen2brain/framebuffer v0.0.4
 	github.com/gizak/termui/v3 v3.1.0
 	github.com/go-errors/errors v1.4.2
 	github.com/gonutz/w32/v2 v2.10.0
