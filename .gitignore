@@ -1,6 +1,7 @@
 /testdata/
 /termui
 /timg
+/cmd/timg/experiments.go
 /screenshot*.png
 *.code-workspace
 .vscode
