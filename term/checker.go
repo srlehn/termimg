@@ -70,6 +70,7 @@ func (c *termCheckerCore) Name() string {
 
 // combines CheckExclude and CheckIs
 func (c *termCheckerCore) Check(qu Querier, tty TTY, inp environ.Proprietor) (is bool, p environ.Proprietor) {
+	// TODO include CheckIsWindow?
 	if c == nil || c.parent == nil {
 		return false, nil
 	}
@@ -133,7 +134,7 @@ func (c *termCheckerCore) NewTerminal(opts ...Option) (*Terminal, error) {
 	if c == nil {
 		return nil, errors.New(internal.ErrNilReceiver)
 	}
-	tm := &Terminal{proprietor: environ.NewProprietor()}
+	tm := newDummyTerminal()
 	overwriteEnv := false // likely already set by caller function (NewTerminal())
 	if err := tm.SetOptions(append(opts, setInternalDefaults, setEnvAndMuxers(overwriteEnv))...); err != nil {
 		return nil, err
@@ -145,12 +146,12 @@ func (c *termCheckerCore) NewTerminal(opts ...Option) (*Terminal, error) {
 		tm.surveyor = getSurveyor(tm.partialSurveyor, tm.proprietor)
 		tm.closer = internal.NewCloser()
 		tm.OnClose(func() error {
-			if tm == nil || len(tm.tempDir) == 0 {
+			if tm == nil || len(tm.tempDir()) == 0 {
 				return nil
 			}
-			return os.RemoveAll(tm.tempDir)
+			return os.RemoveAll(tm.tempDir())
 		})
-		tm.addClosers(tm.tty, tm.querier, tm.w)
+		tm.addClosers(tm.tty, tm.querier, tm.window)
 		for _, dr := range tm.drawers {
 			tm.addClosers(dr)
 		}
@@ -262,42 +263,32 @@ func (c *termCheckerCore) NewTerminal(opts ...Option) (*Terminal, error) {
 		tm.resizer = ResizerDefault()
 	}
 
-	tmm := &Terminal{
-		tty:        tm.tty,
-		querier:    tm.querier,
-		surveyor:   getSurveyor(tm.partialSurveyor, tm.proprietor),
-		proprietor: tm.proprietor,
-		arger:      ar,
-		w:          w,
-		closer:     internal.NewCloser(),
-		drawers:    drawers,
-		resizer:    tm.resizer,
-		name:       c.parent.Name(),
-		ptyName:    tm.ptyName,
-		exe:        exe,
-	}
-	tmm.OnClose(func() error {
+	tm.surveyor = getSurveyor(tm.partialSurveyor, tm.proprietor)
+	tm.arger = ar
+	tm.window = w
+	tm.drawers = drawers
+	tm.closer = internal.NewCloser()
+	tm.SetProperty(propkeys.TerminalName, c.parent.Name())
+	tm.SetProperty(propkeys.Executable, exe)
+	tm.OnClose(func() error {
 		// last closer function
-		tmm = nil
+		tm = nil
 		return nil
 	})
-	tmm.OnClose(func() error {
-		if tmm == nil || len(tmm.tempDir) == 0 {
+	tm.OnClose(func() error {
+		tempDir := tm.tempDir()
+		if tm == nil || len(tempDir) == 0 {
 			return nil
 		}
-		return os.RemoveAll(tmm.tempDir)
+		return os.RemoveAll(tempDir)
 	})
-	tmm.addClosers(tm.tty, tm.querier, tm.windowProvider)
+	tm.addClosers(tm.tty, tm.querier, tm.windowProvider)
 	for _, dr := range drawers {
-		tmm.addClosers(dr)
+		tm.addClosers(dr)
 	}
-	runtime.SetFinalizer(tmm, func(tc *Terminal) {
-		// if tc == nil {return}
-		_ = tc.Close()
-	})
+	runtime.SetFinalizer(tm, func(tc *Terminal) { _ = tc.Close() })
 
-	return tmm, nil
-
+	return tm, nil
 }
 
 ////////////////////////////////////////////////////////////////////////////////

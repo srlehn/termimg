@@ -69,7 +69,7 @@ type Terminal struct {
 	proprietor // Data
 	surveyor   SurveyorLight
 	arger
-	w wm.Window
+	window wm.Window
 	closer
 	drawers  []Drawer
 	resizer  Resizer
@@ -81,16 +81,11 @@ type Terminal struct {
 	partialSurveyor, partialSurveyorDefault PartialSurveyor
 	windowProvider, windowProviderDefault   wm.WindowProvider
 
-	name    string
-	ptyName string
-	exe     string
-	tempDir string
-
 	// TODO add logger
 }
 
-// NewTerminal tries to recognize the terminal that manages the device ptyName and matches w.
-// It will use non-zero implementations provided by the optional TerminalChecker methods:
+// NewTerminal tries to recognize the terminal that manages the device ptyName.
+// It will use suggestions provided by the optional TerminalChecker methods:
 //
 //   - TTY(ptyName string, ci environ.Proprietor) (TTY, error)
 //   - Querier(environ.Proprietor) Querier
@@ -99,11 +94,9 @@ type Terminal struct {
 //   - Args(environ.Proprietor) []string
 //   - Exe(environ.Proprietor) string // alternative executable name if it differs from Name()
 //
-// The optional Options.…Fallback fields are applied in case the enforced Options fields are nil and
-// the TermChecker also doesn't return a suggestion.
+// "Enforced" Options have precedence over the TermCheckers suggestion.
 func NewTerminal(opts ...Option) (*Terminal, error) {
-	// TODO update comment
-	tm := &Terminal{proprietor: environ.NewProprietor()}
+	tm := newDummyTerminal()
 	if err := tm.SetOptions(append(opts, setInternalDefaults, setEnvAndMuxers(true))...); err != nil {
 		return nil, err
 	}
@@ -134,6 +127,11 @@ func NewTerminal(opts ...Option) (*Terminal, error) {
 
 	return tm, nil
 }
+func newDummyTerminal() *Terminal {
+	tm := &Terminal{proprietor: environ.NewProprietor()}
+	tm.SetProperty(propkeys.EnvIsLoaded, `merge`)
+	return tm
+}
 
 func getTTYAndQuerier(tm *Terminal, tc *termCheckerCore) (TTY, Querier, error) {
 	// tty order: tm.tty, tm.ttyProv, tc.TTY, tm.ttyDefault, tm.ttyProvDefault
@@ -146,7 +144,7 @@ func getTTYAndQuerier(tm *Terminal, tc *termCheckerCore) (TTY, Querier, error) {
 		if ttyProv == nil {
 			return nil, errorsGo.New(`nil tty provider`)
 		}
-		tt, err := ttyProv(tm.ptyName)
+		tt, err := ttyProv(tm.ptyName())
 		if err != nil {
 			return nil, err
 		}
@@ -171,7 +169,7 @@ func getTTYAndQuerier(tm *Terminal, tc *termCheckerCore) (TTY, Querier, error) {
 			if ttyProv, okTTYProv := tc.parent.(interface {
 				TTY(pytName string, ci environ.Proprietor) (TTY, error)
 			}); okTTYProv {
-				tty, err := ttyProv.TTY(tm.ptyName, tm.proprietor)
+				tty, err := ttyProv.TTY(tm.ptyName(), tm.proprietor)
 				if err != nil {
 					errs = append(errs, err)
 				} else if tty != nil {
@@ -412,24 +410,42 @@ func findTermChecker(env environ.Proprietor, tty TTY, qu Querier) (tc TermChecke
 }
 
 func (t *Terminal) Name() string {
-	if t == nil {
+	if t == nil || t.proprietor == nil {
 		return ``
 	}
-	return t.name
+	termName, _ := t.Property(propkeys.TerminalName)
+	return termName
 }
 
 func (t *Terminal) Exe() string {
-	if t == nil {
+	if t == nil || t.proprietor == nil {
 		return ``
 	}
+	exe, _ := t.Property(propkeys.Executable)
 	var suffix string
 	if runtime.GOOS == `windows` {
 		suffix = `.exe`
 	}
-	if len(t.exe) > 0 {
-		return t.exe + suffix
+	if len(exe) > 0 {
+		return exe + suffix
 	}
-	return t.name + suffix
+	return t.Name() + suffix
+}
+
+func (t *Terminal) ptyName() string {
+	if t == nil || t.proprietor == nil {
+		return ``
+	}
+	ptyName, _ := t.Property(propkeys.PTYName)
+	return ptyName
+}
+
+func (t *Terminal) tempDir() string {
+	if t == nil || t.proprietor == nil {
+		return ``
+	}
+	tempDir, _ := t.Property(propkeys.TempDir)
+	return tempDir
 }
 
 func (t *Terminal) Query(qs string, p Parser) (string, error) { return t.query(qs, p) }
@@ -463,19 +479,20 @@ func (t *Terminal) CreateTemp(pattern string) (*os.File, error) {
 	if t == nil {
 		return nil, internal.ErrNilReceiver
 	}
-	if len(t.tempDir) == 0 {
+	tempDir := t.tempDir()
+	if len(tempDir) == 0 {
 		dir, err := os.MkdirTemp(``, internal.LibraryName+`.`)
 		if err != nil {
 			return nil, err
 		}
-		t.tempDir = dir
+		t.SetProperty(propkeys.TempDir, tempDir)
 		onCloseFunc := func() error {
 			return os.RemoveAll(dir)
 		}
 		t.OnClose(onCloseFunc)
 	}
 
-	f, err := os.CreateTemp(t.tempDir, pattern)
+	f, err := os.CreateTemp(tempDir, pattern)
 	if err != nil {
 		return nil, err
 	}
@@ -639,7 +656,7 @@ func (t *Terminal) CellSize() (width, height float64, err error) {
 	if t.surveyor == nil {
 		return 0, 0, errorsGo.New(`nil surveyor`)
 	}
-	return t.surveyor.CellSize(t.tty, t.querier, t.w, t.proprietor)
+	return t.surveyor.CellSize(t.tty, t.querier, t.window, t.proprietor)
 }
 
 func (t *Terminal) SizeInCells() (width, height uint, err error) {
@@ -649,7 +666,7 @@ func (t *Terminal) SizeInCells() (width, height uint, err error) {
 	if t.surveyor == nil {
 		return 0, 0, errorsGo.New(`nil surveyor`)
 	}
-	return t.surveyor.SizeInCells(t.tty, t.querier, t.w, t.proprietor)
+	return t.surveyor.SizeInCells(t.tty, t.querier, t.window, t.proprietor)
 }
 
 func (t *Terminal) SizeInPixels() (width, height uint, err error) {
@@ -659,7 +676,7 @@ func (t *Terminal) SizeInPixels() (width, height uint, err error) {
 	if t.surveyor == nil {
 		return 0, 0, errorsGo.New(`nil surveyor`)
 	}
-	return t.surveyor.SizeInPixels(t.tty, t.querier, t.w, t.proprietor)
+	return t.surveyor.SizeInPixels(t.tty, t.querier, t.window, t.proprietor)
 }
 
 func (t *Terminal) GetCursor() (xPosCells, yPosCells uint, err error) {
@@ -669,7 +686,7 @@ func (t *Terminal) GetCursor() (xPosCells, yPosCells uint, err error) {
 	if t.surveyor == nil {
 		return 0, 0, errorsGo.New(`nil surveyor`)
 	}
-	return t.surveyor.GetCursor(t.tty, t.querier, t.w, t.proprietor)
+	return t.surveyor.GetCursor(t.tty, t.querier, t.window, t.proprietor)
 }
 
 func (t *Terminal) SetCursor(xPosCells, yPosCells uint) (err error) {
@@ -679,7 +696,7 @@ func (t *Terminal) SetCursor(xPosCells, yPosCells uint) (err error) {
 	if t.surveyor == nil {
 		return errorsGo.New(`nil surveyor`)
 	}
-	return t.surveyor.SetCursor(xPosCells, yPosCells, t.tty, t.querier, t.w, t.proprietor)
+	return t.surveyor.SetCursor(xPosCells, yPosCells, t.tty, t.querier, t.window, t.proprietor)
 }
 
 // default
@@ -689,7 +706,7 @@ func (t *Terminal) Window() wm.Window {
 	if t == nil {
 		return nil
 	}
-	return t.w
+	return t.window
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -40,7 +40,16 @@ func (t *Terminal) SetOptions(opts ...Option) error {
 }
 
 func SetPTYName(ptyName string) Option {
-	return OptFunc(func(t *Terminal) error { t.ptyName = ptyName; return nil })
+	return OptFunc(func(t *Terminal) error {
+		if t.proprietor == nil {
+			t.proprietor = environ.NewProprietor()
+		}
+		if len(ptyName) == 0 {
+			ptyName = internal.DefaultTTYDevice()
+		}
+		t.SetProperty(propkeys.PTYName, ptyName)
+		return nil
+	})
 }
 func SetTTY(tty TTY, enforce bool) Option {
 	return OptFunc(func(t *Terminal) error {
@@ -95,14 +104,33 @@ func SetWindowProvider(wProv wm.WindowProvider, enforce bool) Option {
 func SetResizer(rsz Resizer) Option {
 	return OptFunc(func(t *Terminal) error { t.resizer = rsz; return nil })
 }
-func SetProprietor(pr environ.Proprietor) Option {
-	return OptFunc(func(t *Terminal) error { t.proprietor = pr; return nil })
+func SetProprietor(pr environ.Proprietor, merge bool) Option {
+	return OptFunc(func(t *Terminal) error {
+		if merge && t.proprietor != nil {
+			t.proprietor.Merge(pr)
+		} else {
+			t.proprietor = pr
+		}
+		return nil
+	})
 }
 func SetTerminalName(termName string) Option {
-	return OptFunc(func(t *Terminal) error { t.name = termName; return nil })
+	return OptFunc(func(t *Terminal) error {
+		if t.proprietor == nil {
+			t.proprietor = environ.NewProprietor()
+		}
+		t.SetProperty(propkeys.TerminalName, `true`)
+		return nil
+	})
 }
 func SetExe(exe string) Option {
-	return OptFunc(func(t *Terminal) error { t.exe = exe; return nil })
+	return OptFunc(func(t *Terminal) error {
+		if t.proprietor == nil {
+			t.proprietor = environ.NewProprietor()
+		}
+		t.SetProperty(propkeys.Executable, exe)
+		return nil
+	})
 }
 func SetArgs(args []string) Option {
 	return OptFunc(func(t *Terminal) error { t.arger = newArger(args); return nil })
@@ -111,7 +139,7 @@ func SetDrawers(drs []Drawer) Option {
 	return OptFunc(func(t *Terminal) error { t.drawers = drs; return nil })
 }
 func SetWindow(w wm.Window) Option {
-	return OptFunc(func(t *Terminal) error { t.w = w; return nil })
+	return OptFunc(func(t *Terminal) error { t.window = w; return nil })
 }
 
 var (
@@ -135,9 +163,11 @@ func replaceTerminal(t *Terminal) Option {
 }
 
 var setInternalDefaults Option = OptFunc(func(t *Terminal) error {
-	if len(t.ptyName) == 0 {
-		t.ptyName = internal.DefaultTTYDevice()
+	ptyName := t.ptyName()
+	if len(ptyName) == 0 {
+		ptyName = internal.DefaultTTYDevice()
 	}
+	t.SetProperty(propkeys.PTYName, ptyName)
 	if t.partialSurveyorDefault == nil {
 		t.partialSurveyorDefault = &SurveyorDefault{}
 	}
@@ -176,20 +206,33 @@ func setEnvAndMuxers(overwrite bool) Option {
 				return nil
 			}
 		}
-		if len(t.ptyName) == 0 {
-			t.ptyName = internal.DefaultTTYDevice()
+		ptyName := t.ptyName()
+		if len(ptyName) == 0 {
+			if t.proprietor != nil {
+				ptyNameDefault := internal.DefaultTTYDevice()
+				t.SetProperty(propkeys.PTYName, ptyNameDefault)
+				ptyName = ptyNameDefault
+			}
 		}
-		pr, passages, err := advanced.GetEnv(t.ptyName)
+		pr, passages, err := advanced.GetEnv(ptyName)
 		if err != nil {
-			return err
+			// TODO log error
 		}
 		var skipSettingEnvIsLoaded bool
 		if t.proprietor != nil {
-			envIsLoadedStr, envIsLoaded := t.Property(propkeys.EnvIsLoaded)
-			skipSettingEnvIsLoaded = envIsLoaded && envIsLoadedStr != `true`
+			envIsLoadedStr, _ := t.Property(propkeys.EnvIsLoaded)
+			switch envIsLoadedStr {
+			case `true`:
+				skipSettingEnvIsLoaded = true
+			case `merge`:
+				// use new Proprietor as receiver to allow implementation choice
+				pr.Merge(t.proprietor)
+			}
 		}
-		t.proprietor = pr
-		if !skipSettingEnvIsLoaded && t.proprietor != nil {
+		if !skipSettingEnvIsLoaded {
+			t.proprietor = pr
+		}
+		if t.proprietor != nil {
 			t.SetProperty(propkeys.EnvIsLoaded, `true`)
 		}
 		t.passages = passages
