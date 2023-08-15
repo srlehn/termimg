@@ -10,6 +10,7 @@ import (
 	"github.com/go-errors/errors"
 	"github.com/shirou/gopsutil/process"
 
+	"github.com/srlehn/termimg/internal"
 	"github.com/srlehn/termimg/internal/environ"
 	"github.com/srlehn/termimg/internal/exc"
 	"github.com/srlehn/termimg/internal/propkeys"
@@ -24,10 +25,8 @@ func GetEnv(ptyName string) (envInner environ.Proprietor, passages mux.Muxers, e
 	var proc, procTerm *process.Process
 	var ttyInner string
 	var errRet, err error
-	isDefaultTTY := func(ptyName string) bool {
-		return ptyName == `/dev/tty` || ptyName == `/dev/stdin` || ptyName == `CON` // TODO
-	}
-	if isDefaultTTY(ptyName) { // TODO
+
+	if internal.IsDefaultTTY(ptyName) { // TODO
 		pid := os.Getppid() // probably a shell
 		p, err := process.NewProcess(int32(pid))
 		if err != nil {
@@ -59,7 +58,7 @@ func GetEnv(ptyName string) (envInner environ.Proprietor, passages mux.Muxers, e
 		}
 		pidMap := make(map[string]int)
 		for _, procStr := range strings.Split(strings.TrimSpace(string(psOut)), "\n") {
-			ppidStr := strings.Split(procStr, ` `)[0]
+			ppidStr := strings.Split(strings.TrimSpace(procStr), ` `)[0]
 			if len(ppidStr) == 0 {
 				errRet = errors.New(`unable to find process`)
 				goto end
@@ -123,11 +122,12 @@ func GetEnv(ptyName string) (envInner environ.Proprietor, passages mux.Muxers, e
 
 end:
 	if errRet != nil {
-		if isDefaultTTY(ptyName) {
+		if internal.IsDefaultTTY(ptyName) {
 			// fallback
-			return environ.EnvToProprietor(os.Environ()), nil, nil
+			envInner = environ.EnvToProprietor(os.Environ())
+		} else {
+			return nil, nil, errRet
 		}
-		return nil, nil, errRet
 	}
 
 	if passages != nil && passages.IsRemote() {
@@ -140,8 +140,10 @@ end:
 		if runtime.GOOS != `windows` {
 			ttyInner = `/dev` + ttyInner
 		}
-		envInner.SetProperty(propkeys.TerminalTTY, ttyInner)
+	} else {
+		ttyInner = ptyName
 	}
+	envInner.SetProperty(propkeys.TerminalTTY, ttyInner)
 
 	return envInner, passages, nil
 }

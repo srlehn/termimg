@@ -14,8 +14,12 @@ const (
 	EnvIsLoaded                 = GeneralPrefix + `envIsLoaded`
 	Mode                        = GeneralPrefix + `mode` /// "tui", "cli" (default)
 	ManualComposition           = GeneralPrefix + `manualComposition`
+	TerminalName                = GeneralPrefix + `termName`
 	TerminalPID                 = GeneralPrefix + `termPID`
 	TerminalTTY                 = GeneralPrefix + `termTTY` // directly provided tty by the terminal
+	PTYName                     = GeneralPrefix + `ptyName` // opened tty
+	Executable                  = GeneralPrefix + `executable`
+	TempDir                     = GeneralPrefix + `tempDir`
 	Passages                    = GeneralPrefix + `passages`
 	IsRemote                    = GeneralPrefix + `isRemote`
 	AvoidANSI                   = GeneralPrefix + `avoidANSI`

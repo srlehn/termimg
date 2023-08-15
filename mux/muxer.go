@@ -121,6 +121,7 @@ func Wrap(s string, pr environ.Proprietor) string {
 
 func FindTerminalProcess(pid int32) (procTerm *process.Process, ttyInner string, envInner environ.Proprietor, passages Muxers, e error) {
 	// TODO handle errors
+	// TODO make this testable...
 	proc, err := process.NewProcess(pid)
 	if err != nil {
 		return nil, ``, nil, nil, errors.New(err)
@@ -142,9 +143,58 @@ Outer:
 			procLast = proc
 
 			p, err = proc.Parent()
+			if err != nil || p == nil || p.Pid < 2 {
+				// break Outer
+				break
+			}
 			proc = p
-			if err != nil {
-				break Outer
+		}
+		if proc != nil && proc.Pid == pid {
+			tty, _ := proc.Terminal()
+			children, err := proc.Children()
+			if err == nil {
+				shellVar, okShell := os.LookupEnv(`SHELL`)
+				if okShell {
+					shellVar = filepath.Base(shellVar)
+				}
+				isShell := func(name string) bool {
+					name = filepath.Base(name)
+					if okShell {
+						return name == shellVar
+					} else {
+						switch name {
+						case `bash`,
+							`sh`,
+							`ash`, `dash`,
+							`csh`, `tcsh`,
+							`ksh`, `ksh88`, `ksh93`, `ksh2020`, `pdksh`, `mksh`, `dtksh`, `oksh`, `loksh`, `SKsh`,
+							`zsh`,
+							`hush`,
+							`es`, `rc`,
+							`fish`:
+							return true
+						default:
+							return false
+						}
+					}
+				}
+				// get first child shell process
+				for _, child := range children {
+					if child == nil {
+						continue
+					}
+					ttyChild, err := child.Terminal()
+					// login shells on the console
+					if err != nil || ttyChild != tty {
+						continue
+					}
+					childName, err := child.Name()
+					if err != nil || !isShell(childName) {
+						continue
+					}
+					procLast = child
+					break
+				}
 			}
 		}
 		// found a tty change
