@@ -1,4 +1,4 @@
-//go:build dev
+//go:build linux && !android
 
 package framebuffer
 
@@ -7,7 +7,6 @@ import (
 	"image"
 	"image/draw"
 
-	"github.com/gen2brain/framebuffer"
 	errorsGo "github.com/go-errors/errors"
 
 	"github.com/srlehn/termimg/internal"
@@ -36,11 +35,18 @@ func (d *drawerFramebuffer) IsApplicable(inp term.DrawerCheckerInput) bool {
 
 	// TODO check if user has permission for /dev/fb0 (video group)
 
-	return false
+	return true
 }
 func (d *drawerFramebuffer) Draw(img image.Image, bounds image.Rectangle, rsz term.Resizer, tm *term.Terminal) error {
 	if d == nil || tm == nil || img == nil {
 		return errors.New(`nil parameter`)
+	}
+	w := tm.Window()
+	if err := w.WindowFind(); err != nil {
+		return err
+	}
+	if w.WindowType() != `tty` {
+		return errorsGo.New(`window of wrong type`)
 	}
 	timg, ok := img.(*term.Image)
 	if !ok {
@@ -56,19 +62,25 @@ func (d *drawerFramebuffer) Draw(img image.Image, bounds image.Rectangle, rsz te
 
 	//
 
-	// TODO store canvas per Terminal
-	canvas, err := framebuffer.Open(nil)
-	if err != nil {
-		return errorsGo.New(err)
+	dimg, ok := w.(draw.Image)
+	if !ok {
+		return errorsGo.New(`draw.Image not implemented by window`)
 	}
-	defer canvas.Close()
-
-	fbimg, err := canvas.Image()
+	cpw, cph, err := tm.CellSize()
 	if err != nil {
-		return errorsGo.New(err)
+		return err
 	}
-
-	draw.Draw(fbimg, timg.Cropped.Bounds(), img, image.Point{}, draw.Src)
+	boundsPixels := image.Rectangle{
+		Min: image.Point{
+			X: int(float64(bounds.Min.X) * cpw),
+			Y: int(float64(bounds.Min.Y) * cph),
+		},
+		Max: image.Point{
+			X: int(float64(bounds.Max.X) * cpw),
+			Y: int(float64(bounds.Max.Y) * cph),
+		},
+	}
+	draw.Draw(dimg, boundsPixels, timg.Cropped, image.Point{}, draw.Src)
 
 	return nil
 }

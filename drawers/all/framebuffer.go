@@ -1,4 +1,4 @@
-//go:build dev && linux && !android
+//go:build linux && !android
 
 package all
 

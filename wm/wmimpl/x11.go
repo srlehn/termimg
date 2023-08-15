@@ -1,4 +1,4 @@
-//go:build !noX11 && !windows && !android && !darwin && !js
+//go:build unix && !noX11 && !android && !darwin && !js
 
 // based on xgbutil examples
 
@@ -501,7 +501,7 @@ func (w *windowX11) Close() error {
 	return nil
 }
 
-func createWindow(env environ.Proprietor, name, class, instance string, isWindow wm.IsWindowFunc) wm.Window {
+func createWindowX11(env environ.Proprietor, name, class, instance string, isWindow wm.IsWindowFunc) wm.Window {
 	var windowID, pidTerm uint64
 	if env != nil {
 		pidTermStr, okPIDTerm := env.Property(propkeys.TerminalPID)
