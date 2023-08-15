@@ -105,7 +105,10 @@ func resolutionFunc(cmd *cobra.Command, args []string) func() error {
 			).Replace(resolutionFormat)
 			fmt.Printf(resolutionFormat, resRepeats...)
 		} else {
-			if errCellRes == nil && cpw >= 1 && cph >= 1 && !math.IsNaN(cpw) && !math.IsNaN(cph) {
+			if errCellRes == nil &&
+				cpw >= 1 && cph >= 1 &&
+				!math.IsNaN(cpw) && !math.IsNaN(cph) &&
+				!math.IsInf(cpw, 0) && !math.IsInf(cph, 0) {
 				fmt.Printf("terminal cell resolution: %.2fx%.2f (pixels)\n", cpw, cph)
 			}
 		}
