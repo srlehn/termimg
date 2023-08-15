@@ -12,3 +12,6 @@ func DefaultTTYDevice() string {
 	}
 	return ptyName
 }
+func IsDefaultTTY(ptyName string) bool {
+	return len(ptyName) == 0 || ptyName == `/dev/tty` || ptyName == `/dev/stdin` || ptyName == `CON` // TODO
+}

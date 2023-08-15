@@ -163,6 +163,15 @@ func getSurveyor(s PartialSurveyor, p environ.Proprietor) SurveyorLight {
 			srv.posSetFuncs = append(srv.posSetFuncs, posSetFunc)
 		}
 	}
+	// add possibly inexact window checks at end
+	if sizerInPixelsWindow, ok := s.(interface {
+		SizeInPixelsWindow(w wm.Window) (widthPixels, heightPixels uint, err error)
+	}); ok {
+		sizerInPixelsWindowFunc := func(_ TTY, _ Querier, w wm.Window) (widthPixels uint, heightPixels uint, err error) {
+			return sizerInPixelsWindow.SizeInPixelsWindow(w)
+		}
+		srv.SizeInPixelsFuncs = append(srv.SizeInPixelsFuncs, sizerInPixelsWindowFunc)
+	}
 
 	return srv
 }
@@ -183,58 +192,87 @@ func (s *surveyor) CellSize(tty TTY, qu Querier, w wm.Window, pr environ.Proprie
 		}
 		return w, h, nil
 	}
+	var wc, hc, wp, hp uint
+	var hasSizeInCells, hasSizeInPixels bool
 	for _, SizeInCellsAndPixelsFunc := range s.SizeInCellsAndPixelsFuncs {
 		if SizeInCellsAndPixelsFunc == nil {
 			continue
 		}
-		wc, hc, wp, hp, err := SizeInCellsAndPixelsFunc(tty, qu, w)
+		wc2, hc2, wp2, hp2, err := SizeInCellsAndPixelsFunc(tty, qu, w)
 		if err != nil {
 			errs = append(errs, err)
 			continue
 		}
-		if wc == 0 || hc == 0 {
+		hasSizeInCells2 := wc2 > 0 && hc2 > 0
+		hasSizeInPixels2 := wp2 > 0 && hp2 > 0
+		if hasSizeInCells2 {
+			wc = wc2
+			hc = hc2
+			hasSizeInCells = true
+		}
+		if hasSizeInPixels2 {
+			wp = wp2
+			hp = hp2
+			hasSizeInPixels = true
+		}
+		if hasSizeInCells && hasSizeInPixels {
+			cellWidth := float64(wp) / float64(wc)
+			cellHeight := float64(hp) / float64(hc)
+			return cellWidth, cellHeight, nil
+		}
+		if !hasSizeInCells2 {
 			errs = append(errs, errorsGo.New(`received 0 length terminal sizes (in cells)`))
 			continue
 		}
-		if wp == 0 || hp == 0 {
+		if !hasSizeInPixels2 {
 			errs = append(errs, errorsGo.New(`received 0 length terminal sizes (in pixels)`))
 			continue
 		}
+	}
+	if (hasSizeInCells || len(s.SizeInCellsFuncs) > 0) && (hasSizeInPixels || len(s.SizeInPixelsFuncs) > 0) {
+		if !hasSizeInCells {
+			for _, SizeInCellsFunc := range s.SizeInCellsFuncs {
+				if SizeInCellsFunc == nil {
+					continue
+				}
+				w, h, err := SizeInCellsFunc(tty, qu, w)
+				if err != nil {
+					errs = append(errs, err)
+					continue
+				}
+				if w > 0 && h > 0 {
+					wc = w
+					hc = h
+					hasSizeInCells = true
+					break
+				}
+				errs = append(errs, errorsGo.New(`received 0 length terminal sizes (in cells)`))
+			}
+		}
+		if !hasSizeInCells {
+			errs = append(errs, errorsGo.New("unable to query terminal resolution in cells"))
+		} else if !hasSizeInPixels {
+			for _, SizeInPixelsFunc := range s.SizeInPixelsFuncs {
+				if SizeInPixelsFunc == nil {
+					continue
+				}
+				w, h, err := SizeInPixelsFunc(tty, qu, w)
+				if err != nil {
+					errs = append(errs, err)
+					continue
+				}
+				if w > 0 && h > 0 {
+					wp = w
+					hp = h
+					hasSizeInPixels = true
+					break
+				}
+			}
+		}
+	}
+	if hasSizeInCells && hasSizeInPixels {
 		cellWidth := float64(wp) / float64(wc)
 		cellHeight := float64(hp) / float64(hc)
-		return cellWidth, cellHeight, nil
-	}
-	if len(s.SizeInCellsFuncs) > 0 && len(s.SizeInPixelsFuncs) > 0 {
-		var widthInCells, heightInCells uint
-		var widthInPixels, heightInPixels uint
-		for _, SizeInCellsFunc := range s.SizeInCellsFuncs {
-			if SizeInCellsFunc == nil {
-				continue
-			}
-			w, h, err := SizeInCellsFunc(tty, qu, w)
-			if err != nil {
-				errs = append(errs, err)
-				continue
-			}
-			widthInCells = w
-			heightInCells = h
-			break
-		}
-		for _, SizeInPixelsFunc := range s.SizeInPixelsFuncs {
-			if SizeInPixelsFunc == nil {
-				continue
-			}
-			w, h, err := SizeInPixelsFunc(tty, qu, w)
-			if err != nil {
-				errs = append(errs, err)
-				continue
-			}
-			widthInPixels = w
-			heightInPixels = h
-			break
-		}
-		cellWidth := float64(widthInPixels) / float64(widthInCells)
-		cellHeight := float64(heightInPixels) / float64(heightInCells)
 		return cellWidth, cellHeight, nil
 	}
 	errRet := errors.Join(errs...)

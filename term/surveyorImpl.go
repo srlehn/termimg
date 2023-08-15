@@ -2,10 +2,13 @@ package term
 
 import (
 	"fmt"
+	"image"
 	"strconv"
 	"strings"
 
 	"github.com/go-errors/errors"
+	errorsGo "github.com/go-errors/errors"
+	"github.com/srlehn/termimg/wm"
 )
 
 func SizeInCellsAndPixels(tty TTY) (widthCells, heightCells, widthPixels, heightPixels uint, err error) {
@@ -197,6 +200,27 @@ func (s *SurveyorDefault) SizeInCellsQuery(qu Querier, tty TTY) (widthCells, hei
 // SizeInPixelsQuery - dtterm window manipulation CSI 14 t
 func (s *SurveyorDefault) SizeInPixelsQuery(qu Querier, tty TTY) (widthPixels, heightPixels uint, e error) {
 	return SizeInPixelsQuery(qu, tty)
+}
+
+// SizeInPixelsQuery - dtterm window manipulation CSI 14 t
+func (s *SurveyorDefault) SizeInPixelsWindow(w wm.Window) (widthPixels, heightPixels uint, err error) {
+	if err := w.WindowFind(); err != nil {
+		return 0, 0, err
+	}
+	if w.WindowType() != `tty` {
+		return 0, 0, errorsGo.New(`window of wrong type`)
+	}
+	wb, ok := w.(interface{ Bounds() image.Rectangle })
+	if !ok {
+		return 0, 0, errorsGo.New(`window is missing Bounds method`)
+	}
+	bounds := wb.Bounds()
+	ww := bounds.Dx()
+	wh := bounds.Dy()
+	if ww < 1 || wh < 1 {
+		return 0, 0, errorsGo.New(`null window size`)
+	}
+	return uint(ww), uint(wh), nil
 }
 
 // GetCursorQuery
