@@ -4,6 +4,7 @@ import (
 	"errors"
 
 	errorsGo "github.com/go-errors/errors"
+
 	"github.com/srlehn/termimg/internal"
 	"github.com/srlehn/termimg/internal/environ"
 	"github.com/srlehn/termimg/internal/propkeys"

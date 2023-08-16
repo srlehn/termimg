@@ -30,7 +30,7 @@ func (d *drawerURXVT) IsApplicable(inp term.DrawerCheckerInput) bool {
 // TODO write ' ' over area (image is in a layer below text)
 // TODO replace urxvt graphic with persistent block graphic when cleared
 
-func (d *drawerURXVT) Draw(img image.Image, bounds image.Rectangle, rsz term.Resizer, tm *term.Terminal) error {
+func (d *drawerURXVT) Draw(img image.Image, bounds image.Rectangle, tm *term.Terminal) error {
 	if d == nil {
 		return errors.New(internal.ErrNilReceiver)
 	}
@@ -45,6 +45,10 @@ func (d *drawerURXVT) Draw(img image.Image, bounds image.Rectangle, rsz term.Res
 		return errors.New(internal.ErrNilImage)
 	}
 
+	rsz := tm.Resizer()
+	if rsz == nil {
+		return errors.New(`nil resizer`)
+	}
 	err := timg.Fit(bounds, rsz, tm)
 	if err != nil {
 		return err

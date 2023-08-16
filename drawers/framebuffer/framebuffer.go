@@ -37,7 +37,7 @@ func (d *drawerFramebuffer) IsApplicable(inp term.DrawerCheckerInput) bool {
 
 	return true
 }
-func (d *drawerFramebuffer) Draw(img image.Image, bounds image.Rectangle, rsz term.Resizer, tm *term.Terminal) error {
+func (d *drawerFramebuffer) Draw(img image.Image, bounds image.Rectangle, tm *term.Terminal) error {
 	if d == nil || tm == nil || img == nil {
 		return errors.New(`nil parameter`)
 	}
@@ -56,6 +56,10 @@ func (d *drawerFramebuffer) Draw(img image.Image, bounds image.Rectangle, rsz te
 		return errorsGo.New(internal.ErrNilImage)
 	}
 
+	rsz := tm.Resizer()
+	if rsz == nil {
+		return errorsGo.New(`nil resizer`)
+	}
 	if err := timg.Fit(bounds, rsz, tm); err != nil {
 		return err
 	}
@@ -71,14 +75,8 @@ func (d *drawerFramebuffer) Draw(img image.Image, bounds image.Rectangle, rsz te
 		return err
 	}
 	boundsPixels := image.Rectangle{
-		Min: image.Point{
-			X: int(float64(bounds.Min.X) * cpw),
-			Y: int(float64(bounds.Min.Y) * cph),
-		},
-		Max: image.Point{
-			X: int(float64(bounds.Max.X) * cpw),
-			Y: int(float64(bounds.Max.Y) * cph),
-		},
+		Min: image.Point{X: int(float64(bounds.Min.X) * cpw), Y: int(float64(bounds.Min.Y) * cph)},
+		Max: image.Point{X: int(float64(bounds.Max.X) * cpw), Y: int(float64(bounds.Max.Y) * cph)},
 	}
 	draw.Draw(dimg, boundsPixels, timg.Cropped, image.Point{}, draw.Src)
 

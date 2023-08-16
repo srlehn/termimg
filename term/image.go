@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	errorsGo "github.com/go-errors/errors"
 
@@ -20,16 +21,19 @@ type ImageEncoder = internal.ImageEncoder
 
 // Image ...
 type Image struct {
-	Original   image.Image
-	Resized    image.Image
-	Cropped    image.Image
-	inBand     map[string]inBandString
-	posObjs    map[string]posObject
-	FileName   string          // lazily loaded
-	Encoded    []byte          // lazily loaded
-	pos        image.Rectangle // image size in cells at resize time, position for cropping
-	termSize   image.Point     // terminal size in cells at crop time
-	drawerSpec map[string]any
+	Original     image.Image
+	Resized      image.Image
+	Cropped      image.Image
+	FileName     string          // lazily loaded
+	Encoded      []byte          // lazily loaded
+	pos          image.Rectangle // image size in cells at resize time, position for cropping
+	termSize     image.Point     // terminal size in cells at crop time
+	inBandMu     sync.RWMutex
+	inBand       map[string]inBandString
+	posObjsMu    sync.RWMutex
+	posObjs      map[string]posObject
+	drawerSpecMu sync.RWMutex
+	drawerSpec   map[string]any
 	internal.Closer
 }
 
@@ -46,6 +50,7 @@ func NewImage(img image.Image) *Image {
 	return &Image{
 		Original:   img,
 		inBand:     make(map[string]inBandString),
+		posObjs:    make(map[string]posObject),
 		drawerSpec: make(map[string]any),
 		Closer:     internal.NewCloser(),
 	}
@@ -59,6 +64,7 @@ func NewImageFilename(imgFile string) *Image {
 	return &Image{
 		FileName:   imgFile,
 		inBand:     make(map[string]inBandString),
+		posObjs:    make(map[string]posObject),
 		drawerSpec: make(map[string]any),
 		Closer:     internal.NewCloser(),
 	}
@@ -69,6 +75,7 @@ func NewImageBytes(imgBytes []byte) *Image {
 	return &Image{
 		Encoded:    imgBytes,
 		inBand:     make(map[string]inBandString),
+		posObjs:    make(map[string]posObject),
 		drawerSpec: make(map[string]any),
 		Closer:     internal.NewCloser(),
 	}
@@ -177,6 +184,8 @@ func (i *Image) GetInband(placementCells image.Rectangle, d Drawer, t *Terminal)
 		return ``, errorsGo.New(`struct field is nil`)
 	}
 	k := d.Name() + `_` + t.Name()
+	i.inBandMu.RLock()
+	defer i.inBandMu.RUnlock()
 	v, ok := i.inBand[k]
 	if !ok {
 		return ``, errorsGo.New(`no entry`)
@@ -218,6 +227,8 @@ func (i *Image) SetInband(placementCells image.Rectangle, inband string, d Drawe
 	if placementCells.Dx() == 0 || placementCells.Dy() == 0 {
 		return errorsGo.New(`no draw area`)
 	}
+	i.inBandMu.Lock()
+	defer i.inBandMu.Unlock()
 	if i.inBand == nil {
 		i.inBand = make(map[string]inBandString)
 		return errorsGo.New(`struct field is nil`)
@@ -266,6 +277,8 @@ func (i *Image) GetPosObject(placementCells image.Rectangle, d Drawer, t *Termin
 	if placementCells.Dx() == 0 || placementCells.Dy() == 0 {
 		return ``, errorsGo.New(`no draw area`)
 	}
+	i.posObjsMu.RLock()
+	defer i.posObjsMu.RUnlock()
 	if i.posObjs == nil {
 		i.posObjs = make(map[string]posObject)
 		return nil, errorsGo.New(`struct field is nil`)
@@ -312,6 +325,8 @@ func (i *Image) SetPosObject(placementCells image.Rectangle, obj any, d Drawer, 
 	if placementCells.Dx() == 0 || placementCells.Dy() == 0 {
 		return errorsGo.New(`no draw area`)
 	}
+	i.posObjsMu.Lock()
+	defer i.posObjsMu.Unlock()
 	if i.posObjs == nil {
 		i.posObjs = make(map[string]posObject)
 		return errorsGo.New(`struct field is nil`)
@@ -338,6 +353,38 @@ func (i *Image) SetPosObject(placementCells image.Rectangle, obj any, d Drawer, 
 
 	i.posObjs[k] = v
 
+	return nil
+}
+
+// GetDrawerObject ...
+func (i *Image) GetDrawerObject(d Drawer) (any, error) {
+	if i == nil || d == nil {
+		return nil, errorsGo.New(`nil receiver or parameter`)
+	}
+	i.drawerSpecMu.RLock()
+	defer i.drawerSpecMu.RUnlock()
+	if i.drawerSpec == nil {
+		i.drawerSpec = make(map[string]any)
+		return nil, errorsGo.New(`object not found`)
+	}
+	obj, exists := i.drawerSpec[d.Name()]
+	if !exists {
+		return nil, errorsGo.New(`object not found`)
+	}
+	return obj, nil
+}
+
+// SetDrawerObject ...
+func (i *Image) SetDrawerObject(obj any, d Drawer) error {
+	if i == nil || d == nil {
+		return errorsGo.New(`nil receiver or parameter`)
+	}
+	i.drawerSpecMu.Lock()
+	defer i.drawerSpecMu.Unlock()
+	if i.drawerSpec == nil {
+		i.drawerSpec = make(map[string]any)
+	}
+	i.drawerSpec[d.Name()] = obj
 	return nil
 }
 

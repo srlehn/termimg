@@ -27,7 +27,7 @@ TODO fails on urxvt
 TODO stretch
 */
 
-func (d *DrawerGeneric) Draw(img image.Image, bounds image.Rectangle, rsz term.Resizer, tm *term.Terminal) error {
+func (d *DrawerGeneric) Draw(img image.Image, bounds image.Rectangle, tm *term.Terminal) error {
 	timg, ok := img.(*term.Image)
 	if !ok {
 		timg = term.NewImage(img)

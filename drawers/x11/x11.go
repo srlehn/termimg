@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/go-errors/errors"
+	errorsGo "github.com/go-errors/errors"
 
 	"github.com/jezek/xgb/xproto"
 	"github.com/srlehn/xgbutil"
@@ -82,29 +82,29 @@ func (d *drawerX11) IsApplicable(inp term.DrawerCheckerInput) bool {
 	return true
 }
 
-func (d *drawerX11) Draw(img image.Image, bounds image.Rectangle, rsz term.Resizer, tm *term.Terminal) error {
+func (d *drawerX11) Draw(img image.Image, bounds image.Rectangle, tm *term.Terminal) error {
 	if d == nil {
-		return errors.New(`nil receiver or receiver with nil values`)
+		return errorsGo.New(`nil receiver or receiver with nil values`)
 	}
 	if tm == nil || img == nil {
-		return errors.New(`nil parameter`)
+		return errorsGo.New(`nil parameter`)
 	}
 	tmw := tm.Window()
 	if tmw == nil {
-		return errors.New(`nil window`)
+		return errorsGo.New(`nil window`)
 	}
 	if tmw.WindowType() != `x11` {
-		return errors.New(`wrong window type`)
+		return errorsGo.New(`wrong window type`)
 	}
 	if err := tmw.WindowFind(); err != nil {
 		return err
 	}
 	connXU, okConn := tmw.WindowConn().Conn().(*xgbutil.XUtil) // TODO make generic Conn
 	if !okConn {
-		return errors.New(`not a X11 connection`)
+		return errorsGo.New(`not a X11 connection`)
 	}
 	if connXU == nil {
-		return errors.New(`nil X11 connection`)
+		return errorsGo.New(`nil X11 connection`)
 	}
 
 	timg, ok := img.(*term.Image)
@@ -112,7 +112,11 @@ func (d *drawerX11) Draw(img image.Image, bounds image.Rectangle, rsz term.Resiz
 		timg = term.NewImage(img)
 	}
 	if timg == nil {
-		return errors.New(internal.ErrNilImage)
+		return errorsGo.New(internal.ErrNilImage)
+	}
+	rsz := tm.Resizer()
+	if rsz == nil {
+		return errorsGo.New(`nil resizer`)
 	}
 	if err := timg.Fit(bounds, rsz, tm); err != nil {
 		return err
@@ -136,10 +140,10 @@ func (d *drawerX11) Draw(img image.Image, bounds image.Rectangle, rsz term.Resiz
 		return err
 	}
 	if err := ximg.XSurfaceSet(wCanvas.Id); err != nil {
-		return errors.New(err)
+		return errorsGo.New(err)
 	}
 	if err := ximg.XDrawChecked(); err != nil {
-		return errors.New(err)
+		return errorsGo.New(err)
 	}
 	ximg.XPaint(wCanvas.Id)
 	wCanvas.Map()

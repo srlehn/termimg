@@ -143,7 +143,7 @@ func DrawFuncOnlyPicture(img image.Image, cellBounds image.Rectangle) pty.DrawFu
 		scaleX = float64(imgSize.X) / float64(int(cpw)*cellBounds.Dx())
 		scaleY = float64(imgSize.Y) / float64(int(cph)*cellBounds.Dy())
 
-		if err := term.DrawWith(img, cellBounds, dr, rsz, tm); err != nil {
+		if err := term.Draw(img, cellBounds, tm, dr); err != nil {
 			return image.Rectangle{}, 0, 0, err
 		}
 		time.Sleep(waitingTimeDrawing)
@@ -187,7 +187,7 @@ func DrawFuncPictureWithFrame(img image.Image, cellBounds image.Rectangle) pty.D
 		}
 
 		// draw on the terminal over the background
-		if err := term.DrawWith(img, cellBounds, dr, rsz, tm); err != nil {
+		if err := term.Draw(img, cellBounds, tm, dr); err != nil {
 			return image.Rectangle{}, 0, 0, err
 		}
 		time.Sleep(waitingTimeDrawing)

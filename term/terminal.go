@@ -9,6 +9,7 @@ import (
 	"runtime"
 	"sort"
 	"strings"
+	"sync"
 	"unsafe"
 
 	"golang.org/x/exp/maps"
@@ -74,6 +75,7 @@ type Terminal struct {
 	drawers  []Drawer
 	resizer  Resizer
 	passages mux.Muxers
+	printMu  *sync.Mutex
 
 	ttyDefault                              TTY
 	querierDefault                          Querier
@@ -128,7 +130,7 @@ func NewTerminal(opts ...Option) (*Terminal, error) {
 	return tm, nil
 }
 func newDummyTerminal() *Terminal {
-	tm := &Terminal{proprietor: environ.NewProprietor()}
+	tm := &Terminal{proprietor: environ.NewProprietor(), printMu: &sync.Mutex{}}
 	tm.SetProperty(propkeys.EnvIsLoaded, `merge`)
 	return tm
 }
@@ -417,21 +419,6 @@ func (t *Terminal) Name() string {
 	return termName
 }
 
-func (t *Terminal) Exe() string {
-	if t == nil || t.proprietor == nil {
-		return ``
-	}
-	exe, _ := t.Property(propkeys.Executable)
-	var suffix string
-	if runtime.GOOS == `windows` {
-		suffix = `.exe`
-	}
-	if len(exe) > 0 {
-		return exe + suffix
-	}
-	return t.Name() + suffix
-}
-
 func (t *Terminal) ptyName() string {
 	if t == nil || t.proprietor == nil {
 		return ``
@@ -570,6 +557,8 @@ func (t *Terminal) Write(p []byte) (n int, err error) {
 			err = errorsGo.New(r)
 		}
 	}()
+	t.printMu.Lock()
+	defer t.printMu.Unlock()
 	return t.tty.Write(p)
 }
 func (t *Terminal) WriteString(s string) (n int, err error) {
@@ -577,33 +566,8 @@ func (t *Terminal) WriteString(s string) (n int, err error) {
 	return t.Write(b)
 }
 
-func (t *Terminal) Draw(img image.Image, bounds image.Rectangle) error { return t.draw(img, bounds) }
-
-func (t *Terminal) draw(img image.Image, bounds image.Rectangle) (e error) {
-	if t == nil {
-		return errorsGo.New(internal.ErrNilReceiver)
-	}
-	if len(t.drawers) == 0 {
-		return errorsGo.New(`no drawers set`)
-	}
-
-	defer func() {
-		r := recover()
-		if r == nil {
-			return
-		}
-		// TODO log error
-		var errs []error
-		err := errorsGo.New(r)
-		errs = append(errs, err)
-		/* if t != nil && t.tty != nil {
-			log.Println(`closing tty`) // TODO
-			err := t.tty.Close()
-			errs = append(errs, err)
-		} */
-		e = errorsGo.New(errors.Join(errs...))
-	}()
-	return t.drawers[0].Draw(img, bounds, t.resizer, t)
+func (t *Terminal) Draw(img image.Image, bounds image.Rectangle) error {
+	return Draw(img, bounds, t, nil)
 }
 
 // CellScale returns a cell size for pixel size <ptPx> to the cell size <ptDest> while maintaining the scale.
@@ -656,7 +620,14 @@ func (t *Terminal) CellSize() (width, height float64, err error) {
 	if t.surveyor == nil {
 		return 0, 0, errorsGo.New(`nil surveyor`)
 	}
-	return t.surveyor.CellSize(t.tty, t.querier, t.window, t.proprietor)
+	cpw, cph, err := t.surveyor.CellSize(t.tty, t.querier, t.window, t.proprietor)
+	if err != nil {
+		return 0, 0, err
+	}
+	if cpw < 1 || cph < 1 {
+		return 0, 0, errorsGo.New(`CellSize failed`)
+	}
+	return cpw, cph, nil
 }
 
 func (t *Terminal) SizeInCells() (width, height uint, err error) {
@@ -707,6 +678,34 @@ func (t *Terminal) Window() wm.Window {
 		return nil
 	}
 	return t.window
+}
+
+func (t *Terminal) Resizer() Resizer { return t.resizer }
+func (t *Terminal) NewCanvas(bounds image.Rectangle) (*Canvas, error) {
+	if t == nil {
+		return nil, errorsGo.New(internal.ErrNilReceiver)
+	}
+	cpw, cph, err := t.CellSize()
+	if err != nil {
+		return nil, err
+	}
+	boundsPixels := image.Rectangle{
+		Min: image.Point{
+			X: int(float64(bounds.Min.X) * cpw),
+			Y: int(float64(bounds.Min.Y) * cph),
+		},
+		Max: image.Point{
+			X: int(float64(bounds.Max.X) * cpw),
+			Y: int(float64(bounds.Max.Y) * cph),
+		}}
+	c := &Canvas{
+		terminal:     t,
+		bounds:       bounds,
+		boundsPixels: boundsPixels,
+		lastSetX:     -2,
+		drawing:      image.NewRGBA(image.Rect(0, 0, boundsPixels.Dx(), boundsPixels.Dy())),
+	}
+	return c, nil
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -7,7 +7,7 @@ import (
 	"math"
 	"strings"
 
-	"github.com/go-errors/errors"
+	errorsGo "github.com/go-errors/errors"
 
 	"github.com/srlehn/termimg/internal"
 	"github.com/srlehn/termimg/term"
@@ -37,16 +37,16 @@ func (d *drawerGeneric2) IsApplicable(inp term.DrawerCheckerInput) bool {
 	return true
 }
 
-func (d *drawerGeneric2) Draw(img image.Image, bounds image.Rectangle, rsz term.Resizer, tm *term.Terminal) error {
+func (d *drawerGeneric2) Draw(img image.Image, bounds image.Rectangle, tm *term.Terminal) error {
 	if d == nil || tm == nil || img == nil {
-		return errors.New(`nil parameter`)
+		return errorsGo.New(`nil parameter`)
 	}
 	timg, ok := img.(*term.Image)
 	if !ok {
 		timg = term.NewImage(img)
 	}
 	if timg == nil {
-		return errors.New(internal.ErrNilImage)
+		return errorsGo.New(internal.ErrNilImage)
 	}
 
 	var (
@@ -57,6 +57,10 @@ func (d *drawerGeneric2) Draw(img image.Image, bounds image.Rectangle, rsz term.
 		bounds.Min.X*int(cellWidthPixels), bounds.Min.Y*int(cellHeightPixels),
 		bounds.Max.X*int(cellWidthPixels), bounds.Max.Y*int(cellHeightPixels),
 	)
+	rsz := tm.Resizer()
+	if rsz == nil {
+		return errorsGo.New(`nil resizer`)
+	}
 	if err := timg.Fit(bounds, rsz, tm); err != nil {
 		return err
 	}

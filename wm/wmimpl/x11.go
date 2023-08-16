@@ -139,7 +139,6 @@ func (c *connX11) getWindows() ([]*windowX11, error) {
 	for _, w := range windows {
 		if xidPIDMap != nil {
 			if pid, ok := xidPIDMap[uint32(w.id)]; ok {
-				util.Println(w.id, w.pid)
 				w.pid = uint64(pid)
 			}
 		}

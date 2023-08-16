@@ -80,6 +80,7 @@ func showFunc(cmd *cobra.Command, args []string) func() error {
 		opts := []term.Option{
 			termimg.DefaultConfig,
 			term.SetPTYName(ptyName),
+			term.SetResizer(rsz),
 		}
 		tm, err := term.NewTerminal(opts...)
 		if err != nil {
@@ -105,7 +106,7 @@ func showFunc(cmd *cobra.Command, args []string) func() error {
 		if showGrid {
 			tm.WriteString(testutil.ChessPattern(resizeArea(bounds, 3), false))
 		}
-		if err := dr.Draw(termimg.NewImageFileName(showImage), bounds, rsz, tm); err != nil {
+		if err := dr.Draw(termimg.NewImageFileName(showImage), bounds, tm); err != nil {
 			return err
 		}
 

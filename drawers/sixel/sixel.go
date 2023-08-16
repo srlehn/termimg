@@ -6,7 +6,7 @@ import (
 	"image"
 	"strings"
 
-	"github.com/go-errors/errors"
+	errorsGo "github.com/go-errors/errors"
 
 	sixel "github.com/mattn/go-sixel"
 
@@ -68,18 +68,22 @@ func (d *drawerSixel) IsApplicable(inp term.DrawerCheckerInput) bool {
 	return false
 }
 
-func (d *drawerSixel) Draw(img image.Image, bounds image.Rectangle, rsz term.Resizer, tm *term.Terminal) error {
+func (d *drawerSixel) Draw(img image.Image, bounds image.Rectangle, tm *term.Terminal) error {
 	if d == nil || tm == nil || img == nil {
-		return errors.New(`nil parameter`)
+		return errorsGo.New(`nil parameter`)
 	}
 	timg, ok := img.(*term.Image)
 	if !ok {
 		timg = term.NewImage(img)
 	}
 	if timg == nil {
-		return errors.New(internal.ErrNilImage)
+		return errorsGo.New(internal.ErrNilImage)
 	}
 
+	rsz := tm.Resizer()
+	if rsz == nil {
+		return errorsGo.New(`nil resizer`)
+	}
 	if err := timg.Fit(bounds, rsz, tm); err != nil {
 		return err
 	}
@@ -96,7 +100,7 @@ func (d *drawerSixel) Draw(img image.Image, bounds image.Rectangle, rsz term.Res
 
 func (d *drawerSixel) getInbandString(timg *term.Image, bounds image.Rectangle, term *term.Terminal) (string, error) {
 	if timg == nil {
-		return ``, errors.New(internal.ErrNilImage)
+		return ``, errorsGo.New(internal.ErrNilImage)
 	}
 	sixelString, err := timg.GetInband(bounds, d, term)
 	if err == nil {

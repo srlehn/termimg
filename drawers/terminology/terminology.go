@@ -5,7 +5,7 @@ import (
 	"image"
 	"strings"
 
-	"github.com/go-errors/errors"
+	errorsGo "github.com/go-errors/errors"
 
 	"github.com/srlehn/termimg/internal"
 	"github.com/srlehn/termimg/internal/encoder/encpng"
@@ -26,21 +26,25 @@ func (d *drawerTerminology) IsApplicable(inp term.DrawerCheckerInput) bool {
 	return inp != nil && inp.Name() == `terminology`
 }
 
-func (d *drawerTerminology) Draw(img image.Image, bounds image.Rectangle, rsz term.Resizer, tm *term.Terminal) error {
+func (d *drawerTerminology) Draw(img image.Image, bounds image.Rectangle, tm *term.Terminal) error {
 	if d == nil {
-		return errors.New(internal.ErrNilReceiver)
+		return errorsGo.New(internal.ErrNilReceiver)
 	}
 	if tm == nil || img == nil {
-		return errors.New(internal.ErrNilParam)
+		return errorsGo.New(internal.ErrNilParam)
 	}
 	timg, ok := img.(*term.Image)
 	if !ok {
 		timg = term.NewImage(img)
 	}
 	if timg == nil {
-		return errors.New(internal.ErrNilImage)
+		return errorsGo.New(internal.ErrNilImage)
 	}
 
+	rsz := tm.Resizer()
+	if rsz == nil {
+		return errorsGo.New(`nil resizer`)
+	}
 	err := timg.Fit(bounds, rsz, tm)
 	if err != nil {
 		return err
@@ -57,19 +61,19 @@ func (d *drawerTerminology) Draw(img image.Image, bounds image.Rectangle, rsz te
 
 func (d *drawerTerminology) getInbandString(timg *term.Image, bounds image.Rectangle, term *term.Terminal) (string, error) {
 	if timg == nil {
-		return ``, errors.New(internal.ErrNilImage)
+		return ``, errorsGo.New(internal.ErrNilImage)
 	}
 	terminologyString, err := timg.GetInband(bounds, d, term)
 	if err == nil {
 		return terminologyString, nil
 	}
 	if timg.Cropped == nil {
-		return ``, errors.New(internal.ErrNilImage)
+		return ``, errorsGo.New(internal.ErrNilImage)
 	}
 	w, h := uint(bounds.Dx()), uint(bounds.Dy())
 	if w > 511 || h > 511 {
 		// TODO tile image
-		return ``, errors.New(internal.ErrNotImplemented)
+		return ``, errorsGo.New(internal.ErrNotImplemented)
 	}
 	_, err = timg.SaveAsFile(term, `png`, &encpng.PngEncoder{})
 	if err != nil {
@@ -97,13 +101,13 @@ func (d *drawerTerminology) getInbandString(timg *term.Image, bounds image.Recta
 	)
 	_, err = b.WriteString(mux.Wrap(fmt.Sprintf("\033}is"+replaceChar+"%d;%d;%s%s\000", w, h, hyperlink, timg.FileName), term))
 	if err != nil {
-		return ``, errors.New(err)
+		return ``, errorsGo.New(err)
 	}
 	lineArea := mux.Wrap("\033}ib\000"+strings.Repeat(replaceChar, int(w))+"\033}ie\000\n", term)
 	for y := 0; y < int(h); y++ {
 		_, err = b.WriteString(fmt.Sprintf("\033[%d;%dH%s", bounds.Min.Y+1+y, bounds.Min.X+1, lineArea))
 		if err != nil {
-			return ``, errors.New(err)
+			return ``, errorsGo.New(err)
 		}
 	}
 	terminologyString = b.String()

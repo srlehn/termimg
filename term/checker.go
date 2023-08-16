@@ -282,7 +282,7 @@ func (c *termCheckerCore) NewTerminal(opts ...Option) (*Terminal, error) {
 		}
 		return os.RemoveAll(tempDir)
 	})
-	tm.addClosers(tm.tty, tm.querier, tm.windowProvider)
+	tm.addClosers(tm.tty, tm.querier, tm.window)
 	for _, dr := range drawers {
 		tm.addClosers(dr)
 	}

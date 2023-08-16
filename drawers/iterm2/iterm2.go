@@ -9,7 +9,7 @@ import (
 	"image/png"
 	"strconv"
 
-	"github.com/go-errors/errors"
+	errorsGo "github.com/go-errors/errors"
 
 	"github.com/srlehn/termimg/internal"
 	"github.com/srlehn/termimg/internal/propkeys"
@@ -58,18 +58,22 @@ func (d *drawerITerm2) IsApplicable(inp term.DrawerCheckerInput) bool {
 	}
 }
 
-func (d *drawerITerm2) Draw(img image.Image, bounds image.Rectangle, rsz term.Resizer, tm *term.Terminal) error {
+func (d *drawerITerm2) Draw(img image.Image, bounds image.Rectangle, tm *term.Terminal) error {
 	if d == nil || tm == nil || img == nil {
-		return errors.New(`nil parameter`)
+		return errorsGo.New(`nil parameter`)
 	}
 	timg, ok := img.(*term.Image)
 	if !ok {
 		timg = term.NewImage(img)
 	}
 	if timg == nil {
-		return errors.New(internal.ErrNilImage)
+		return errorsGo.New(internal.ErrNilImage)
 	}
 
+	rsz := tm.Resizer()
+	if rsz == nil {
+		return errorsGo.New(`nil resizer`)
+	}
 	if err := timg.Fit(bounds, rsz, tm); err != nil {
 		return err
 	}
@@ -80,7 +84,7 @@ func (d *drawerITerm2) Draw(img image.Image, bounds image.Rectangle, rsz term.Re
 		return err
 	}
 	if tcw == 0 || tch == 0 {
-		return errors.New("could not query terminal dimensions")
+		return errorsGo.New("could not query terminal dimensions")
 	}
 
 	buf := new(bytes.Buffer)

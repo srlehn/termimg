@@ -6,8 +6,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/go-errors/errors"
 	errorsGo "github.com/go-errors/errors"
+
 	"github.com/srlehn/termimg/wm"
 )
 
@@ -17,14 +17,14 @@ func SizeInCellsAndPixels(tty TTY) (widthCells, heightCells, widthPixels, height
 		SizePixel() (cx int, cy int, px int, py int, e error)
 	})
 	if !ok {
-		return 0, 0, 0, 0, errors.New(`SizePixel() not implemented`)
+		return 0, 0, 0, 0, errorsGo.New(`SizePixel() not implemented`)
 	}
 	cxi, cyi, pxi, pyi, err := sizerInCellsAndPixels.SizePixel()
 	if err != nil {
 		return 0, 0, 0, 0, err
 	}
 	if cxi < 0 || cyi < 0 || pxi < 0 || pyi < 0 {
-		return 0, 0, 0, 0, errors.New(`negative integer`)
+		return 0, 0, 0, 0, errorsGo.New(`negative integer`)
 	}
 	return uint(cxi), uint(cyi), uint(pxi), uint(pyi), err
 }
@@ -48,7 +48,7 @@ func SizeInCellsQuery(qu Querier, tty TTY) (widthCells, heightCells uint, e erro
 	q := strings.Split(repl, `;`)
 
 	if len(q) != 3 {
-		return 0, 0, errors.New(`unknown format`)
+		return 0, 0, errorsGo.New(`unknown format`)
 	}
 
 	var x, y uint
@@ -57,10 +57,10 @@ func SizeInCellsQuery(qu Querier, tty TTY) (widthCells, heightCells uint, e erro
 			x = uint(xx)
 			y = uint(yy)
 		} else {
-			return 0, 0, errors.New(err)
+			return 0, 0, errorsGo.New(err)
 		}
 	} else {
-		return 0, 0, errors.New(err)
+		return 0, 0, errorsGo.New(err)
 	}
 
 	return x, y, nil
@@ -84,7 +84,7 @@ func SizeInPixelsQuery(qu Querier, tty TTY) (widthPixels, heightPixels uint, e e
 	q := strings.Split(repl, `;`)
 
 	if len(q) != 3 {
-		return 0, 0, errors.New(`unknown format`)
+		return 0, 0, errorsGo.New(`unknown format`)
 	}
 
 	var x, y uint
@@ -93,10 +93,10 @@ func SizeInPixelsQuery(qu Querier, tty TTY) (widthPixels, heightPixels uint, e e
 			x = uint(xx)
 			y = uint(yy)
 		} else {
-			return 0, 0, errors.New(err)
+			return 0, 0, errorsGo.New(err)
 		}
 	} else {
-		return 0, 0, errors.New(err)
+		return 0, 0, errorsGo.New(err)
 	}
 
 	return x, y, nil
@@ -131,7 +131,7 @@ func GetCursorQuery(qu Querier, tty TTY) (widthCells, heightCells uint, err erro
 	q := strings.Split(repl, `;`)
 
 	if len(q) != 2 {
-		return 0, 0, errors.New(`unknown format`)
+		return 0, 0, errorsGo.New(`unknown format`)
 	}
 
 	var x, y uint
@@ -140,10 +140,10 @@ func GetCursorQuery(qu Querier, tty TTY) (widthCells, heightCells uint, err erro
 			x = uint(xx)
 			y = uint(yy)
 		} else {
-			return 0, 0, errors.New(err)
+			return 0, 0, errorsGo.New(err)
 		}
 	} else {
-		return 0, 0, errors.New(err)
+		return 0, 0, errorsGo.New(err)
 	}
 
 	return x, y, nil

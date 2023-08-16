@@ -43,7 +43,7 @@ func DrawFuncOnlyPicture(img image.Image, cellBounds image.Rectangle) DrawFunc {
 		scaleX = float64(imgSize.X) / float64(int(cpw)*cellBounds.Dx())
 		scaleY = float64(imgSize.Y) / float64(int(cph)*cellBounds.Dy())
 
-		if err := term.DrawWith(img, cellBounds, dr, rsz, tm); err != nil {
+		if err := term.Draw(img, cellBounds, tm, dr); err != nil {
 			return image.Rectangle{}, 0, 0, err
 		}
 		time.Sleep(waitingTimeDrawing)

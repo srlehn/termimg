@@ -8,7 +8,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/go-errors/errors"
+	errorsGo "github.com/go-errors/errors"
 
 	"github.com/srlehn/termimg/internal"
 	"github.com/srlehn/termimg/internal/encoder/encpng"
@@ -27,19 +27,23 @@ func (d *drawerBraille) New() term.Drawer { return &drawerBraille{} }
 
 func (d *drawerBraille) IsApplicable(inp term.DrawerCheckerInput) bool { return true }
 
-func (d *drawerBraille) Draw(img image.Image, bounds image.Rectangle, rsz term.Resizer, tm *term.Terminal) error {
+func (d *drawerBraille) Draw(img image.Image, bounds image.Rectangle, tm *term.Terminal) error {
 	if d == nil || tm == nil || img == nil {
-		return errors.New(`nil parameter`)
+		return errorsGo.New(`nil parameter`)
 	}
 	timg, ok := img.(*term.Image)
 	if !ok {
 		timg = term.NewImage(img)
 	}
 	if timg == nil {
-		return errors.New(internal.ErrNilImage)
+		return errorsGo.New(internal.ErrNilImage)
 	}
 
 	boundsBraille := image.Rect(bounds.Min.X*2, bounds.Min.Y*4, bounds.Max.X*2, bounds.Max.Y*4)
+	rsz := tm.Resizer()
+	if rsz == nil {
+		return errorsGo.New(`nil resizer`)
+	}
 	if err := timg.Fit(bounds, rsz, tm); err != nil {
 		return err
 	}

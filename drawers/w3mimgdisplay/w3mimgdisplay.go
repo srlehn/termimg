@@ -7,7 +7,7 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/go-errors/errors"
+	errorsGo "github.com/go-errors/errors"
 	"github.com/jezek/xgb/xproto"
 	"github.com/srlehn/xgbutil"
 	"github.com/srlehn/xgbutil/xgraphics"
@@ -72,9 +72,9 @@ func (d *drawerW3MImgDisplay) IsApplicable(inp term.DrawerCheckerInput) bool {
 	return false
 }
 
-func (d *drawerW3MImgDisplay) Draw(img image.Image, bounds image.Rectangle, rsz term.Resizer, tm *term.Terminal) error {
+func (d *drawerW3MImgDisplay) Draw(img image.Image, bounds image.Rectangle, tm *term.Terminal) error {
 	if d == nil || tm == nil || img == nil {
-		return errors.New(`nil parameter`)
+		return errorsGo.New(`nil parameter`)
 	}
 	var (
 		termOffSet image.Point
@@ -85,9 +85,13 @@ func (d *drawerW3MImgDisplay) Draw(img image.Image, bounds image.Rectangle, rsz 
 		timg = term.NewImage(img)
 	}
 	if timg == nil {
-		return errors.New(internal.ErrNilImage)
+		return errorsGo.New(internal.ErrNilImage)
 	}
 
+	rsz := tm.Resizer()
+	if rsz == nil {
+		return errorsGo.New(`nil resizer`)
+	}
 	if err := timg.Fit(bounds, rsz, tm); err != nil {
 		return err
 	}
@@ -120,10 +124,10 @@ func (d *drawerW3MImgDisplay) Draw(img image.Image, bounds image.Rectangle, rsz 
 		}
 		connXU, okXU := conn.Conn().(*xgbutil.XUtil)
 		if !okXU {
-			return errors.New(internal.ErrPlatformNotSupported)
+			return errorsGo.New(internal.ErrPlatformNotSupported)
 		}
 		if connXU == nil {
-			return errors.New(`nil connection`)
+			return errorsGo.New(`nil connection`)
 		}
 		termName := tm.Name()
 		tChk := term.GetRegTermChecker(termName)
@@ -189,7 +193,7 @@ exc:
 	cmd := exec.Command(exeW3MImgDisplay)
 	cmd.Stdin = strings.NewReader(w3mImgDisplayString)
 	if err := cmd.Run(); err != nil {
-		return errors.New(err)
+		return errorsGo.New(err)
 	}
 
 	timg.SetPosObject(bounds, w3mImgDisplayString, d, tm)

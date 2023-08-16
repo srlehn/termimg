@@ -1,2 +1,3 @@
-// TODO add some documentation
 package termimg
+
+// TODO add some documentation

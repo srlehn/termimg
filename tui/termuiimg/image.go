@@ -59,7 +59,7 @@ func (m *Image) Draw(buf *termui.Buffer) {
 		pr(fmt.Sprintf("%q %v\n", repl, errQu), m, buf)
 	*/
 
-	err := term.Draw(m.image, m.Block.Inner, m.cfg.rsz, m.cfg.term)
+	err := term.Draw(m.image, m.Block.Inner, m.cfg.term, nil)
 	if err != nil {
 		pr(fmt.Sprintf("err %v\n", err), m, buf)
 		return
@@ -78,7 +78,6 @@ func (m *Image) Close() error {
 
 type config struct {
 	term *term.Terminal
-	rsz  term.Resizer
 }
 
 var configDefault *config
@@ -107,7 +106,6 @@ func conf() (*config, error) {
 
 	configDefault = &config{
 		term: tm,
-		rsz:  rsz,
 	}
 
 	return configDefault, nil

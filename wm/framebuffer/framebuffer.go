@@ -9,6 +9,7 @@ import (
 	"errors"
 	"image"
 	"image/color"
+	"image/draw"
 	"os"
 	"syscall"
 	"unsafe"
@@ -78,7 +79,7 @@ func (fb *Framebuffer) Bounds() image.Rectangle {
 
 func (fb *Framebuffer) At(x, y int) color.Color {
 	if fb == nil || !(image.Point{x, y}.In(fb.Bounds())) {
-		return nil
+		return color.RGBA{}
 	}
 	offset := (int(fb.vinfo.Xoffset)+x)*(int(fb.vinfo.Bits_per_pixel)/8) +
 		(int(fb.vinfo.Yoffset)+y)*int(fb.finfo.Line_length)
@@ -91,12 +92,15 @@ func (fb *Framebuffer) At(x, y int) color.Color {
 	return c
 }
 
+var _ draw.Image = (*Framebuffer)(nil)
+
 // Set changes pixel at x, y to specified color.
 func (fb *Framebuffer) Set(x, y int, c color.Color) {
 	if fb == nil || c == nil || !(image.Point{x, y}.In(fb.Bounds())) {
 		return
 	}
-	offset := (int(fb.vinfo.Xoffset)+x)*(int(fb.vinfo.Bits_per_pixel)/8) + (int(fb.vinfo.Yoffset)+y)*int(fb.finfo.Line_length)
+	offset := (int(fb.vinfo.Xoffset)+x)*(int(fb.vinfo.Bits_per_pixel)/8) +
+		(int(fb.vinfo.Yoffset)+y)*int(fb.finfo.Line_length)
 	red, green, blue, alpha := c.RGBA()
 	fb.data[offset] = byte(blue)
 	fb.data[offset+1] = byte(green)

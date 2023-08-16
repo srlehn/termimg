@@ -9,5 +9,5 @@ import (
 )
 
 func createWindowConsole(env environ.Proprietor, name, class, instance string, isWindow wm.IsWindowFunc) wm.Window {
-	return wminternal.WindowDummy{}
+	return &wminternal.WindowDummy{}
 }

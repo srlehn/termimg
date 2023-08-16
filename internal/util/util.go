@@ -59,6 +59,9 @@ func AnyOf[T any](objs ...T) (_ T, found bool) {
 }
 
 func TryClose(obj any) error {
+	if obj == nil {
+		return nil
+	}
 	closer, ok := any(obj).(interface{ Close() error })
 	if ok {
 		return closer.Close()

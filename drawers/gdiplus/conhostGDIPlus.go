@@ -61,7 +61,7 @@ func (d *drawerGDI) Close() error {
 	}
 	return errors.Join(errs...)
 }
-func (d *drawerGDI) Draw(img image.Image, bounds image.Rectangle, rsz term.Resizer, tm *term.Terminal) error {
+func (d *drawerGDI) Draw(img image.Image, bounds image.Rectangle, tm *term.Terminal) error {
 	if d == nil || tm == nil || img == nil {
 		return errorsGo.New(`nil parameter`)
 	}
@@ -76,6 +76,10 @@ func (d *drawerGDI) Draw(img image.Image, bounds image.Rectangle, rsz term.Resiz
 		return errorsGo.New(internal.ErrNilImage)
 	}
 
+	rsz := tm.Resizer()
+	if rsz == nil {
+		return errorsGo.New(`nil resizer`)
+	}
 	err := timg.Fit(bounds, rsz, tm)
 	if err != nil {
 		return err
@@ -91,11 +95,11 @@ func (d *drawerGDI) Draw(img image.Image, bounds image.Rectangle, rsz term.Resiz
 		close   func() error
 	)
 
-	if timg.DrawerSpec == nil {
-		timg.DrawerSpec = make(map[string]any)
+	sp, err := timg.GetDrawerObject(d)
+	if err != nil {
+		return err
 	}
-	sp, exists := timg.DrawerSpec[d.Name()]
-	if exists {
+	if sp != nil {
 		spt, okTyped := sp.(*GDIImage)
 		if !okTyped || spt == nil {
 			return errorsGo.New(fmt.Sprintf(`term.DrawerSpec[%s] (%T) is nil or not of type %T`, d.Name(), sp, &GDIImage{}))
@@ -123,12 +127,12 @@ createBitmap:
 			}
 		} else {
 			bytBuf := new(bytes.Buffer)
-			if err = png.Encode(bytBuf, timg.Fitted); err != nil {
+			if err = png.Encode(bytBuf, timg.Cropped); err != nil {
 				return errorsGo.New(err)
 			}
 			timg.Encoded = bytBuf.Bytes()
 			if len(timg.Encoded) == 0 {
-				return errors.New(`image encoding failed`)
+				return errorsGo.New(`image encoding failed`)
 			}
 			goto createBitmap
 		}
@@ -137,7 +141,7 @@ createBitmap:
 
 		// create HBITMAP
 		if status := win.GdipCreateHBITMAPFromBitmap((*win.GpBitmap)(gpBmp), &hBmp, 0); status != win.Ok {
-			return errors.New(fmt.Sprintf("GdipCreateHBITMAPFromBitmap failed with status '%s'", status))
+			return errorsGo.New(fmt.Sprintf("GdipCreateHBITMAPFromBitmap failed with status '%s'", status))
 		}
 		timg.OnClose(func() error { _ = win.DeleteObject(win.HGDIOBJ(hBmp)); return nil })
 		spTyped.hBitmap = &hBmp
@@ -147,19 +151,22 @@ createBitmap:
 		hdcMem = win.CreateCompatibleDC(termDC)
 		hBmpOld = win.SelectObject(hdcMem, win.HGDIOBJ(hBmp))
 		if hBmpOld == 0 {
-			return errors.New("SelectObject failed")
+			return errorsGo.New("SelectObject failed")
 		}
 		timg.OnClose(func() error { _ = win.SelectObject(hdcMem, hBmpOld); return nil })
 		timg.OnClose(func() error { _ = win.ReleaseDC(0, hdcMem); return nil })
 		spTyped.dc = hdcMem
 
-		timg.DrawerSpec[d.Name()] = spTyped
+		// timg.DrawerSpec[d.Name()] = spTyped // TODO rm
+		if err := timg.SetPosObject(image.Rectangle{}, spTyped, d, tm); err != nil {
+			return err
+		}
 	}
 
 draw:
 	// TODO: win.HALFTONE or win.COLORONCOLOR?
 	if 0 == win.SetStretchBltMode(termDC, win.COLORONCOLOR) {
-		return errors.New("SetStretchBltMode")
+		return errorsGo.New("SetStretchBltMode")
 	}
 	if !win.StretchBlt(
 		termDC, int32(bounds.Min.X*8), int32(bounds.Min.Y*16), int32(bounds.Dx()*8), int32(bounds.Dy()*16),

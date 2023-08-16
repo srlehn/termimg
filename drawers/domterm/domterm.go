@@ -8,7 +8,7 @@ import (
 	"image"
 	"image/jpeg"
 
-	"github.com/go-errors/errors"
+	errorsGo "github.com/go-errors/errors"
 
 	"github.com/srlehn/termimg/internal"
 	"github.com/srlehn/termimg/mux"
@@ -28,19 +28,19 @@ func (d *drawerDomTerm) IsApplicable(inp term.DrawerCheckerInput) bool {
 	return inp != nil && inp.Name() == `domterm`
 }
 
-func (d *drawerDomTerm) Draw(img image.Image, bounds image.Rectangle, rsz term.Resizer, tm *term.Terminal) error {
+func (d *drawerDomTerm) Draw(img image.Image, bounds image.Rectangle, tm *term.Terminal) error {
 	if d == nil || tm == nil || img == nil {
-		return errors.New(`nil parameter`)
+		return errorsGo.New(`nil parameter`)
 	}
 	timg, ok := img.(*term.Image)
 	if !ok {
 		timg = term.NewImage(img)
 	}
 	if timg == nil {
-		return errors.New(internal.ErrNilImage)
+		return errorsGo.New(internal.ErrNilImage)
 	}
 
-	domTermString, err := d.getInbandString(timg, bounds, rsz, tm)
+	domTermString, err := d.getInbandString(timg, bounds, tm)
 	if err != nil {
 		return err
 	}
@@ -48,13 +48,17 @@ func (d *drawerDomTerm) Draw(img image.Image, bounds image.Rectangle, rsz term.R
 	return nil
 }
 
-func (d *drawerDomTerm) getInbandString(timg *term.Image, bounds image.Rectangle, rsz term.Resizer, tm *term.Terminal) (string, error) {
+func (d *drawerDomTerm) getInbandString(timg *term.Image, bounds image.Rectangle, tm *term.Terminal) (string, error) {
 	if timg == nil {
-		return ``, errors.New(internal.ErrNilImage)
+		return ``, errorsGo.New(internal.ErrNilImage)
 	}
 	domTermString, err := timg.GetInband(bounds, d, tm)
 	if err == nil {
 		return domTermString, nil
+	}
+	rsz := tm.Resizer()
+	if rsz == nil {
+		return ``, errorsGo.New(`nil resizer`)
 	}
 	if err := timg.Fit(bounds, rsz, tm); err != nil {
 		return ``, err
