@@ -143,6 +143,7 @@ func (c *Canvas) Video(dur time.Duration) chan<- image.Image {
 		return c.vid
 	}
 	c.vid = make(chan image.Image)
+	_ = c.terminal.SetOptions(TUIMode)
 	// TODO count miss/success ratio, avg draw time, etc
 	go func() {
 		var imgLast image.Image
