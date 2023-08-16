@@ -27,6 +27,7 @@ import (
 	"github.com/srlehn/termimg/internal/util"
 	"github.com/srlehn/termimg/internal/wminternal"
 	"github.com/srlehn/termimg/wm"
+	"github.com/srlehn/termimg/wm/x11"
 )
 
 // connX11 ...
@@ -88,6 +89,18 @@ func (c *connX11) DisplayImage(img image.Image, windowName string) {
 	ximg := xgraphics.NewConvert(c.XUtil, img)
 	_ = ximg.XShowExtra(windowName, true)
 	xevent.Main(c.XUtil)
+}
+
+func (c *connX11) Resources() (environ.Proprietor, error) {
+	xRes, err := x11.XResources(c.XUtil)
+	if err != nil {
+		return nil, err
+	}
+	pr := environ.NewProprietor()
+	for _, res := range xRes {
+		pr.SetProperty(propkeys.XResourcesPrefix+res[0], res[1])
+	}
+	return pr, nil
 }
 
 func (c *connX11) getWindows() ([]*windowX11, error) {

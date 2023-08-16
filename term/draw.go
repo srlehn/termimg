@@ -79,7 +79,7 @@ func drawWith(img image.Image, bounds image.Rectangle, term *Terminal, dr Drawer
 
 var _ draw.Image = (*Canvas)(nil)
 
-var canvasScreenshotRefreshDuration = 100 * time.Millisecond
+var canvasScreenshotRefreshDuration = 100 * time.Millisecond // TODO add terminal Option for setting duration
 
 type Canvas struct {
 	terminal            *Terminal
@@ -89,7 +89,7 @@ type Canvas struct {
 	drawing             draw.Image
 	lastScreenshotTaken time.Time
 	lastSetX            int // draw.Draw: for y{for x{}}
-	vid                 <-chan image.Image
+	vid                 chan image.Image
 }
 
 func (c *Canvas) Set(x, y int, col color.Color) {
@@ -135,14 +135,19 @@ func (c *Canvas) At(x, y int) color.Color {
 	}
 	return c.screenshot.At(x, y)
 }
+func (c *Canvas) CellArea() image.Rectangle  { return c.bounds }
 func (c *Canvas) Offset() image.Point        { return c.boundsPixels.Min }
 func (c *Canvas) Draw(img image.Image) error { return Draw(img, c.bounds, c.terminal, nil) }
-func (c *Canvas) Video(vid <-chan image.Image, dur time.Duration) {
-	// TODO count misses
+func (c *Canvas) Video(dur time.Duration) chan<- image.Image {
+	if c.vid != nil {
+		return c.vid
+	}
+	c.vid = make(chan image.Image)
+	// TODO count miss/success ratio, avg draw time, etc
 	go func() {
 		var imgLast image.Image
 		var tm time.Time
-		for img := range vid {
+		for img := range c.vid {
 			util.TryClose(imgLast)
 			tm = time.Now()
 			_ = Draw(img, c.bounds, c.terminal, nil) // TODO log
@@ -153,4 +158,5 @@ func (c *Canvas) Video(vid <-chan image.Image, dur time.Duration) {
 			imgLast = img
 		}
 	}()
+	return c.vid
 }

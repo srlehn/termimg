@@ -203,6 +203,13 @@ func (c *termCheckerCore) NewTerminal(opts ...Option) (*Terminal, error) {
 			w = tm.windowProviderDefault(c.parent.CheckIsWindow, tm.proprietor)
 		}
 	}
+	if w != nil {
+		conn := w.WindowConn()
+		if conn != nil {
+			res, _ := conn.Resources()
+			tm.proprietor.Merge(res)
+		}
+	}
 
 	drCkInp := &drawerCheckerInput{
 		Proprietor: tm.proprietor,

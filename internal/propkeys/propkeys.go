@@ -9,6 +9,7 @@ const (
 	CheckTermWindowIsPrefix     = CheckTermPrefix + `WindowIs_`
 	CheckTermCompletePrefix     = CheckTermPrefix + `Complete_`
 	EnvPrefix                   = `env_`
+	XResourcesPrefix            = `xResources_`
 	PreservedOuterEnvPrefix     = GeneralPrefix + `envOuterPreserved_`
 	GeneralPrefix               = `general_`
 	EnvIsLoaded                 = GeneralPrefix + `envIsLoaded`

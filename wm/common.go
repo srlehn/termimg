@@ -17,6 +17,7 @@ type Connection interface {
 	Conn() any
 	Windows() ([]Window, error)
 	DisplayImage(img image.Image, windowName string)
+	Resources() (environ.Proprietor, error)
 }
 
 type Window interface {
