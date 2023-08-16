@@ -58,3 +58,5 @@ func XResources(conn *xgbutil.XUtil) ([][2]string, error) {
 	}
 	return xRes, nil
 }
+
+// TODO SCREEN_RESOURCES (xgb/randr)

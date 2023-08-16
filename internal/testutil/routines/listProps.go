@@ -9,6 +9,7 @@ import (
 	"github.com/srlehn/termimg"
 	"github.com/srlehn/termimg/internal/propkeys"
 	"github.com/srlehn/termimg/internal/util"
+	"golang.org/x/exp/slices"
 )
 
 func ListTermChecks() error {
@@ -55,6 +56,7 @@ func ListTermProps() error {
 	fmt.Fprintln(w, "query DA3 ID:\t"+prnt(propkeys.DA3ID))
 
 	fmt.Fprintln(w)
+	var atLeastOneEnvVar bool
 	for _, k := range util.MapsKeysSorted(tm.Properties()) {
 		envName, found := strings.CutPrefix(k, propkeys.EnvPrefix)
 		if !found {
@@ -62,12 +64,15 @@ func ListTermProps() error {
 		}
 		v, _ := tm.LookupEnv(envName)
 		fmt.Fprintf(w, "env %s:\t%q\n", envName, v)
+		atLeastOneEnvVar = true
 	}
 
 	{
 		passages, okPassages := tm.Property(propkeys.Passages)
 		if okPassages && len(passages) > 0 {
-			fmt.Fprintln(w)
+			if atLeastOneEnvVar {
+				fmt.Fprintln(w)
+			}
 			fmt.Fprintln(w, "muxers:\t"+passages)
 		}
 	}
@@ -75,9 +80,33 @@ func ListTermProps() error {
 	if tmw := tm.Window(); tmw != nil {
 		fmt.Fprintln(w)
 		if tmw.WindowFind() == nil {
+			windowClass := tmw.WindowClass()
 			fmt.Fprintln(w, "window name:\t"+tmw.WindowName())
-			fmt.Fprintln(w, "window class:\t"+tmw.WindowClass())
+			fmt.Fprintln(w, "window class:\t"+windowClass)
 			fmt.Fprintln(w, "window instance:\t"+tmw.WindowInstance())
+
+			var atLeastOneXRes bool
+			if len(windowClass) > 0 {
+				props := tm.Properties()
+				keys := make([]string, len(props))
+				for k := range props {
+					if rest, found := strings.CutPrefix(k, propkeys.XResourcesPrefix+windowClass); found &&
+						(strings.HasPrefix(rest, `.`) || strings.HasPrefix(rest, `*`)) {
+						if !atLeastOneXRes {
+							fmt.Fprintln(w)
+							atLeastOneXRes = true
+						}
+						keys = append(keys, k)
+					}
+				}
+				slices.Sort(keys)
+				for _, k := range keys {
+					if len(k) == 0 {
+						continue
+					}
+					fmt.Fprintf(w, "x resource %s:\t%q\n", strings.TrimPrefix(k, propkeys.XResourcesPrefix), props[k])
+				}
+			}
 		}
 	}
 
