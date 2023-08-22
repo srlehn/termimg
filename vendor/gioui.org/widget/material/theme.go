@@ -42,15 +42,16 @@ type Theme struct {
 		RadioChecked      *widget.Icon
 		RadioUnchecked    *widget.Icon
 	}
+	// Face selects the default typeface for text.
+	Face font.Typeface
 
 	// FingerSize is the minimum touch target size.
 	FingerSize unit.Dp
 }
 
-func NewTheme(fontCollection []font.FontFace) *Theme {
-	t := &Theme{
-		Shaper: text.NewShaper(fontCollection),
-	}
+// NewTheme constructs a theme (and underlying text shaper).
+func NewTheme() *Theme {
+	t := &Theme{Shaper: &text.Shaper{}}
 	t.Palette = Palette{
 		Fg:         rgb(0x000000),
 		Bg:         rgb(0xffffff),

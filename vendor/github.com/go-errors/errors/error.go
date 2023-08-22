@@ -11,7 +11,7 @@
 //
 //  package crashy
 //
-//  import "github.com/srlehn/termimg/internal/errors"
+//  import "github.com/go-errors/errors"
 //
 //  var Crashed = errors.Errorf("oh dear")
 //
@@ -26,7 +26,7 @@
 //  import (
 //      "crashy"
 //      "fmt"
-//      "github.com/srlehn/termimg/internal/errors"
+//      "github.com/go-errors/errors"
 //  )
 //
 //  func main() {

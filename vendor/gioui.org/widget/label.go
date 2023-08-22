@@ -30,6 +30,12 @@ type Label struct {
 	Truncator string
 	// WrapPolicy configures how displayed text will be broken into lines.
 	WrapPolicy text.WrapPolicy
+	// LineHeight controls the distance between the baselines of lines of text.
+	// If zero, a sensible default will be used.
+	LineHeight unit.Sp
+	// LineHeightScale applies a scaling factor to the LineHeight. If zero, a
+	// sensible default will be used.
+	LineHeightScale float32
 }
 
 // Layout the label with the given shaper, font, size, text, and material.
@@ -49,16 +55,19 @@ type TextInfo struct {
 func (l Label) LayoutDetailed(gtx layout.Context, lt *text.Shaper, font font.Font, size unit.Sp, txt string, textMaterial op.CallOp) (layout.Dimensions, TextInfo) {
 	cs := gtx.Constraints
 	textSize := fixed.I(gtx.Sp(size))
+	lineHeight := fixed.I(gtx.Sp(l.LineHeight))
 	lt.LayoutString(text.Parameters{
-		Font:       font,
-		PxPerEm:    textSize,
-		MaxLines:   l.MaxLines,
-		Truncator:  l.Truncator,
-		Alignment:  l.Alignment,
-		WrapPolicy: l.WrapPolicy,
-		MaxWidth:   cs.Max.X,
-		MinWidth:   cs.Min.X,
-		Locale:     gtx.Locale,
+		Font:            font,
+		PxPerEm:         textSize,
+		MaxLines:        l.MaxLines,
+		Truncator:       l.Truncator,
+		Alignment:       l.Alignment,
+		WrapPolicy:      l.WrapPolicy,
+		MaxWidth:        cs.Max.X,
+		MinWidth:        cs.Min.X,
+		Locale:          gtx.Locale,
+		LineHeight:      lineHeight,
+		LineHeightScale: l.LineHeightScale,
 	}, txt)
 	m := op.Record(gtx.Ops)
 	viewport := image.Rectangle{Max: cs.Max}
@@ -141,10 +150,25 @@ func (it *textIterator) processGlyph(g text.Glyph, ok bool) (_ text.Glyph, visib
 	// Compute the maximum extent to which glyphs overhang on the horizontal
 	// axis.
 	if d := g.Bounds.Min.X.Floor(); d < it.padding.Min.X {
+		// If the distance between the dot and the left edge of this glyph is
+		// less than the current padding, increase the left padding.
 		it.padding.Min.X = d
 	}
 	if d := (g.Bounds.Max.X - g.Advance).Ceil(); d > it.padding.Max.X {
+		// If the distance between the dot and the right edge of this glyph
+		// minus the logical advance of this glyph is greater than the current
+		// padding, increase the right padding.
 		it.padding.Max.X = d
+	}
+	if d := (g.Bounds.Min.Y + g.Ascent).Floor(); d < it.padding.Min.Y {
+		// If the distance between the dot and the top of this glyph is greater
+		// than the ascent of the glyph, increase the top padding.
+		it.padding.Min.Y = d
+	}
+	if d := (g.Bounds.Max.Y - g.Descent).Ceil(); d > it.padding.Max.Y {
+		// If the distance between the dot and the bottom of this glyph is greater
+		// than the descent of the glyph, increase the bottom padding.
+		it.padding.Max.Y = d
 	}
 	logicalBounds := image.Rectangle{
 		Min: image.Pt(g.X.Floor(), int(g.Y)-g.Ascent.Ceil()),

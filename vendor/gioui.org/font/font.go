@@ -3,7 +3,9 @@ Package font provides type describing font faces attributes.
 */
 package font
 
-import "github.com/go-text/typesetting/font"
+import (
+	"github.com/go-text/typesetting/font"
+)
 
 // A FontFace is a Font and a matching Face.
 type FontFace struct {
@@ -20,10 +22,12 @@ type Weight int
 
 // Font specify a particular typeface variant, style and weight.
 type Font struct {
+	// Typeface specifies the name(s) of the the font faces to try. See [Typeface]
+	// for details.
 	Typeface Typeface
-	Variant  Variant
-	Style    Style
-	// Weight is the text weight. If zero, Normal is used instead.
+	// Style specifies the kind of text style.
+	Style Style
+	// Weight is the text weight.
 	Weight Weight
 }
 
@@ -33,12 +37,40 @@ type Face interface {
 	Face() font.Face
 }
 
-// Typeface identifies a particular typeface design. The empty
-// string denotes the default typeface.
+// Typeface identifies a list of font families to attempt to use for displaying
+// a string. The syntax is a comma-delimited list of family names. In order to
+// allow for the remote possibility of needing to express a font family name
+// containing a comma, name entries may be quoted using either single or double
+// quotes. Within quotes, a literal quotation mark can be expressed by escaping
+// it with `\`. A literal backslash may be expressed by escaping it with another
+// `\`.
+//
+// Here's an example Typeface:
+//
+//	Times New Roman, Georgia, serif
+//
+// This is equivalent to the above:
+//
+//	"Times New Roman", 'Georgia', serif
+//
+// Here are some valid uses of escape sequences:
+//
+//	"Contains a literal \" doublequote", 'Literal \' Singlequote', "\\ Literal backslash", '\\ another'
+//
+// This syntax has the happy side effect that most CSS "font-family" rules are
+// valid Typefaces (without the trailing semicolon).
+//
+// Generic CSS font families are supported, and are automatically expanded to lists
+// of known font families with a matching style. The supported generic families are:
+//
+//   - fantasy
+//   - math
+//   - emoji
+//   - serif
+//   - sans-serif
+//   - cursive
+//   - monospace
 type Typeface string
-
-// Variant denotes a typeface variant such as "Mono" or "Smallcaps".
-type Variant string
 
 const (
 	Regular Style = iota
