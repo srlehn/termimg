@@ -10,7 +10,7 @@ import (
 
 	"github.com/lxn/win"
 
-	"github.com/srlehn/termimg/internal"
+	"github.com/srlehn/termimg/internal/consts"
 	"github.com/srlehn/termimg/internal/errors"
 	"github.com/srlehn/termimg/internal/wndws"
 	"github.com/srlehn/termimg/term"

@@ -5,7 +5,7 @@ package wmimpl
 import (
 	"image"
 
-	"github.com/srlehn/termimg/internal"
+	"github.com/srlehn/termimg/internal/consts"
 	"github.com/srlehn/termimg/internal/environ"
 	"github.com/srlehn/termimg/internal/errors"
 	"github.com/srlehn/termimg/internal/wminternal"
