@@ -1,12 +1,11 @@
 package internal
 
 import (
-	"errors"
 	"reflect"
 	"runtime"
 	"sync"
 
-	errorsGo "github.com/go-errors/errors"
+	"github.com/srlehn/termimg/internal/errors"
 )
 
 type Closer interface {
@@ -50,7 +49,7 @@ func (c *lifoCloser) Close() error {
 	}
 
 	c = nil
-	return errorsGo.New(errors.Join(errs...))
+	return errors.New(errors.Join(errs...))
 }
 
 func (c *lifoCloser) OnClose(onClose func() error) {
@@ -102,7 +101,7 @@ func (c *lifoCloser) AddClosers(closers ...interface{ Close() error }) {
 				delete(c.initObjs, key)
 			}()
 			if err != nil {
-				return errorsGo.New(err)
+				return errors.New(err)
 			}
 			return nil
 		})

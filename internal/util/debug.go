@@ -10,8 +10,8 @@ import (
 
 func Println(a ...any) { fmt.Println(append([]any{fileLinePrefix(2)}, a...)...) }
 
-func PrintlnAt(x, y uint, a ...any) {
-	fmt.Println(append(append([]any{storePosAndJumpToPosStr(x, y), fileLinePrefix(2)}, a...), restorePosStr)...)
+func PrintAt(x, y uint, a ...any) {
+	fmt.Print(append(append([]any{storePosAndJumpToPosStr(x, y), fileLinePrefix(2)}, a...), restorePosStr)...)
 }
 
 func Printf(format string, a ...any) { fmt.Printf(fileLinePrefix(2)+format, a...) }
@@ -58,21 +58,3 @@ func Printfj(a ...any) {
 	}
 	fmt.Println(strings.Join(strs, sep))
 }
-
-func PrintfjAt(x, y uint, a ...any) {
-	sep := "\n"
-	prefix := fileLinePrefix(2)
-	var strs []string
-	for _, o := range a {
-		b, err := json.MarshalIndent(o, ``, `  `)
-		if err != nil {
-			strs = append(strs, prefix+fmt.Sprintf("error: %q\n  %v", err.Error(), o))
-		} else {
-			strs = append(strs, prefix+string(b))
-		}
-	}
-	fmt.Println(storePosAndJumpToPosStr(x, y) + strings.Join(strs, sep) + restorePosStr)
-}
-
-// TODO PrintAt
-// util.Printf("\033[s\033[%d;%dH"+...+"\033[u", y, x)

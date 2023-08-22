@@ -9,11 +9,12 @@ import (
 	"time"
 
 	imagingOrig "github.com/disintegration/imaging"
-	"github.com/go-errors/errors"
 
 	"github.com/srlehn/termimg"
 	"github.com/srlehn/termimg/internal"
+	"github.com/srlehn/termimg/internal/consts"
 	"github.com/srlehn/termimg/internal/environ"
+	"github.com/srlehn/termimg/internal/errors"
 	"github.com/srlehn/termimg/resize/rdefault"
 	"github.com/srlehn/termimg/term"
 	"github.com/srlehn/termimg/wm"
@@ -24,10 +25,10 @@ import (
 func DrawFuncOnlyPicture(img image.Image, cellBounds image.Rectangle) DrawFunc {
 	return func(tm *term.Terminal, dr term.Drawer, rsz term.Resizer, cpw, cph uint) (areaOfInterest image.Rectangle, scaleX, scaleY float64, e error) {
 		if img == nil {
-			return image.Rectangle{}, 0, 0, errors.New(internal.ErrNilImage)
+			return image.Rectangle{}, 0, 0, errors.New(consts.ErrNilImage)
 		}
 		if tm == nil || rsz == nil {
-			return image.Rectangle{}, 0, 0, errors.New(internal.ErrNilParam)
+			return image.Rectangle{}, 0, 0, errors.New(consts.ErrNilParam)
 		}
 		if cpw == 0 || cph == 0 {
 			return image.Rectangle{}, 0, 0, errors.New(`cell box side length of 0`)
@@ -82,7 +83,7 @@ func TakeScreenshot(termName string, termProvider TermProviderFunc, drawerName s
 	go func() {
 		imgRet = <-imgRetChan
 		if imgRet == nil {
-			errRet = errors.New(internal.ErrNilImage)
+			errRet = errors.New(consts.ErrNilImage)
 		}
 		wg.Done()
 	}()
@@ -159,7 +160,7 @@ func TakeScreenshotFunc(termProvider TermProviderFunc, termChecker term.TermChec
 			ximgCropped                                         *image.NRGBA
 		)
 		if termProvider == nil || termChecker == nil || drawFunc == nil || rsz == nil || imgChan == nil {
-			errRet = errors.New(internal.ErrNilParam)
+			errRet = errors.New(consts.ErrNilParam)
 			goto end
 		}
 
@@ -174,7 +175,7 @@ func TakeScreenshotFunc(termProvider TermProviderFunc, termChecker term.TermChec
 		}
 		defer tm.Close()
 
-		conn, err = wm.NewConn()
+		conn, err = wm.NewConn(tm)
 		if err != nil {
 			errRet = err
 			goto end
@@ -242,7 +243,7 @@ func TakeScreenshotFunc(termProvider TermProviderFunc, termChecker term.TermChec
 			Add(image.Pt(int(edgeThickness), int(menuBarHeight)))
 		ximgCropped = imagingOrig.Crop(ximg, imgPosBounds)
 		if ximgCropped == nil {
-			errRet = errors.New(internal.ErrNilImage)
+			errRet = errors.New(consts.ErrNilImage)
 			goto end
 		}
 		ximgCroppedSize = ximgCropped.Bounds().Size()

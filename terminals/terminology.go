@@ -4,10 +4,11 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/go-errors/errors"
-	"github.com/srlehn/termimg/internal"
+	"github.com/srlehn/termimg/internal/consts"
 	"github.com/srlehn/termimg/internal/environ"
+	"github.com/srlehn/termimg/internal/errors"
 	"github.com/srlehn/termimg/internal/propkeys"
+	"github.com/srlehn/termimg/internal/queries"
 	"github.com/srlehn/termimg/term"
 )
 
@@ -25,39 +26,39 @@ var _ term.TermChecker = (*termCheckerTerminology)(nil)
 
 type termCheckerTerminology struct{ term.TermChecker }
 
-func (t *termCheckerTerminology) CheckExclude(ci environ.Proprietor) (mightBe bool, p environ.Proprietor) {
+func (t *termCheckerTerminology) CheckExclude(pr environ.Proprietor) (mightBe bool, p environ.Proprietor) {
 	p = environ.NewProprietor()
-	if t == nil || ci == nil {
-		p.SetProperty(propkeys.CheckTermEnvExclPrefix+termNameTerminology, term.CheckTermFailed)
+	if t == nil || pr == nil {
+		p.SetProperty(propkeys.CheckTermEnvExclPrefix+termNameTerminology, consts.CheckTermFailed)
 		return false, p
 	}
-	v, ok := ci.LookupEnv(`TERMINOLOGY`)
+	v, ok := pr.LookupEnv(`TERMINOLOGY`)
 	if ok && v == "1" {
-		p.SetProperty(propkeys.CheckTermEnvExclPrefix+termNameTerminology, term.CheckTermPassed)
+		p.SetProperty(propkeys.CheckTermEnvExclPrefix+termNameTerminology, consts.CheckTermPassed)
 		return true, p
 	}
-	p.SetProperty(propkeys.CheckTermEnvExclPrefix+termNameTerminology, term.CheckTermFailed)
+	p.SetProperty(propkeys.CheckTermEnvExclPrefix+termNameTerminology, consts.CheckTermFailed)
 	return false, p
 }
 
-func (t *termCheckerTerminology) CheckIsQuery(qu term.Querier, tty term.TTY, ci environ.Proprietor) (is bool, p environ.Proprietor) {
+func (t *termCheckerTerminology) CheckIsQuery(qu term.Querier, tty term.TTY, pr environ.Proprietor) (is bool, p environ.Proprietor) {
 	p = environ.NewProprietor()
-	if t == nil || ci == nil {
-		p.SetProperty(propkeys.CheckTermQueryIsPrefix+termNameTerminology, term.CheckTermFailed)
+	if t == nil || pr == nil {
+		p.SetProperty(propkeys.CheckTermQueryIsPrefix+termNameTerminology, consts.CheckTermFailed)
 		return false, p
 	}
-	term.QueryDeviceAttributes(qu, tty, ci, ci)
-	da3ID, _ := ci.Property(propkeys.DA3ID)
+	term.QueryDeviceAttributes(qu, tty, pr, pr)
+	da3ID, _ := pr.Property(propkeys.DA3ID)
 	var terminologyDA3ID = `~~TY` // hex encoded: `7E7E5459`
 	if da3ID != terminologyDA3ID {
-		p.SetProperty(propkeys.CheckTermQueryIsPrefix+termNameTerminology, term.CheckTermFailed)
+		p.SetProperty(propkeys.CheckTermQueryIsPrefix+termNameTerminology, consts.CheckTermFailed)
 		return false, p
 	}
-	p.SetProperty(propkeys.CheckTermQueryIsPrefix+termNameTerminology, term.CheckTermPassed)
+	p.SetProperty(propkeys.CheckTermQueryIsPrefix+termNameTerminology, consts.CheckTermPassed)
 	return true, p
 }
 
-func (t *termCheckerTerminology) Surveyor(ci environ.Proprietor) term.PartialSurveyor {
+func (t *termCheckerTerminology) Surveyor(pr environ.Proprietor) term.PartialSurveyor {
 	// return &term.SurveyorNoANSI{}
 	return &surveyorTerminology{}
 }
@@ -85,10 +86,10 @@ func (s *surveyorTerminology) CellSizeQuery(qu term.Querier, tty term.TTY) (widt
 func queryTerminalAndCellSizeTerminology(qu term.Querier, tty term.TTY) (tpw, tph, cpw, cph uint, _ error) {
 	// TODO xterm doesn't reply to this on some systems. why?
 	if qu == nil || tty == nil {
-		return 0, 0, 0, 0, errors.New(internal.ErrNilParam)
+		return 0, 0, 0, 0, errors.New(consts.ErrNilParam)
 	}
 	qsTerminologySize := "\033}qs\000"
-	qs := qsTerminologySize + term.QueryStringDA1
+	qs := qsTerminologySize + queries.DA1
 	var p term.ParserFunc = func(r rune) bool { return r == 'c' }
 	repl, err := qu.Query(qs, tty, p)
 	if err != nil {

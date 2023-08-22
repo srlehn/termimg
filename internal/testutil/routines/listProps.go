@@ -6,10 +6,12 @@ import (
 	"strings"
 	"text/tabwriter"
 
+	"golang.org/x/exp/slices"
+
 	"github.com/srlehn/termimg"
 	"github.com/srlehn/termimg/internal/propkeys"
 	"github.com/srlehn/termimg/internal/util"
-	"golang.org/x/exp/slices"
+	"github.com/srlehn/termimg/term"
 )
 
 func ListTermChecks() error {
@@ -30,81 +32,142 @@ func ListTermChecks() error {
 	return w.Flush()
 }
 
-func ListTermProps() error {
-	tm, err := termimg.Terminal()
-	if err != nil {
-		return err
-	}
-	defer tm.Close()
-	w := tabwriter.NewWriter(os.Stdout, 0, 0, 1, ' ', 0)
-	fmt.Fprintln(w, "terminal:\t"+tm.Name())
-	drawers := tm.Drawers()
-	for i := range drawers {
-		fmt.Fprintln(w, "drawer:\t"+drawers[i].Name())
-	}
-	fmt.Fprintln(w)
-	prnt := func(key string) string {
-		val, ok := tm.Property(key)
-		if ok {
-			return fmt.Sprintf("%q", val)
-		}
-		return ``
-	}
-	fmt.Fprintln(w, "query DA1 class:\t"+prnt(propkeys.DeviceClass))
-	fmt.Fprintln(w, "query DA1 attrs:\t"+prnt(propkeys.DeviceAttributes))
-	fmt.Fprintln(w, "query DA3 hex:\t"+prnt(`queryCache_G1s9MGM=`)) // DA3 hex
-	fmt.Fprintln(w, "query DA3 ID:\t"+prnt(propkeys.DA3ID))
-
-	fmt.Fprintln(w)
-	var atLeastOneEnvVar bool
-	for _, k := range util.MapsKeysSorted(tm.Properties()) {
-		envName, found := strings.CutPrefix(k, propkeys.EnvPrefix)
-		if !found {
-			continue
-		}
-		v, _ := tm.LookupEnv(envName)
-		fmt.Fprintf(w, "env %s:\t%q\n", envName, v)
-		atLeastOneEnvVar = true
-	}
-
+func ListTermProps(tm *term.Terminal, listTerm, listDrawers, listQueries, listEnv, listPassages, listWindow, listXRes bool) error {
+	var singleType bool
 	{
+		var typeCount int
+		for _, tp := range []bool{listTerm, listDrawers, listQueries, listEnv, listPassages, listWindow, listXRes} {
+			if tp {
+				typeCount++
+			}
+		}
+		if typeCount == 1 {
+			singleType = true
+		}
+	}
+
+	w := tabwriter.NewWriter(os.Stdout, 0, 0, 1, ' ', 0)
+	var needsSep bool
+	prSepNL := func() {
+		if needsSep {
+			fmt.Fprintln(w)
+		}
+		needsSep = false
+	}
+	if listTerm {
+		if singleType {
+			fmt.Fprintln(w, tm.Name())
+		} else {
+			fmt.Fprintln(w, "terminal:\t"+tm.Name())
+		}
+		needsSep = true
+	}
+
+	if listDrawers {
+		var atLeastOneDrawer bool
+		var prefix string
+		if !singleType {
+			prefix = "drawer:\t"
+		}
+		drawers := tm.Drawers()
+		for _, dr := range drawers {
+			if dr == nil {
+				continue
+			}
+			prSepNL()
+			atLeastOneDrawer = true
+			fmt.Fprintln(w, prefix+dr.Name())
+		}
+		needsSep = atLeastOneDrawer
+	}
+
+	if listQueries {
+		var prefix string
+		if !singleType {
+			prefix = "query "
+		}
+		prSepNL()
+		pr := func(name, key string) {
+			value, ok := tm.Property(key)
+			if !ok || len(value) == 0 {
+				return
+			}
+			fmt.Fprintf(w, "%s%s:\t%q\n", prefix, name, value)
+		}
+		pr(`DA1 class`, propkeys.DeviceClass)
+		pr(`DA1 attrs`, propkeys.DeviceAttributes)
+		pr(`DA3 ID`, propkeys.DA3ID)
+		pr(`DA3 ID hex`, propkeys.DA3IDHex)
+		pr(`XTVERSION`, propkeys.XTVERSION)
+		pr(`XTGETTCAP(TN)`, propkeys.XTGETTCAPSpecialTN)
+		needsSep = true
+	}
+
+	if listEnv {
+		var atLeastOneEnvVar bool
+		var prefix string
+		if !singleType {
+			prefix = "env "
+		}
+		for _, k := range util.MapsKeysSorted(tm.Properties()) {
+			envName, found := strings.CutPrefix(k, propkeys.EnvPrefix)
+			if !found {
+				continue
+			}
+			prSepNL()
+			v, _ := tm.LookupEnv(envName)
+			fmt.Fprintf(w, prefix+"%s:\t%q\n", envName, v)
+			atLeastOneEnvVar = true
+		}
+		needsSep = atLeastOneEnvVar
+	}
+
+	if listPassages {
+		var prefix string
+		if !singleType {
+			prefix = "muxers:\t"
+		}
 		passages, okPassages := tm.Property(propkeys.Passages)
 		if okPassages && len(passages) > 0 {
-			if atLeastOneEnvVar {
-				fmt.Fprintln(w)
-			}
-			fmt.Fprintln(w, "muxers:\t"+passages)
+			prSepNL()
+			fmt.Fprintln(w, prefix+passages)
+			needsSep = true
 		}
 	}
 
-	if tmw := tm.Window(); tmw != nil {
-		fmt.Fprintln(w)
-		if tmw.WindowFind() == nil {
+	if listWindow || listXRes {
+		if tmw := tm.Window(); tmw != nil && tmw.WindowFind() == nil {
 			windowClass := tmw.WindowClass()
-			fmt.Fprintln(w, "window name:\t"+tmw.WindowName())
-			fmt.Fprintln(w, "window class:\t"+windowClass)
-			fmt.Fprintln(w, "window instance:\t"+tmw.WindowInstance())
+			if listWindow {
+				prSepNL()
+				fmt.Fprintln(w, "window name:\t"+tmw.WindowName())
+				fmt.Fprintln(w, "window class:\t"+windowClass)
+				fmt.Fprintln(w, "window instance:\t"+tmw.WindowInstance())
+				needsSep = true
+			}
 
-			var atLeastOneXRes bool
-			if len(windowClass) > 0 {
-				props := tm.Properties()
-				keys := make([]string, len(props))
-				for k := range props {
-					if rest, found := strings.CutPrefix(k, propkeys.XResourcesPrefix+windowClass); found &&
-						(strings.HasPrefix(rest, `.`) || strings.HasPrefix(rest, `*`)) {
-						if !atLeastOneXRes {
-							fmt.Fprintln(w)
-							atLeastOneXRes = true
-						}
-						keys = append(keys, k)
-					}
+			if listXRes {
+				var prefix string
+				if !singleType {
+					prefix = "x resource "
 				}
-				slices.Sort(keys)
-				for _, k := range keys {
-					if len(k) == 0 {
-						continue
+				if len(windowClass) > 0 {
+					props := tm.Properties()
+					keys := make([]string, len(props))
+					for k := range props {
+						if rest, found := strings.CutPrefix(k, propkeys.XResourcesPrefix+windowClass); found &&
+							(strings.HasPrefix(rest, `.`) || strings.HasPrefix(rest, `*`)) {
+							prSepNL()
+							keys = append(keys, k)
+						}
 					}
-					fmt.Fprintf(w, "x resource %s:\t%q\n", strings.TrimPrefix(k, propkeys.XResourcesPrefix), props[k])
+					slices.Sort(keys)
+					for _, k := range keys {
+						if len(k) == 0 {
+							continue
+						}
+						fmt.Fprintf(w, prefix+"%s:\t%q\n", strings.TrimPrefix(k, propkeys.XResourcesPrefix), props[k])
+					}
 				}
 			}
 		}

@@ -6,7 +6,6 @@
 package framebuffer
 
 import (
-	"errors"
 	"image"
 	"image/color"
 	"image/draw"
@@ -14,7 +13,7 @@ import (
 	"syscall"
 	"unsafe"
 
-	errorsGo "github.com/go-errors/errors"
+	"github.com/srlehn/termimg/internal/errors"
 )
 
 // Framebuffer contains information about framebuffer.
@@ -33,22 +32,22 @@ func Init(dev string) (*Framebuffer, error) {
 	)
 	fb.dev, err = os.OpenFile(dev, os.O_RDWR, os.ModeDevice)
 	if err != nil {
-		return nil, errorsGo.New(err)
+		return nil, errors.New(err)
 	}
 	err = ioctl(fb.dev.Fd(), getFixedScreenInfo, unsafe.Pointer(&fb.finfo))
 	if err != nil {
 		fb.dev.Close()
-		return nil, errorsGo.New(err)
+		return nil, errors.New(err)
 	}
 	err = ioctl(fb.dev.Fd(), getVariableScreenInfo, unsafe.Pointer(&fb.vinfo))
 	if err != nil {
 		fb.dev.Close()
-		return nil, errorsGo.New(err)
+		return nil, errors.New(err)
 	}
 	fb.data, err = syscall.Mmap(int(fb.dev.Fd()), 0, int(fb.finfo.Smem_len+uint32(fb.finfo.Smem_start&uint64(syscall.Getpagesize()-1))), protocolRead|protocolWrite, mapShared)
 	if err != nil {
 		fb.dev.Close()
-		return nil, errorsGo.New(err)
+		return nil, errors.New(err)
 	}
 	return fb, nil
 }
@@ -60,7 +59,7 @@ func (fb *Framebuffer) Close() error {
 	}
 	err := errors.Join(syscall.Munmap(fb.data), fb.dev.Close())
 	if err != nil {
-		return errorsGo.New(err)
+		return errors.New(err)
 	}
 	return nil
 }
@@ -125,7 +124,7 @@ func ioctl(fd uintptr, cmd uintptr, data unsafe.Pointer) error {
 	_, _, errno := syscall.Syscall(syscall.SYS_IOCTL, fd, cmd, uintptr(data))
 	if errno != 0 {
 		if err := os.NewSyscallError("IOCTL", errno); err != nil {
-			return errorsGo.New(err)
+			return errors.New(err)
 		}
 		return nil
 	}

@@ -5,12 +5,10 @@
 package wmimpl
 
 import (
-	"errors"
 	"image"
 	"image/color"
 	"strconv"
 
-	errorsGo "github.com/go-errors/errors"
 	"github.com/jezek/xgb"
 	"github.com/jezek/xgb/res"
 	"github.com/jezek/xgb/xproto"
@@ -21,8 +19,9 @@ import (
 	"github.com/srlehn/xgbutil/xgraphics"
 	"github.com/srlehn/xgbutil/xwindow"
 
-	"github.com/srlehn/termimg/internal"
+	"github.com/srlehn/termimg/internal/consts"
 	"github.com/srlehn/termimg/internal/environ"
+	"github.com/srlehn/termimg/internal/errors"
 	"github.com/srlehn/termimg/internal/propkeys"
 	"github.com/srlehn/termimg/internal/util"
 	"github.com/srlehn/termimg/internal/wminternal"
@@ -35,8 +34,11 @@ type connX11 struct {
 	*xgbutil.XUtil
 }
 
-func newConn() (*connX11, error) {
-	displayVar := ``
+func newConn(env environ.Proprietor) (*connX11, error) {
+	var displayVar string
+	if env != nil {
+		displayVar, _ = env.LookupEnv(`DISPLAY`)
+	}
 	return newConnDisplay(displayVar)
 }
 
@@ -44,7 +46,7 @@ func newConnDisplay(displayVar string) (*connX11, error) {
 	// Connect to the X server using the DISPLAY environment variable.
 	conn, err := xgbutil.NewConnDisplay(displayVar)
 	if err != nil {
-		return nil, errorsGo.New(err)
+		return nil, errors.New(err)
 	}
 	return &connX11{conn}, nil
 }
@@ -109,7 +111,7 @@ func (c *connX11) getWindows() ([]*windowX11, error) {
 	// Get a list of all client ids.
 	clientIDs, err := ewmh.ClientListGet(c.XUtil)
 	if err != nil {
-		return nil, errorsGo.New(err)
+		return nil, errors.New(err)
 	}
 
 	err = res.Init(c.XUtil.Conn())
@@ -183,17 +185,17 @@ func (c *connX11) getWindowName(w xproto.Window) (string, error) {
 		return name, nil
 	}
 
-	return ``, errorsGo.New(errors.Join(errE, errI))
+	return ``, errors.New(errors.Join(errE, errI))
 }
 
 // getWindowClass ...
 func (c *connX11) getWindowClass(w xproto.Window) (class, instance string, _ error) {
 	cl, err := icccm.WmClassGet(c.XUtil, w)
 	if err != nil {
-		return ``, ``, errorsGo.New(err)
+		return ``, ``, errors.New(err)
 	}
 	if cl == nil {
-		return ``, ``, errorsGo.New(`nil icccm.WmClassGet() client`)
+		return ``, ``, errors.New(`nil icccm.WmClassGet() client`)
 	}
 	return cl.Class, cl.Instance, nil
 }
@@ -210,13 +212,13 @@ func (c *connX11) getWindowPID(w xproto.Window) (uint64, error) {
 	if errNWP == nil {
 		return pid, nil
 	}
-	return 0, errorsGo.New(errors.Join(errQCI, errNWP))
+	return 0, errors.New(errors.Join(errQCI, errNWP))
 }
 
 func (c *connX11) getWindowPIDQueryClientIDs(w xproto.Window) (uint64, error) {
 	err := res.Init(c.XUtil.Conn())
 	if err != nil {
-		return 0, errorsGo.New(err)
+		return 0, errors.New(err)
 	}
 
 	// Iterate through each client, find its name and find its size.
@@ -227,10 +229,10 @@ func (c *connX11) getWindowPIDQueryClientIDs(w xproto.Window) (uint64, error) {
 
 	repl, err := res.QueryClientIds(c.XUtil.Conn(), uint32(len(clientIDSpecs)), clientIDSpecs).Reply()
 	if err != nil {
-		return 0, errorsGo.New(err)
+		return 0, errors.New(err)
 	}
 	if repl == nil {
-		return 0, errorsGo.New(`nil QueryClientIds reply`)
+		return 0, errors.New(`nil QueryClientIds reply`)
 	}
 	var pid uint64
 	for _, id := range repl.Ids {
@@ -244,12 +246,12 @@ func (c *connX11) getWindowPIDQueryClientIDs(w xproto.Window) (uint64, error) {
 }
 func (c *connX11) getWindowPIDNetWMPID(w xproto.Window) (uint64, error) {
 	if c == nil {
-		return 0, errorsGo.New(`nil conn`)
+		return 0, errors.New(`nil conn`)
 	}
 	// some processes set _NET_WM_PID for the X11 window, e.g.: DomTerm
 	pid, err := ewmh.WmPidGet(c.XUtil, w)
 	if err != nil {
-		return 0, errorsGo.New(err)
+		return 0, errors.New(err)
 	}
 	return uint64(pid), nil
 }
@@ -309,21 +311,21 @@ func (w *windowX11) WindowConn() wm.Connection {
 }
 func (w *windowX11) WindowFind() error {
 	if w == nil {
-		return errorsGo.New(internal.ErrNilReceiver)
+		return errors.New(consts.ErrNilReceiver)
 	}
 	if w.isInit {
 		return w.errFind
 	}
 	w.isInit = true
 	if w.conn == nil || w.conn.XUtil == nil {
-		c, err := newConn()
+		c, err := newConnDisplay(``)
 		if err != nil {
 			w.errFind = err
 			return err
 		}
 		w.conn = c
 		if w.conn == nil || w.conn.XUtil == nil {
-			err := errorsGo.New(`nil X11 connection`)
+			err := errors.New(`nil X11 connection`)
 			w.errFind = err
 			return err
 		}
@@ -392,13 +394,13 @@ func (w *windowX11) WindowFind() error {
 		atomNameNetActiveWindow := "_NET_ACTIVE_WINDOW"
 		a, err := xproto.InternAtom(connXU.Conn(), true, uint16(len(atomNameNetActiveWindow)), atomNameNetActiveWindow).Reply()
 		if err != nil {
-			err = errorsGo.New(err)
+			err = errors.New(err)
 			w.errFind = err
 			return err
 		}
 		r, err := xproto.GetProperty(connXU.Conn(), false, xproto.Setup(connXU.Conn()).DefaultScreen(connXU.Conn()).Root, a.Atom, xproto.GetPropertyTypeAny, 0, (1<<32)-1).Reply()
 		if err != nil {
-			err = errorsGo.New(err)
+			err = errors.New(err)
 			w.errFind = err
 			return err
 		}
@@ -416,12 +418,12 @@ func (w *windowX11) WindowFind() error {
 			}
 			parent, err := wActive.Parent()
 			if err != nil {
-				err = errorsGo.New(err)
+				err = errors.New(err)
 				w.errFind = err
 				return err
 			}
 			if parent == nil || parent.Id == lastWParentID {
-				err = errorsGo.New(errStrMulti)
+				err = errors.New(errStrMulti)
 				w.errFind = err
 				return err
 			}
@@ -430,7 +432,7 @@ func (w *windowX11) WindowFind() error {
 	}
 	switch len(windows) {
 	case 0:
-		err := errorsGo.New(`no window match`)
+		err := errors.New(`no window match`)
 		w.errFind = err
 		return err
 	case 1:
@@ -456,24 +458,24 @@ func (w *windowX11) WindowFind() error {
 	}
 
 	if !couldCompare {
-		err := errorsGo.New(`window find: nothing to compare against`)
+		err := errors.New(`window find: nothing to compare against`)
 		w.errFind = err
 		return err
 	}
 
-	err = errorsGo.New(`window find failed`)
+	err = errors.New(`window find failed`)
 	w.errFind = err
 	return err
 }
 func (w *windowX11) Screenshot() (image.Image, error) {
 	if w == nil {
-		return nil, errorsGo.New(internal.ErrNilReceiver)
+		return nil, errors.New(consts.ErrNilReceiver)
 	}
 	if err := w.WindowFind(); err != nil {
 		return nil, err
 	}
 	if w.conn == nil || w.conn.XUtil == nil {
-		return nil, errorsGo.New(`nil conn`)
+		return nil, errors.New(`nil conn`)
 	}
 
 	wXW := xwindow.New(w.conn.XUtil, xproto.Window(w.id))
@@ -486,7 +488,7 @@ func (w *windowX11) Screenshot() (image.Image, error) {
 	// return xgraphics.NewDrawable(c.XUtil, xproto.Drawable(w.WindowID()))
 	ximg, err := xgraphics.NewDrawable(w.conn.XUtil, xproto.Drawable(w.id))
 	if err != nil {
-		return nil, errorsGo.New(err)
+		return nil, errors.New(err)
 	}
 	defer ximg.Destroy()
 

@@ -1,14 +1,14 @@
 package term
 
 import (
-	"github.com/go-errors/errors"
-	"github.com/srlehn/termimg/internal"
+	"github.com/srlehn/termimg/internal/consts"
+	"github.com/srlehn/termimg/internal/errors"
 )
 
 // DrawersFor ...
 func DrawersFor(inp DrawerCheckerInput) ([]Drawer, error) {
 	if inp == nil {
-		return nil, errors.New(internal.ErrNilParam)
+		return nil, errors.New(consts.ErrNilParam)
 	}
 	var applDrawers []Drawer
 	for _, dr := range drawersRegistered {

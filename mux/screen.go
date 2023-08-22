@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/go-errors/errors"
+	"github.com/srlehn/termimg/internal/errors"
 	"github.com/srlehn/termimg/internal/exc"
 )
 

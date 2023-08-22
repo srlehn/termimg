@@ -10,10 +10,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	errorsGo "github.com/go-errors/errors"
-
-	"github.com/srlehn/termimg/internal"
+	"github.com/srlehn/termimg/internal/consts"
 	"github.com/srlehn/termimg/internal/environ"
+	"github.com/srlehn/termimg/internal/errors"
 	"github.com/srlehn/termimg/term"
 )
 
@@ -108,7 +107,7 @@ func (q *querierDefault) startReading(tty term.TTY) {
 // Query ...
 func (q *querierDefault) Query(qs string, tty term.TTY, p term.Parser) (string, error) {
 	if q == nil {
-		return ``, errorsGo.New(internal.ErrNilReceiver)
+		return ``, errors.New(consts.ErrNilReceiver)
 	}
 	q.muQuery.Lock()
 	defer q.muQuery.Unlock()
@@ -165,7 +164,7 @@ read:
 				r, ok := <-q.r
 				if !ok {
 					q.r = nil
-					errRead = errorsGo.New(`tty read chan closed`)
+					errRead = errors.New(`tty read chan closed`)
 					return
 				}
 				timeChan <- struct{}{}
@@ -175,13 +174,13 @@ read:
 			}()
 		case <-time.After(q.timeOutMax):
 			q.prevQueryFailed.Store(true)
-			return ``, errorsGo.New("time out")
+			return ``, errors.New("time out")
 		case <-timeoutChan:
 			if p == nil {
 				break read
 			} else {
 				q.prevQueryFailed.Store(true)
-				return ``, errorsGo.New(internal.ErrTimeoutInterval)
+				return ``, errors.New(consts.ErrTimeoutInterval)
 			}
 		}
 	}
@@ -194,7 +193,7 @@ read:
 // CachedQuery ...
 func (q *querierDefault) CachedQuery(qs string, tty term.TTY, p term.Parser, pr environ.Proprietor) (string, error) {
 	if q == nil {
-		return ``, errorsGo.New(internal.ErrNilReceiver)
+		return ``, errors.New(consts.ErrNilReceiver)
 	}
 	return term.CachedQuery(q, qs, tty, p, pr, pr)
 }

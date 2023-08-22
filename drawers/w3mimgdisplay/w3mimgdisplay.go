@@ -7,13 +7,13 @@ import (
 	"os/exec"
 	"strings"
 
-	errorsGo "github.com/go-errors/errors"
 	"github.com/jezek/xgb/xproto"
 	"github.com/srlehn/xgbutil"
 	"github.com/srlehn/xgbutil/xgraphics"
 
-	"github.com/srlehn/termimg/internal"
+	"github.com/srlehn/termimg/internal/consts"
 	"github.com/srlehn/termimg/internal/encoder/encpng"
+	"github.com/srlehn/termimg/internal/errors"
 	"github.com/srlehn/termimg/term"
 	"github.com/srlehn/termimg/wm"
 )
@@ -74,7 +74,7 @@ func (d *drawerW3MImgDisplay) IsApplicable(inp term.DrawerCheckerInput) bool {
 
 func (d *drawerW3MImgDisplay) Draw(img image.Image, bounds image.Rectangle, tm *term.Terminal) error {
 	if d == nil || tm == nil || img == nil {
-		return errorsGo.New(`nil parameter`)
+		return errors.New(`nil parameter`)
 	}
 	var (
 		termOffSet image.Point
@@ -85,12 +85,12 @@ func (d *drawerW3MImgDisplay) Draw(img image.Image, bounds image.Rectangle, tm *
 		timg = term.NewImage(img)
 	}
 	if timg == nil {
-		return errorsGo.New(internal.ErrNilImage)
+		return errors.New(consts.ErrNilImage)
 	}
 
 	rsz := tm.Resizer()
 	if rsz == nil {
-		return errorsGo.New(`nil resizer`)
+		return errors.New(`nil resizer`)
 	}
 	if err := timg.Fit(bounds, rsz, tm); err != nil {
 		return err
@@ -118,16 +118,16 @@ func (d *drawerW3MImgDisplay) Draw(img image.Image, bounds image.Rectangle, tm *
 
 	// trying to get window size
 	{
-		conn, err := wm.NewConn()
+		conn, err := wm.NewConn(tm)
 		if err != nil {
 			goto skipFindingTermOffSet
 		}
 		connXU, okXU := conn.Conn().(*xgbutil.XUtil)
 		if !okXU {
-			return errorsGo.New(internal.ErrPlatformNotSupported)
+			return errors.New(consts.ErrPlatformNotSupported)
 		}
 		if connXU == nil {
-			return errorsGo.New(`nil connection`)
+			return errors.New(`nil connection`)
 		}
 		termName := tm.Name()
 		tChk := term.GetRegTermChecker(termName)
@@ -193,7 +193,7 @@ exc:
 	cmd := exec.Command(exeW3MImgDisplay)
 	cmd.Stdin = strings.NewReader(w3mImgDisplayString)
 	if err := cmd.Run(); err != nil {
-		return errorsGo.New(err)
+		return errors.New(err)
 	}
 
 	timg.SetPosObject(bounds, w3mImgDisplayString, d, tm)

@@ -3,14 +3,14 @@ package term
 import (
 	"encoding/base64"
 	"encoding/hex"
-	"errors"
 	"strings"
 
-	errorsGo "github.com/go-errors/errors"
-
-	"github.com/srlehn/termimg/internal"
+	"github.com/srlehn/termimg/internal/consts"
 	"github.com/srlehn/termimg/internal/environ"
+	"github.com/srlehn/termimg/internal/errors"
+	"github.com/srlehn/termimg/internal/parser"
 	"github.com/srlehn/termimg/internal/propkeys"
+	"github.com/srlehn/termimg/internal/queries"
 )
 
 // Querier sends escapes sequences to the terminal and returns the answer.
@@ -28,7 +28,7 @@ type CachedQuerier interface {
 func CachedQuery(qu Querier, qs string, tty TTY, p Parser, prIn, prOut environ.Proprietor) (string, error) {
 	// TODO bug same value for different parsers
 	if prIn == nil {
-		return ``, errorsGo.New(internal.ErrNilParam)
+		return ``, errors.New(consts.ErrNilParam)
 	}
 	if prOut == nil {
 		prOut = environ.NewProprietor()
@@ -54,10 +54,10 @@ func NewCachedQuerier(qu Querier) CachedQuerier { return &queryCacher{Querier: q
 
 func (q *queryCacher) CachedQuery(qs string, tty TTY, p Parser, pr environ.Proprietor) (string, error) {
 	if q == nil {
-		return ``, errorsGo.New(internal.ErrNilReceiver)
+		return ``, errors.New(consts.ErrNilReceiver)
 	}
 	if q.Querier == nil {
-		return ``, errorsGo.New(`nil querier`)
+		return ``, errors.New(`nil querier`)
 	}
 	return CachedQuery(q, qs, tty, p, pr, pr)
 }
@@ -86,7 +86,7 @@ var _ Querier = (*querierDummy)(nil)
 type querierDummy struct{}
 
 func (q *querierDummy) Query(string, TTY, Parser) (string, error) {
-	return ``, errorsGo.New(internal.ErrPlatformNotSupported)
+	return ``, errors.New(consts.ErrPlatformNotSupported)
 }
 
 var _ TTY = (*ttyDummy)(nil)
@@ -96,12 +96,12 @@ type ttyDummy struct {
 }
 
 func (t *ttyDummy) Write(p []byte) (n int, err error) {
-	return 0, errorsGo.New(internal.ErrPlatformNotSupported)
+	return 0, errors.New(consts.ErrPlatformNotSupported)
 }
 func (t *ttyDummy) ReadRune() (r rune, size int, err error) {
-	return 0, 0, errorsGo.New(internal.ErrPlatformNotSupported)
+	return 0, 0, errors.New(consts.ErrPlatformNotSupported)
 }
-func (t *ttyDummy) Close() error { return errorsGo.New(internal.ErrPlatformNotSupported) }
+func (t *ttyDummy) Close() error { return errors.New(consts.ErrPlatformNotSupported) }
 func (t *ttyDummy) TTYDevName() string {
 	if t == nil {
 		return ``
@@ -111,16 +111,11 @@ func (t *ttyDummy) TTYDevName() string {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-const (
-	QueryStringDA1 = "\033[0c"  // https://terminalguide.namepad.de/seq/csi_sc/
-	QueryStringDA2 = "\033[>0c" // https://terminalguide.namepad.de/seq/csi_sc__q/
-	QueryStringDA3 = "\033[=0c" // https://terminalguide.namepad.de/seq/csi_sc__r/
-)
-
+// QueryDeviceAttributes should only be used for external TermCheckers
 func QueryDeviceAttributes(qu Querier, tty TTY, prIn, prOut environ.Proprietor) error {
 	// TODO add mux.Wrap()
 	if qu == nil || tty == nil || prIn == nil {
-		return errorsGo.New(internal.ErrNilParam)
+		return errors.New(consts.ErrNilParam)
 	}
 
 	// only run once
@@ -140,16 +135,15 @@ func QueryDeviceAttributes(qu Querier, tty TTY, prIn, prOut environ.Proprietor) 
 	_, avoidDA2 := prIn.Property(propkeys.AvoidDA2)
 	_, avoidDA3 := prIn.Property(propkeys.AvoidDA3)
 
-	var stopOnBackSlash ParserFunc = func(r rune) bool { return r == '\\' }
 	var errs []error
 	for _, da := range []struct {
 		qs string
 		b  bool
 		p  Parser
 	}{
-		{QueryStringDA1, avoidDA1, StopOnAlpha},
-		{QueryStringDA2, avoidDA2, StopOnAlpha},
-		{QueryStringDA3, avoidDA3, stopOnBackSlash},
+		{queries.DA1, avoidDA1, parser.StopOnAlpha},
+		{queries.DA2, avoidDA2, parser.StopOnAlpha},
+		{queries.DA3, avoidDA3, parser.StopOnBackSlash},
 	} {
 		if da.b {
 			continue
@@ -159,7 +153,7 @@ func QueryDeviceAttributes(qu Querier, tty TTY, prIn, prOut environ.Proprietor) 
 			errs = append(errs, err)
 		}
 		switch da.qs {
-		case QueryStringDA1:
+		case queries.DA1:
 			// DA1 - Primary Device Attributes
 			// https://vt100.net/docs/vt510-rm/DA1.html
 			var found bool
@@ -191,8 +185,8 @@ func QueryDeviceAttributes(qu Querier, tty TTY, prIn, prOut environ.Proprietor) 
 					prOut.SetProperty(propkeys.WindowingCapable, `true`)
 				}
 			}
-		case QueryStringDA2: // Version
-		case QueryStringDA3:
+		case queries.DA2: // Version
+		case queries.DA3:
 			// DA3 - Tertiary Device Attributes
 			// https://vt100.net/docs/vt510-rm/DA3.html
 			// DECRPTUI - Report Terminal Unit ID
@@ -213,6 +207,7 @@ func QueryDeviceAttributes(qu Querier, tty TTY, prIn, prOut environ.Proprietor) 
 			if err != nil {
 				goto skipExtraction
 			}
+			prOut.SetProperty(propkeys.DA3IDHex, repl)
 			repl = string(replDec)
 			prOut.SetProperty(propkeys.DA3ID, repl)
 		}
@@ -223,7 +218,7 @@ func QueryDeviceAttributes(qu Querier, tty TTY, prIn, prOut environ.Proprietor) 
 	}
 	err := errors.Join(errs...)
 	if err != nil {
-		return errorsGo.New(err)
+		return errors.New(err)
 	}
 	return nil
 }
@@ -240,7 +235,7 @@ func XTGetTCap(tcap string, qu Querier, tty TTY, prIn, prOut environ.Proprietor)
 
 	_, invalid := prIn.Property(propkeys.XTGETTCAPInvalidPrefix + tcapHex)
 	if invalid {
-		return ``, errorsGo.New(internal.ErrXTGetTCapInvalidRequest)
+		return ``, errors.New(consts.ErrXTGetTCapInvalidRequest)
 	}
 	repl, exists := prIn.Property(propkeys.XTGETTCAPKeyNamePrefix + tcapHex)
 	if exists {
@@ -248,7 +243,7 @@ func XTGetTCap(tcap string, qu Querier, tty TTY, prIn, prOut environ.Proprietor)
 	}
 
 	// add DA1 so that we don't have to wait for a timeout
-	qsXTGETTCAP := "\033P+q" + tcapHex + "\033\\" + QueryStringDA1
+	qsXTGETTCAP := queries.DCS + tcapHex + queries.ST + queries.DA1
 
 	var encounteredST bool
 	var prs ParserFunc = func(r rune) bool {
@@ -258,7 +253,7 @@ func XTGetTCap(tcap string, qu Querier, tty TTY, prIn, prOut environ.Proprietor)
 			return false
 		}
 		if encounteredST {
-			if StopOnAlpha(r) {
+			if parser.StopOnAlpha(r) {
 				return true
 			} else {
 				return false
@@ -282,7 +277,7 @@ func XTGetTCap(tcap string, qu Querier, tty TTY, prIn, prOut environ.Proprietor)
 	}
 	repl, err := CachedQuery(qu, qsXTGETTCAP, tty, prs, prIn, prOut)
 	if err != nil {
-		if err.Error() == internal.ErrTimeoutInterval.Error() {
+		if err.Error() == consts.ErrTimeoutInterval.Error() {
 			setProps(prOut, ``)
 			return ``, nil
 		} else {
@@ -314,7 +309,7 @@ func XTGetTCap(tcap string, qu Querier, tty TTY, prIn, prOut environ.Proprietor)
 		case '0':
 			setProps(prOut, ``)
 			prOut.SetProperty(propkeys.XTGETTCAPInvalidPrefix+tcapHex, `true`)
-			return ``, errorsGo.New(internal.ErrXTGetTCapInvalidRequest)
+			return ``, errors.New(consts.ErrXTGetTCapInvalidRequest)
 		case '1': //valid
 		default:
 			return ``, errors.New(errStrUknownFormat)
@@ -322,7 +317,7 @@ func XTGetTCap(tcap string, qu Querier, tty TTY, prIn, prOut environ.Proprietor)
 		repl = strings.TrimPrefix(repl, `1+r`+tcapHex+`=`)
 		replDec, err := hex.DecodeString(repl)
 		if err != nil {
-			return ``, errorsGo.New(err)
+			return ``, errors.New(err)
 		}
 		repl = string(replDec)
 	}
@@ -332,9 +327,24 @@ end:
 	return repl, nil
 }
 
-////////////////////////////////////////////////////////////////////////////////
-
-// StopOnAlpha ...
-var StopOnAlpha ParserFunc = func(r rune) bool {
-	return (r >= 'A' && r <= 'Z') || (r >= 'a' && r <= 'z')
+func xtVersion(qu Querier, tty TTY, prIn, prOut environ.Proprietor) (string, error) {
+	xtVer, okXTVer := prIn.Property(propkeys.XTVERSION)
+	if !okXTVer {
+		repl, err := CachedQuery(qu, queries.XTVERSION+queries.DA1, tty, parser.NewParser(false, true), prIn, prOut)
+		if err != nil {
+			return ``, err
+		}
+		replParts := strings.Split(repl, queries.ST)
+		if len(replParts) != 2 {
+			return ``, errors.New(`no reply to XTVERSION query`)
+		}
+		xtVerPrefix := queries.DCS + `>|`
+		repl, hasXTVerReplPrefix := strings.CutPrefix(replParts[0], xtVerPrefix)
+		if !hasXTVerReplPrefix {
+			return ``, errors.New(`invalid reply to XTVERSION query`)
+		}
+		xtVer = repl
+	}
+	prOut.SetProperty(propkeys.XTVERSION, xtVer)
+	return xtVer, nil
 }

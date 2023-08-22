@@ -1,6 +1,7 @@
 package terminals
 
 import (
+	"github.com/srlehn/termimg/internal/consts"
 	"github.com/srlehn/termimg/internal/environ"
 	"github.com/srlehn/termimg/internal/propkeys"
 	"github.com/srlehn/termimg/term"
@@ -21,37 +22,37 @@ var _ term.TermChecker = (*termCheckerContour)(nil)
 
 type termCheckerContour struct{ term.TermChecker }
 
-func (t *termCheckerContour) CheckExclude(ci environ.Proprietor) (mightBe bool, p environ.Proprietor) {
+func (t *termCheckerContour) CheckExclude(pr environ.Proprietor) (mightBe bool, p environ.Proprietor) {
 	p = environ.NewProprietor()
-	if t == nil || ci == nil {
-		p.SetProperty(propkeys.CheckTermEnvExclPrefix+termNameContour, term.CheckTermFailed)
+	if t == nil || pr == nil {
+		p.SetProperty(propkeys.CheckTermEnvExclPrefix+termNameContour, consts.CheckTermFailed)
 		return false, p
 	}
-	envTN, okTN := ci.LookupEnv(`TERMINAL_NAME`)
+	envTN, okTN := pr.LookupEnv(`TERMINAL_NAME`)
 	if !okTN || envTN != `contour` {
-		p.SetProperty(propkeys.CheckTermEnvExclPrefix+termNameContour, term.CheckTermFailed)
+		p.SetProperty(propkeys.CheckTermEnvExclPrefix+termNameContour, consts.CheckTermFailed)
 		return false, p
 	}
 	// X.X.X.X
-	envTVS, okTVS := ci.LookupEnv(`TERMINAL_VERSION_STRING`)
+	envTVS, okTVS := pr.LookupEnv(`TERMINAL_VERSION_STRING`)
 	if !okTVS || len(envTVS) == 0 {
-		p.SetProperty(propkeys.CheckTermEnvExclPrefix+termNameContour, term.CheckTermFailed)
+		p.SetProperty(propkeys.CheckTermEnvExclPrefix+termNameContour, consts.CheckTermFailed)
 		return false, p
 	}
 	// X.X.X
-	envTVT, okTVT := ci.LookupEnv(`TERMINAL_VERSION_TRIPLE`)
+	envTVT, okTVT := pr.LookupEnv(`TERMINAL_VERSION_TRIPLE`)
 	if !okTVT || len(envTVT) == 0 {
-		p.SetProperty(propkeys.CheckTermEnvExclPrefix+termNameContour, term.CheckTermFailed)
+		p.SetProperty(propkeys.CheckTermEnvExclPrefix+termNameContour, consts.CheckTermFailed)
 		return false, p
 	}
-	p.SetProperty(propkeys.CheckTermEnvExclPrefix+termNameContour, term.CheckTermPassed)
+	p.SetProperty(propkeys.CheckTermEnvExclPrefix+termNameContour, consts.CheckTermPassed)
 	p.SetProperty(propkeys.ContourVersion, envTVS)
 	return true, p
 }
 func (t *termCheckerContour) CheckIsWindow(w wm.Window) (is bool, p environ.Proprietor) {
 	p = environ.NewProprietor()
 	if t == nil || w == nil {
-		p.SetProperty(propkeys.CheckTermWindowIsPrefix+termNameContour, term.CheckTermFailed)
+		p.SetProperty(propkeys.CheckTermWindowIsPrefix+termNameContour, consts.CheckTermFailed)
 		return false, p
 	}
 	isWindow := w.WindowType() == `x11` &&
@@ -59,9 +60,9 @@ func (t *termCheckerContour) CheckIsWindow(w wm.Window) (is bool, p environ.Prop
 		w.WindowClass() == `contour` &&
 		w.WindowInstance() == `contour`
 	if isWindow {
-		p.SetProperty(propkeys.CheckTermWindowIsPrefix+termNameContour, term.CheckTermPassed)
+		p.SetProperty(propkeys.CheckTermWindowIsPrefix+termNameContour, consts.CheckTermPassed)
 	} else {
-		p.SetProperty(propkeys.CheckTermWindowIsPrefix+termNameContour, term.CheckTermFailed)
+		p.SetProperty(propkeys.CheckTermWindowIsPrefix+termNameContour, consts.CheckTermFailed)
 	}
 	return isWindow, p
 }

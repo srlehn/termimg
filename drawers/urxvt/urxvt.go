@@ -6,10 +6,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/go-errors/errors"
-
-	"github.com/srlehn/termimg/internal"
+	"github.com/srlehn/termimg/internal/consts"
 	"github.com/srlehn/termimg/internal/encoder/encpng"
+	"github.com/srlehn/termimg/internal/errors"
 	"github.com/srlehn/termimg/mux"
 	"github.com/srlehn/termimg/term"
 )
@@ -32,17 +31,17 @@ func (d *drawerURXVT) IsApplicable(inp term.DrawerCheckerInput) bool {
 
 func (d *drawerURXVT) Draw(img image.Image, bounds image.Rectangle, tm *term.Terminal) error {
 	if d == nil {
-		return errors.New(internal.ErrNilReceiver)
+		return errors.New(consts.ErrNilReceiver)
 	}
 	if tm == nil || img == nil {
-		return errors.New(internal.ErrNilParam)
+		return errors.New(consts.ErrNilParam)
 	}
 	timg, ok := img.(*term.Image)
 	if !ok {
 		timg = term.NewImage(img)
 	}
 	if timg == nil {
-		return errors.New(internal.ErrNilImage)
+		return errors.New(consts.ErrNilImage)
 	}
 
 	rsz := tm.Resizer()
@@ -65,14 +64,14 @@ func (d *drawerURXVT) Draw(img image.Image, bounds image.Rectangle, tm *term.Ter
 
 func (d *drawerURXVT) getInbandString(timg *term.Image, bounds image.Rectangle, tm *term.Terminal) (string, error) {
 	if timg == nil {
-		return ``, errors.New(internal.ErrNilImage)
+		return ``, errors.New(consts.ErrNilImage)
 	}
 	urxvtString, err := timg.GetInband(bounds, d, tm)
 	if err == nil {
 		return urxvtString, nil
 	}
 	if timg.Cropped == nil {
-		return ``, errors.New(internal.ErrNilImage)
+		return ``, errors.New(consts.ErrNilImage)
 	}
 
 	// TODO uses unscaled original image

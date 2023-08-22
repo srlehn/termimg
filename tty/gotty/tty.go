@@ -8,10 +8,11 @@
 package gotty
 
 import (
-	"github.com/go-errors/errors"
 	ttymattn "github.com/mattn/go-tty"
 
 	"github.com/srlehn/termimg/internal"
+	"github.com/srlehn/termimg/internal/consts"
+	"github.com/srlehn/termimg/internal/errors"
 	"github.com/srlehn/termimg/term"
 )
 
@@ -35,7 +36,7 @@ func New(ttyFile string) (term.TTY, error) {
 
 func (t *ttyMattN) Write(b []byte) (n int, err error) {
 	if t == nil {
-		return 0, errors.New(internal.ErrNilReceiver)
+		return 0, errors.New(consts.ErrNilReceiver)
 	}
 	if t.TTY == nil {
 		return 0, errors.New(`nil tty`)
@@ -50,7 +51,7 @@ func (t *ttyMattN) Write(b []byte) (n int, err error) {
 func (t *ttyMattN) ReadRune() (r rune, size int, err error) {
 	r = '\uFFFD'
 	if t == nil {
-		return r, len(string(r)), errors.New(internal.ErrNilReceiver)
+		return r, len(string(r)), errors.New(consts.ErrNilReceiver)
 	}
 	if t.TTY == nil {
 		return r, len(string(r)), errors.New(`nil tty`)

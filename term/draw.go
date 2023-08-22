@@ -6,9 +6,8 @@ import (
 	"image/draw"
 	"time"
 
-	errorsGo "github.com/go-errors/errors"
-
-	"github.com/srlehn/termimg/internal"
+	"github.com/srlehn/termimg/internal/consts"
+	"github.com/srlehn/termimg/internal/errors"
 	"github.com/srlehn/termimg/internal/util"
 )
 
@@ -33,12 +32,12 @@ type Drawer interface {
 // if the passed drawer is nil, the Terminals drawer is used.
 func Draw(img image.Image, bounds image.Rectangle, term *Terminal, dr Drawer) error {
 	if img == nil || term == nil {
-		return errorsGo.New(internal.ErrNilParam)
+		return errors.New(consts.ErrNilParam)
 	}
 	if dr == nil {
 		drawers := term.Drawers()
 		if len(drawers) == 0 {
-			return errorsGo.New(`terminal has no drawers`)
+			return errors.New(`terminal has no drawers`)
 		}
 		for _, drt := range drawers {
 			if drt == nil {
@@ -49,21 +48,21 @@ func Draw(img image.Image, bounds image.Rectangle, term *Terminal, dr Drawer) er
 		}
 	}
 	if dr == nil {
-		return errorsGo.New(`nil drawer`)
+		return errors.New(`nil drawer`)
 	}
 	return drawWith(img, bounds, term, dr)
 }
 
 func drawWith(img image.Image, bounds image.Rectangle, term *Terminal, dr Drawer) (err error) {
 	if img == nil || dr == nil || term == nil {
-		return errorsGo.New(internal.ErrNilParam)
+		return errors.New(consts.ErrNilParam)
 	}
 	if term.resizer == nil {
 		term.resizer = &resizerFallback{}
 	}
 	defer func() {
 		if r := recover(); r != nil {
-			err = errorsGo.New(r)
+			err = errors.New(r)
 		}
 	}()
 	// TODO check if redraw is necessary
@@ -138,6 +137,13 @@ func (c *Canvas) At(x, y int) color.Color {
 func (c *Canvas) CellArea() image.Rectangle  { return c.bounds }
 func (c *Canvas) Offset() image.Point        { return c.boundsPixels.Min }
 func (c *Canvas) Draw(img image.Image) error { return Draw(img, c.bounds, c.terminal, nil) }
+func (c *Canvas) Flush() error {
+	if c == nil || c.terminal == nil || c.drawing == nil || c.bounds.Eq(image.Rectangle{}) {
+		return errors.New(`nil receiver or null value struct fields`)
+	}
+	return c.terminal.Draw(c.drawing, c.bounds)
+}
+
 func (c *Canvas) Video(dur time.Duration) chan<- image.Image {
 	if c.vid != nil {
 		return c.vid

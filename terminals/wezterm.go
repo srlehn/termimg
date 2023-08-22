@@ -1,6 +1,7 @@
 package terminals
 
 import (
+	"github.com/srlehn/termimg/internal/consts"
 	"github.com/srlehn/termimg/internal/environ"
 	"github.com/srlehn/termimg/internal/propkeys"
 	"github.com/srlehn/termimg/term"
@@ -24,7 +25,7 @@ type termCheckerWezTerm struct{ term.TermChecker }
 func (t *termCheckerWezTerm) CheckExclude(ci environ.Proprietor) (mightBe bool, p environ.Proprietor) {
 	p = environ.NewProprietor()
 	if t == nil || ci == nil {
-		p.SetProperty(propkeys.CheckTermEnvExclPrefix+termNameWezTerm, term.CheckTermFailed)
+		p.SetProperty(propkeys.CheckTermEnvExclPrefix+termNameWezTerm, consts.CheckTermFailed)
 		return false, p
 	}
 
@@ -50,26 +51,26 @@ func (t *termCheckerWezTerm) CheckExclude(ci environ.Proprietor) (mightBe bool, 
 		pr.SetProperty(propkeys.WezTermExeDir, v)
 	}
 	if !r {
-		p.SetProperty(propkeys.CheckTermEnvExclPrefix+termNameWezTerm, term.CheckTermFailed)
+		p.SetProperty(propkeys.CheckTermEnvExclPrefix+termNameWezTerm, consts.CheckTermFailed)
 		return false, p
 	}
-	p.SetProperty(propkeys.CheckTermEnvExclPrefix+termNameWezTerm, term.CheckTermPassed)
+	p.SetProperty(propkeys.CheckTermEnvExclPrefix+termNameWezTerm, consts.CheckTermPassed)
 	return true, p
 }
 func (t *termCheckerWezTerm) CheckIsWindow(w wm.Window) (is bool, p environ.Proprietor) {
 	p = environ.NewProprietor()
 	if t == nil || w == nil {
-		p.SetProperty(propkeys.CheckTermWindowIsPrefix+termNameWezTerm, term.CheckTermFailed)
+		p.SetProperty(propkeys.CheckTermWindowIsPrefix+termNameWezTerm, consts.CheckTermFailed)
 		return false, p
 	}
 	isWindow := w.WindowType() == `x11` &&
 		w.WindowClass() == `org.wezfurlong.wezterm` &&
 		w.WindowInstance() == `org.wezfurlong.wezterm`
 	if isWindow {
-		p.SetProperty(propkeys.CheckTermWindowIsPrefix+termNameWezTerm, term.CheckTermPassed)
+		p.SetProperty(propkeys.CheckTermWindowIsPrefix+termNameWezTerm, consts.CheckTermPassed)
 	} else {
-		p.SetProperty(propkeys.CheckTermWindowIsPrefix+termNameWezTerm, term.CheckTermFailed)
+		p.SetProperty(propkeys.CheckTermWindowIsPrefix+termNameWezTerm, consts.CheckTermFailed)
 	}
 	return isWindow, p
 }
-func (t *termCheckerWezTerm) Args(ci environ.Proprietor) []string { return []string{`--skip-config`} }
+func (t *termCheckerWezTerm) Args(pr environ.Proprietor) []string { return []string{`--skip-config`} }

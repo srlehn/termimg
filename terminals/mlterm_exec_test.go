@@ -5,11 +5,12 @@ import (
 	"strings"
 	"testing"
 
+	"golang.org/x/exp/slices"
+
+	"github.com/srlehn/termimg/internal/parser"
 	"github.com/srlehn/termimg/pty"
 	"github.com/srlehn/termimg/query/qdefault"
-	"github.com/srlehn/termimg/term"
 	"github.com/srlehn/termimg/tty/gotty"
-	"golang.org/x/exp/slices"
 )
 
 func TestExecMltermQueryDA1(t *testing.T) {
@@ -24,7 +25,7 @@ func TestExecMltermQueryDA1(t *testing.T) {
 		qu := qdefault.NewQuerier()
 		// termCaps := term.QueryTermName("\033[0c", pty)
 		// termCaps := term.Query("\033[0c", pty)
-		termCaps, err := qu.Query("\033[0c", tty, term.StopOnAlpha)
+		termCaps, err := qu.Query("\033[0c", tty, parser.StopOnAlpha)
 		if err != nil {
 			return err
 		}

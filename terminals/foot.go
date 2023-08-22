@@ -1,6 +1,7 @@
 package terminals
 
 import (
+	"github.com/srlehn/termimg/internal/consts"
 	"github.com/srlehn/termimg/internal/environ"
 	"github.com/srlehn/termimg/internal/propkeys"
 	"github.com/srlehn/termimg/term"
@@ -20,20 +21,20 @@ var _ term.TermChecker = (*termCheckerFoot)(nil)
 
 type termCheckerFoot struct{ term.TermChecker }
 
-func (t *termCheckerFoot) CheckIsQuery(qu term.Querier, tty term.TTY, ci environ.Proprietor) (is bool, p environ.Proprietor) {
+func (t *termCheckerFoot) CheckIsQuery(qu term.Querier, tty term.TTY, pr environ.Proprietor) (is bool, p environ.Proprietor) {
 	p = environ.NewProprietor()
-	if t == nil || ci == nil {
-		p.SetProperty(propkeys.CheckTermQueryIsPrefix+termNameFoot, term.CheckTermFailed)
+	if t == nil || pr == nil {
+		p.SetProperty(propkeys.CheckTermQueryIsPrefix+termNameFoot, consts.CheckTermFailed)
 		return false, p
 	}
-	term.QueryDeviceAttributes(qu, tty, ci, ci)
-	da3ID, _ := ci.Property(propkeys.DA3ID)
+	term.QueryDeviceAttributes(qu, tty, pr, pr)
+	da3ID, _ := pr.Property(propkeys.DA3ID)
 	var footDA3ID = `FOOT` // hex encoded: `464F4F54`
 	if da3ID != footDA3ID {
-		p.SetProperty(propkeys.CheckTermQueryIsPrefix+termNameFoot, term.CheckTermFailed)
+		p.SetProperty(propkeys.CheckTermQueryIsPrefix+termNameFoot, consts.CheckTermFailed)
 		return false, p
 	}
-	p.SetProperty(propkeys.CheckTermQueryIsPrefix+termNameFoot, term.CheckTermPassed)
+	p.SetProperty(propkeys.CheckTermQueryIsPrefix+termNameFoot, consts.CheckTermPassed)
 	return true, p
 }
 

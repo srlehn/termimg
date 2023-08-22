@@ -8,10 +8,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/go-errors/errors"
 	"github.com/iancoleman/strcase"
 
 	"github.com/srlehn/termimg/internal"
+	"github.com/srlehn/termimg/internal/errors"
 	"github.com/srlehn/termimg/internal/exc"
 )
 

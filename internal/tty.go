@@ -4,11 +4,14 @@ import "runtime"
 
 func DefaultTTYDevice() string {
 	var ptyName string
-	if runtime.GOOS == `windows` {
+	switch runtime.GOOS {
+	case `windows`:
 		ptyName = `CON`
-	} else {
+	case `darwin`:
 		// TODO: does /dev/tty cause issues on macos?
 		ptyName = `/dev/stdin` // /dev/tty
+	default:
+		ptyName = `/dev/tty` // /dev/stdin
 	}
 	return ptyName
 }

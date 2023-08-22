@@ -8,7 +8,7 @@ import (
 
 type Implementation interface {
 	Name() string
-	Conn() (Connection, error)
+	Conn(env environ.Proprietor) (Connection, error)
 	CreateWindow(env environ.Proprietor, name, class, instance string, isWindow IsWindowFunc) Window
 }
 
@@ -62,4 +62,4 @@ func CreateWindow(name, class, instance string) Window {
 	return implem.CreateWindow(nil, ``, ``, ``, nil)
 }
 
-func NewConn() (Connection, error) { return implem.Conn() }
+func NewConn(env environ.Proprietor) (Connection, error) { return implem.Conn(env) }

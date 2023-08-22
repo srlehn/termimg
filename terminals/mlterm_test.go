@@ -3,6 +3,7 @@ package terminals
 import (
 	"testing"
 
+	"github.com/srlehn/termimg/internal/consts"
 	"github.com/srlehn/termimg/internal/propkeys"
 	"github.com/srlehn/termimg/term"
 	"github.com/srlehn/termimg/wm"
@@ -22,7 +23,7 @@ func TestTermCheckerMltermCheckExclude(t *testing.T) {
 	if !mightBe {
 		t.Fatal(`(*termCheckerMlterm)CheckExclude() failed`)
 	}
-	if p, ok := env.Property(propkeys.CheckTermEnvExclPrefix + termNameMlterm); ok && p != term.CheckTermPassed {
+	if p, ok := env.Property(propkeys.CheckTermEnvExclPrefix + termNameMlterm); ok && p != consts.CheckTermPassed {
 		t.Fatal(`(*termCheckerMlterm)CheckExclude() didn't set "passed" property`)
 	}
 }
@@ -37,7 +38,7 @@ func TestTermCheckerMlermCheckIsWindow(t *testing.T) {
 	if !is {
 		t.Fatal(`(*termCheckerXTerm)CheckIsWindow() failed`)
 	}
-	if p, ok := pr.Property(propkeys.CheckTermWindowIsPrefix + termNameMlterm); ok && p != term.CheckTermPassed {
+	if p, ok := pr.Property(propkeys.CheckTermWindowIsPrefix + termNameMlterm); ok && p != consts.CheckTermPassed {
 		t.Fatal(`(*termCheckerXTerm)CheckIsWindow() didn't set "passed" property`)
 	}
 }

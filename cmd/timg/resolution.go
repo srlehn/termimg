@@ -10,6 +10,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/srlehn/termimg"
+	"github.com/srlehn/termimg/term"
 )
 
 var (
@@ -46,17 +47,18 @@ var (
 	resolutionUsageStr = `usage: ` + os.Args[0] + ` ` + resolutionCmdStr + ` (-f <format>)`
 )
 
-func resolutionFunc(cmd *cobra.Command, args []string) func() error {
-	return func() error {
-		tm, err := termimg.Terminal()
+func resolutionFunc(cmd *cobra.Command, args []string) func(**term.Terminal) error {
+	return func(tm **term.Terminal) error {
+		tm2, err := termimg.Terminal()
 		if err != nil {
 			return err
 		}
-		defer tm.Close()
+		defer tm2.Close()
+		*tm = tm2
 		fmtFlag := cmd.Flags().Lookup(`format`)
 		customFormat := fmtFlag != nil && fmtFlag.Changed
 		res := &resolution{}
-		resCellsX, resCellsY, errResCells := tm.SizeInCells()
+		resCellsX, resCellsY, errResCells := tm2.SizeInCells()
 		if customFormat {
 			res.errResCells = errResCells
 			if errResCells == nil {
@@ -68,7 +70,7 @@ func resolutionFunc(cmd *cobra.Command, args []string) func() error {
 				fmt.Printf("terminal resolution:      %dx%d (cells)\n", resCellsX, resCellsY)
 			}
 		}
-		resPixelsX, resPixelsY, errResPixels := tm.SizeInPixels()
+		resPixelsX, resPixelsY, errResPixels := tm2.SizeInPixels()
 		if customFormat {
 			res.errResPixels = errResPixels
 			if errResPixels == nil {
@@ -80,7 +82,10 @@ func resolutionFunc(cmd *cobra.Command, args []string) func() error {
 				fmt.Printf("terminal resolution:      %dx%d (pixels)\n", resPixelsX, resPixelsY)
 			}
 		}
-		cpw, cph, errCellRes := tm.CellSize()
+
+		// TODO tm.Window().Size()
+
+		cpw, cph, errCellRes := tm2.CellSize()
 		if customFormat {
 			res.errCellRes = errCellRes
 			if errCellRes == nil {
@@ -120,31 +125,43 @@ func resolutionFunc(cmd *cobra.Command, args []string) func() error {
 type resolution struct {
 	resCellsX, resCellsY   uint
 	errResCells            error
+	resCellsNeeded         bool
 	resPixelsX, resPixelsY uint
 	errResPixels           error
+	resPixelsNeeded        bool
 	cpw, cph               float64
 	errCellRes             error
+	cellResNeeded          bool
 }
 
 func (r *resolution) Format(f fmt.State, c rune) {
+	if r == nil {
+		return
+	}
 	switch c {
 	case 'c':
+		r.resCellsNeeded = true
 		fs := fmt.FormatString(f, c)
 		fmt.Fprintf(f, `%`+fs[:len(fs)-2]+`d`, r.resCellsX)
 	case 'd':
+		r.resCellsNeeded = true
 		fs := fmt.FormatString(f, c)
 		fmt.Fprintf(f, `%`+fs[:len(fs)-2]+`d`, r.resCellsY)
 	case 'e':
+		r.resPixelsNeeded = true
 		fs := fmt.FormatString(f, c)
 		fmt.Fprintf(f, `%`+fs[:len(fs)-2]+`d`, r.resPixelsX)
 	case 'f':
+		r.resPixelsNeeded = true
 		fs := fmt.FormatString(f, c)
 		fmt.Fprintf(f, `%`+fs[:len(fs)-2]+`d`, r.resPixelsY)
 		// TODO don't enforce precision
 	case 'a':
+		r.cellResNeeded = true
 		fs := fmt.FormatString(f, c)
 		fmt.Fprintf(f, `%`+fs[:len(fs)-2]+`.02f`, r.cpw)
 	case 'b':
+		r.cellResNeeded = true
 		fs := fmt.FormatString(f, c)
 		fmt.Fprintf(f, `%`+fs[:len(fs)-2]+`.02f`, r.cph)
 	}

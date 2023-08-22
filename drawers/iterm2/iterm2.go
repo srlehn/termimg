@@ -9,9 +9,8 @@ import (
 	"image/png"
 	"strconv"
 
-	errorsGo "github.com/go-errors/errors"
-
-	"github.com/srlehn/termimg/internal"
+	"github.com/srlehn/termimg/internal/consts"
+	"github.com/srlehn/termimg/internal/errors"
 	"github.com/srlehn/termimg/internal/propkeys"
 	"github.com/srlehn/termimg/mux"
 	"github.com/srlehn/termimg/term"
@@ -37,7 +36,7 @@ func (d *drawerITerm2) IsApplicable(inp term.DrawerCheckerInput) bool {
 		`wezterm`:
 		return true
 	case `vscode`:
-		// v1.80.0 required
+		// VSCode v1.80.0 required
 		// https://code.visualstudio.com/updates/v1_80#_image-supportm
 		verMajStr, okMaj := inp.Property(propkeys.VSCodeVersionMajor)
 		verMinStr, okMin := inp.Property(propkeys.VSCodeVersionMinor)
@@ -53,6 +52,35 @@ func (d *drawerITerm2) IsApplicable(inp term.DrawerCheckerInput) bool {
 		}
 		verMin, err := strconv.ParseUint(verMinStr, 10, 64)
 		return err == nil && verMin >= 80
+	case `hyper`:
+		// Hyper v4.0.0-canary.4 required
+		// https://github.com/vercel/hyper/releases/tag/v4.0.0-canary.4
+		verMajStr, okMaj := inp.Property(propkeys.HyperVersionMajor)
+		verMinStr, okMin := inp.Property(propkeys.HyperVersionMinor)
+		if !okMaj || !okMin {
+			return false
+		}
+		verMaj, err := strconv.ParseUint(verMajStr, 10, 64)
+		if err != nil || verMaj < 4 {
+			return false
+		}
+		if verMaj >= 5 {
+			return true
+		}
+		verMin, err := strconv.ParseUint(verMinStr, 10, 64)
+		if err != nil {
+			return false
+		}
+		if verMin >= 1 {
+			return true
+		}
+		_, okPtc := inp.Property(propkeys.HyperVersionPatch)
+		verCnrStr, okCnr := inp.Property(propkeys.HyperVersionCanary)
+		if okPtc && !okCnr {
+			return true
+		}
+		verCnr, err := strconv.ParseUint(verCnrStr, 10, 64)
+		return err == nil && verCnr >= 4
 	default:
 		return false
 	}
@@ -60,19 +88,19 @@ func (d *drawerITerm2) IsApplicable(inp term.DrawerCheckerInput) bool {
 
 func (d *drawerITerm2) Draw(img image.Image, bounds image.Rectangle, tm *term.Terminal) error {
 	if d == nil || tm == nil || img == nil {
-		return errorsGo.New(`nil parameter`)
+		return errors.New(`nil parameter`)
 	}
 	timg, ok := img.(*term.Image)
 	if !ok {
 		timg = term.NewImage(img)
 	}
 	if timg == nil {
-		return errorsGo.New(internal.ErrNilImage)
+		return errors.New(consts.ErrNilImage)
 	}
 
 	rsz := tm.Resizer()
 	if rsz == nil {
-		return errorsGo.New(`nil resizer`)
+		return errors.New(`nil resizer`)
 	}
 	if err := timg.Fit(bounds, rsz, tm); err != nil {
 		return err
@@ -84,7 +112,7 @@ func (d *drawerITerm2) Draw(img image.Image, bounds image.Rectangle, tm *term.Te
 		return err
 	}
 	if tcw == 0 || tch == 0 {
-		return errorsGo.New("could not query terminal dimensions")
+		return errors.New("could not query terminal dimensions")
 	}
 
 	buf := new(bytes.Buffer)

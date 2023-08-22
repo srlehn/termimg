@@ -4,17 +4,16 @@ package gdiplus
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"image"
 	"image/png"
 
+	"github.com/lxn/win"
+
 	"github.com/srlehn/termimg/internal"
+	"github.com/srlehn/termimg/internal/errors"
 	"github.com/srlehn/termimg/internal/wndws"
 	"github.com/srlehn/termimg/term"
-
-	errorsGo "github.com/go-errors/errors"
-	"github.com/lxn/win"
 )
 
 func init() { term.RegisterDrawer(&drawerGDI{}) }
@@ -33,12 +32,12 @@ func (d *drawerGDI) IsApplicable(inp term.DrawerCheckerInput) bool {
 }
 func (d *drawerGDI) init() error {
 	if d == nil {
-		return errorsGo.New(internal.ErrNilReceiver)
+		return errors.New(consts.ErrNilReceiver)
 	}
 	var si win.GdiplusStartupInput
 	si.GdiplusVersion = 1
 	if status := win.GdiplusStartup(&si, nil); status != win.Ok {
-		return errorsGo.New(fmt.Sprintf("GdiplusStartup failed with status '%s'", status))
+		return errors.New(fmt.Sprintf("GdiplusStartup failed with status '%s'", status))
 	}
 	d.gdiIsStarted = true
 	d.cleanUps = append(d.cleanUps, func() error { win.GdiplusShutdown(); return nil })
@@ -63,7 +62,7 @@ func (d *drawerGDI) Close() error {
 }
 func (d *drawerGDI) Draw(img image.Image, bounds image.Rectangle, tm *term.Terminal) error {
 	if d == nil || tm == nil || img == nil {
-		return errorsGo.New(`nil parameter`)
+		return errors.New(`nil parameter`)
 	}
 	if err := d.init(); err != nil {
 		return err
@@ -73,12 +72,12 @@ func (d *drawerGDI) Draw(img image.Image, bounds image.Rectangle, tm *term.Termi
 		timg = term.NewImage(img)
 	}
 	if timg == nil {
-		return errorsGo.New(internal.ErrNilImage)
+		return errors.New(consts.ErrNilImage)
 	}
 
 	rsz := tm.Resizer()
 	if rsz == nil {
-		return errorsGo.New(`nil resizer`)
+		return errors.New(`nil resizer`)
 	}
 	err := timg.Fit(bounds, rsz, tm)
 	if err != nil {
@@ -102,7 +101,7 @@ func (d *drawerGDI) Draw(img image.Image, bounds image.Rectangle, tm *term.Termi
 	if sp != nil {
 		spt, okTyped := sp.(*GDIImage)
 		if !okTyped || spt == nil {
-			return errorsGo.New(fmt.Sprintf(`term.DrawerSpec[%s] (%T) is nil or not of type %T`, d.Name(), sp, &GDIImage{}))
+			return errors.New(fmt.Sprintf(`term.DrawerSpec[%s] (%T) is nil or not of type %T`, d.Name(), sp, &GDIImage{}))
 		}
 		spTyped = spt
 		goto draw
@@ -128,11 +127,11 @@ createBitmap:
 		} else {
 			bytBuf := new(bytes.Buffer)
 			if err = png.Encode(bytBuf, timg.Cropped); err != nil {
-				return errorsGo.New(err)
+				return errors.New(err)
 			}
 			timg.Encoded = bytBuf.Bytes()
 			if len(timg.Encoded) == 0 {
-				return errorsGo.New(`image encoding failed`)
+				return errors.New(`image encoding failed`)
 			}
 			goto createBitmap
 		}
@@ -141,7 +140,7 @@ createBitmap:
 
 		// create HBITMAP
 		if status := win.GdipCreateHBITMAPFromBitmap((*win.GpBitmap)(gpBmp), &hBmp, 0); status != win.Ok {
-			return errorsGo.New(fmt.Sprintf("GdipCreateHBITMAPFromBitmap failed with status '%s'", status))
+			return errors.New(fmt.Sprintf("GdipCreateHBITMAPFromBitmap failed with status '%s'", status))
 		}
 		timg.OnClose(func() error { _ = win.DeleteObject(win.HGDIOBJ(hBmp)); return nil })
 		spTyped.hBitmap = &hBmp
@@ -151,7 +150,7 @@ createBitmap:
 		hdcMem = win.CreateCompatibleDC(termDC)
 		hBmpOld = win.SelectObject(hdcMem, win.HGDIOBJ(hBmp))
 		if hBmpOld == 0 {
-			return errorsGo.New("SelectObject failed")
+			return errors.New("SelectObject failed")
 		}
 		timg.OnClose(func() error { _ = win.SelectObject(hdcMem, hBmpOld); return nil })
 		timg.OnClose(func() error { _ = win.ReleaseDC(0, hdcMem); return nil })
@@ -166,14 +165,14 @@ createBitmap:
 draw:
 	// TODO: win.HALFTONE or win.COLORONCOLOR?
 	if 0 == win.SetStretchBltMode(termDC, win.COLORONCOLOR) {
-		return errorsGo.New("SetStretchBltMode")
+		return errors.New("SetStretchBltMode")
 	}
 	if !win.StretchBlt(
 		termDC, int32(bounds.Min.X*8), int32(bounds.Min.Y*16), int32(bounds.Dx()*8), int32(bounds.Dy()*16),
 		spTyped.dc, int32(0), int32(0), int32(timg.Bounds().Dx()), int32(timg.Bounds().Dy()),
 		win.SRCCOPY,
 	) {
-		return errorsGo.New("StretchBlt failed")
+		return errors.New("StretchBlt failed")
 	}
 
 	return nil

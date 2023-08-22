@@ -6,12 +6,15 @@ import (
 	"image"
 	"strings"
 
-	errorsGo "github.com/go-errors/errors"
+	"golang.org/x/exp/slices"
 
 	sixel "github.com/mattn/go-sixel"
 
-	"github.com/srlehn/termimg/internal"
+	"github.com/srlehn/termimg/internal/consts"
+	"github.com/srlehn/termimg/internal/errors"
+	"github.com/srlehn/termimg/internal/parser"
 	"github.com/srlehn/termimg/internal/propkeys"
+	"github.com/srlehn/termimg/internal/queries"
 	"github.com/srlehn/termimg/mux"
 	"github.com/srlehn/termimg/term"
 )
@@ -39,18 +42,16 @@ func (d *drawerSixel) IsApplicable(inp term.DrawerCheckerInput) bool {
 	}
 
 	tn := inp.Name()
-	for _, n := range []string{
+	if slices.Contains([]string{
 		`domterm`,
 		`st`,
 		`tabby`, // no images
 		`wayst`, // spews character salad
-	} {
-		if tn == n {
-			return false // skip buggy implementations
-		}
+	}, tn) {
+		return false // skip buggy implementations
 	}
 
-	repl, err := term.CachedQuery(inp, mux.Wrap("\033[0c", inp), inp, term.StopOnAlpha, inp, nil)
+	repl, err := term.CachedQuery(inp, mux.Wrap(queries.DA1, inp), inp, parser.StopOnAlpha, inp, nil)
 	// TODO fix mintty - querying in general on windows?
 	if err != nil {
 		return false
@@ -70,19 +71,19 @@ func (d *drawerSixel) IsApplicable(inp term.DrawerCheckerInput) bool {
 
 func (d *drawerSixel) Draw(img image.Image, bounds image.Rectangle, tm *term.Terminal) error {
 	if d == nil || tm == nil || img == nil {
-		return errorsGo.New(`nil parameter`)
+		return errors.New(`nil parameter`)
 	}
 	timg, ok := img.(*term.Image)
 	if !ok {
 		timg = term.NewImage(img)
 	}
 	if timg == nil {
-		return errorsGo.New(internal.ErrNilImage)
+		return errors.New(consts.ErrNilImage)
 	}
 
 	rsz := tm.Resizer()
 	if rsz == nil {
-		return errorsGo.New(`nil resizer`)
+		return errors.New(`nil resizer`)
 	}
 	if err := timg.Fit(bounds, rsz, tm); err != nil {
 		return err
@@ -100,7 +101,7 @@ func (d *drawerSixel) Draw(img image.Image, bounds image.Rectangle, tm *term.Ter
 
 func (d *drawerSixel) getInbandString(timg *term.Image, bounds image.Rectangle, term *term.Terminal) (string, error) {
 	if timg == nil {
-		return ``, errorsGo.New(internal.ErrNilImage)
+		return ``, errors.New(consts.ErrNilImage)
 	}
 	sixelString, err := timg.GetInband(bounds, d, term)
 	if err == nil {

@@ -7,11 +7,11 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/go-errors/errors"
 	"github.com/shirou/gopsutil/process"
 
 	"github.com/srlehn/termimg/internal"
 	"github.com/srlehn/termimg/internal/environ"
+	"github.com/srlehn/termimg/internal/errors"
 	"github.com/srlehn/termimg/internal/exc"
 	"github.com/srlehn/termimg/internal/propkeys"
 	"github.com/srlehn/termimg/mux"

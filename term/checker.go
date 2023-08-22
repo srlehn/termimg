@@ -8,13 +8,15 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/go-errors/errors"
+	"golang.org/x/exp/slices"
+
 	"github.com/srlehn/termimg/internal"
+	"github.com/srlehn/termimg/internal/consts"
 	"github.com/srlehn/termimg/internal/environ"
+	"github.com/srlehn/termimg/internal/errors"
 	"github.com/srlehn/termimg/internal/propkeys"
 	"github.com/srlehn/termimg/internal/wndws"
 	"github.com/srlehn/termimg/wm"
-	"golang.org/x/exp/slices"
 )
 
 // TermChecker must implement at least one of CheckExclude, CheckIs, CheckWindow.
@@ -94,25 +96,19 @@ func (c *termCheckerCore) Check(qu Querier, tty TTY, inp environ.Proprietor) (is
 	return true, pr
 }
 
-const (
-	CheckTermPassed = `passed`
-	CheckTermFailed = `failed`
-	CheckTermDummy  = `dummy` // promoted dummy core method
-)
-
 func (c *termCheckerCore) CheckExclude(environ.Proprietor) (mightBe bool, p environ.Proprietor) {
 	p = environ.NewProprietor()
-	p.SetProperty(propkeys.CheckTermEnvExclPrefix+c.Name(), CheckTermDummy)
+	p.SetProperty(propkeys.CheckTermEnvExclPrefix+c.Name(), consts.CheckTermDummy)
 	return false, p
 }
 func (c *termCheckerCore) CheckIsQuery(Querier, TTY, environ.Proprietor) (is bool, p environ.Proprietor) {
 	p = environ.NewProprietor()
-	p.SetProperty(propkeys.CheckTermQueryIsPrefix+c.Name(), CheckTermDummy)
+	p.SetProperty(propkeys.CheckTermQueryIsPrefix+c.Name(), consts.CheckTermDummy)
 	return false, p
 }
 func (c *termCheckerCore) CheckIsWindow(wm.Window) (is bool, p environ.Proprietor) {
 	p = environ.NewProprietor()
-	p.SetProperty(propkeys.CheckTermWindowIsPrefix+c.Name(), CheckTermDummy)
+	p.SetProperty(propkeys.CheckTermWindowIsPrefix+c.Name(), consts.CheckTermDummy)
 	return false, p
 }
 
@@ -132,7 +128,7 @@ func (c *termCheckerCore) Init(tc TermChecker) {
 
 func (c *termCheckerCore) NewTerminal(opts ...Option) (*Terminal, error) {
 	if c == nil {
-		return nil, errors.New(internal.ErrNilReceiver)
+		return nil, errors.New(consts.ErrNilReceiver)
 	}
 	tm := newDummyTerminal()
 	overwriteEnv := false // likely already set by caller function (NewTerminal())
@@ -176,16 +172,6 @@ func (c *termCheckerCore) NewTerminal(opts ...Option) (*Terminal, error) {
 	if err := tm.SetOptions(setTTYAndQuerier(c)); err != nil {
 		return nil, err
 	}
-	if tm.partialSurveyor == nil {
-		if surver, okSurver := c.parent.(interface {
-			Surveyor(environ.Proprietor) PartialSurveyor
-		}); okSurver {
-			tm.partialSurveyor = surver.Surveyor(tm.proprietor)
-		}
-		if tm.partialSurveyor == nil {
-			tm.partialSurveyor = tm.partialSurveyorDefault
-		}
-	}
 	var w wm.Window
 	if tm.windowProvider != nil {
 		w = tm.windowProvider(c.parent.CheckIsWindow, tm.proprietor)
@@ -203,11 +189,17 @@ func (c *termCheckerCore) NewTerminal(opts ...Option) (*Terminal, error) {
 			w = tm.windowProviderDefault(c.parent.CheckIsWindow, tm.proprietor)
 		}
 	}
-	if w != nil {
-		conn := w.WindowConn()
-		if conn != nil {
-			res, _ := conn.Resources()
-			tm.proprietor.Merge(res)
+	if tm.partialSurveyor == nil {
+		if surver, okSurver := c.parent.(interface {
+			Surveyor(environ.Proprietor) PartialSurveyor
+		}); okSurver {
+			tm.partialSurveyor = surver.Surveyor(tm.proprietor)
+		}
+		if tm.partialSurveyor == nil {
+			tm.partialSurveyor = tm.partialSurveyorDefault
+			if tm.partialSurveyor == nil {
+				tm.partialSurveyor = DefaultSurveyor()
+			}
 		}
 	}
 
@@ -276,7 +268,9 @@ func (c *termCheckerCore) NewTerminal(opts ...Option) (*Terminal, error) {
 	tm.drawers = drawers
 	tm.closer = internal.NewCloser()
 	tm.SetProperty(propkeys.TerminalName, c.parent.Name())
-	tm.SetProperty(propkeys.Executable, exe)
+	if len(exe) > 0 {
+		tm.SetProperty(propkeys.Executable, exe)
+	}
 	tm.OnClose(func() error {
 		// last closer function
 		tm = nil
@@ -316,6 +310,7 @@ func termGenericCheck(tty TTY, qu Querier, pr environ.Proprietor) {
 	for _, spcl := range xtGetTCapSpecialStrs {
 		_, _ = XTGetTCap(spcl, qu, tty, pr, pr)
 	}
+	_, _ = xtVersion(qu, tty, pr, pr)
 }
 
 func isRemotePreCheck(e environ.Enver) bool {
@@ -386,7 +381,7 @@ func (in *drawerCheckerInput) WindowConn() wm.Connection {
 }
 func (in *drawerCheckerInput) WindowFind() error {
 	if in == nil {
-		return errors.New(internal.ErrNilReceiver)
+		return errors.New(consts.ErrNilReceiver)
 	}
 	return in.w.WindowFind()
 }
@@ -434,7 +429,7 @@ func (in *drawerCheckerInput) DeviceContext() uintptr {
 }
 func (in *drawerCheckerInput) Screenshot() (image.Image, error) {
 	if in == nil {
-		return nil, errors.New(internal.ErrNilReceiver)
+		return nil, errors.New(consts.ErrNilReceiver)
 	}
 	return in.w.Screenshot()
 }

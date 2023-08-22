@@ -3,10 +3,9 @@ package wminternal
 import (
 	"image"
 
-	"github.com/go-errors/errors"
-
-	"github.com/srlehn/termimg/internal"
+	"github.com/srlehn/termimg/internal/consts"
 	"github.com/srlehn/termimg/internal/environ"
+	"github.com/srlehn/termimg/internal/errors"
 	"github.com/srlehn/termimg/wm"
 )
 
@@ -42,8 +41,8 @@ func DummyImpl() wm.Implementation { return &dummyImplementation{} }
 
 func (i *dummyImplementation) Name() string { return `dummy` }
 
-func (i *dummyImplementation) Conn() (wm.Connection, error) {
-	return nil, errors.New(internal.ErrNotImplemented)
+func (i *dummyImplementation) Conn(env environ.Proprietor) (wm.Connection, error) {
+	return nil, errors.New(consts.ErrNotImplemented)
 }
 
 func (i *dummyImplementation) CreateWindow(env environ.Proprietor, name, class, instance string, isWindow wm.IsWindowFunc) wm.Window {

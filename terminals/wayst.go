@@ -1,6 +1,7 @@
 package terminals
 
 import (
+	"github.com/srlehn/termimg/internal/consts"
 	"github.com/srlehn/termimg/internal/environ"
 	"github.com/srlehn/termimg/internal/propkeys"
 	"github.com/srlehn/termimg/term"
@@ -24,7 +25,7 @@ type termCheckerWayst struct{ term.TermChecker }
 func (t *termCheckerWayst) CheckIsWindow(w wm.Window) (is bool, p environ.Proprietor) {
 	p = environ.NewProprietor()
 	if t == nil || w == nil {
-		p.SetProperty(propkeys.CheckTermWindowIsPrefix+termNameWayst, term.CheckTermFailed)
+		p.SetProperty(propkeys.CheckTermWindowIsPrefix+termNameWayst, consts.CheckTermFailed)
 		return false, p
 	}
 	isWindow := w.WindowType() == `x11` &&
@@ -32,9 +33,9 @@ func (t *termCheckerWayst) CheckIsWindow(w wm.Window) (is bool, p environ.Propri
 		w.WindowClass() == `Wayst` &&
 		w.WindowInstance() == `Wayst`
 	if isWindow {
-		p.SetProperty(propkeys.CheckTermWindowIsPrefix+termNameWayst, term.CheckTermPassed)
+		p.SetProperty(propkeys.CheckTermWindowIsPrefix+termNameWayst, consts.CheckTermPassed)
 	} else {
-		p.SetProperty(propkeys.CheckTermWindowIsPrefix+termNameWayst, term.CheckTermFailed)
+		p.SetProperty(propkeys.CheckTermWindowIsPrefix+termNameWayst, consts.CheckTermFailed)
 	}
 	return isWindow, p
 }

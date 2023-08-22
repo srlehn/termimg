@@ -11,9 +11,9 @@ import (
 	"golang.org/x/image/bmp"
 	"golang.org/x/image/tiff"
 
-	"github.com/go-errors/errors"
-
 	"github.com/srlehn/termimg/internal"
+	"github.com/srlehn/termimg/internal/consts"
+	"github.com/srlehn/termimg/internal/errors"
 )
 
 var _ internal.ImageEncoder = (*MultiEncoder)(nil)
@@ -22,7 +22,7 @@ type MultiEncoder struct{}
 
 func (e *MultiEncoder) Encode(w io.Writer, img image.Image, fileExt string) error {
 	if img == nil {
-		return errors.New(internal.ErrNilParam)
+		return errors.New(consts.ErrNilParam)
 	}
 	// allow passing whole filename
 	fileExtParts := strings.Split(fileExt, `.`)

@@ -2,7 +2,6 @@ package util
 
 import (
 	"fmt"
-	"log"
 	"path"
 	"reflect"
 	"runtime"
@@ -13,7 +12,7 @@ import (
 	"golang.org/x/exp/constraints"
 	"golang.org/x/exp/maps"
 
-	"github.com/go-errors/errors"
+	"github.com/srlehn/termimg/internal/errors"
 )
 
 func MapsKeysSorted[M ~map[K]V, K constraints.Ordered, V any](m M) []K {
@@ -75,44 +74,30 @@ func TryClose(obj any) error {
 
 func Must(err error) {
 	if err != nil {
-		log.Fatalln(errors.Wrap(err, 1).ErrorStack())
+		panic(errors.Wrap(err, 1))
 	}
 }
 func Must2[T any](obj T, err error) T {
-	var r T
 	if err != nil {
-		log.Fatalln(errors.Wrap(err, 1).ErrorStack())
-		return r
+		panic(errors.Wrap(err, 1))
 	}
 	return obj
 }
 func Must3[T, U any](obj1 T, obj2 U, err error) (T, U) {
-	var r1 T
-	var r2 U
 	if err != nil {
-		log.Fatalln(errors.Wrap(err, 1).ErrorStack())
-		return r1, r2
+		panic(errors.Wrap(err, 1))
 	}
 	return obj1, obj2
 }
 func Must4[T, U, V any](o1 T, o2 U, o3 V, err error) (T, U, V) {
-	var r1 T
-	var r2 U
-	var r3 V
 	if err != nil {
-		log.Fatalln(errors.Wrap(err, 1).ErrorStack())
-		return r1, r2, r3
+		panic(errors.Wrap(err, 1))
 	}
 	return o1, o2, o3
 }
 func Must5[T, U, V, W any](o1 T, o2 U, o3 V, o4 W, err error) (T, U, V, W) {
-	var r1 T
-	var r2 U
-	var r3 V
-	var r4 W
 	if err != nil {
-		log.Fatalln(errors.Wrap(err, 1).ErrorStack())
-		return r1, r2, r3, r4
+		panic(errors.Wrap(err, 1))
 	}
 	return o1, o2, o3, o4
 }
@@ -155,7 +140,7 @@ func RestoreTTY(ptyName string) error {
 
 	// try posix: stty echo
 
-	errRet := errorsGo.New(errors.Join(errs...))
+	errRet := errors.New(errors.Join(errs...))
 	return errRet
 }
 

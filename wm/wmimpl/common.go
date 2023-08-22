@@ -14,8 +14,8 @@ func Impl() wm.Implementation { return &implementation{} }
 
 func (i *implementation) Name() string { return `generic` }
 
-func (i *implementation) Conn() (wm.Connection, error) {
-	return newConn()
+func (i *implementation) Conn(env environ.Proprietor) (wm.Connection, error) {
+	return newConn(env)
 }
 
 func (i *implementation) CreateWindow(env environ.Proprietor, name, class, instance string, isWindow wm.IsWindowFunc) wm.Window {

@@ -3,11 +3,10 @@
 package x11
 
 import (
+	"fmt"
 	"image"
 	"strings"
 	"time"
-
-	errorsGo "github.com/go-errors/errors"
 
 	"github.com/jezek/xgb/xproto"
 	"github.com/srlehn/xgbutil"
@@ -15,11 +14,15 @@ import (
 	"github.com/srlehn/xgbutil/xgraphics"
 	"github.com/srlehn/xgbutil/xwindow"
 
-	"github.com/srlehn/termimg/internal"
+	"github.com/srlehn/termimg/internal/consts"
+	"github.com/srlehn/termimg/internal/errors"
+	. "github.com/srlehn/termimg/internal/util"
 	"github.com/srlehn/termimg/term"
 	"github.com/srlehn/termimg/wm"
 	"github.com/srlehn/termimg/wm/x11"
 )
+
+var _ = Println // TODO rm util import
 
 func init() { term.RegisterDrawer(&drawerX11{}) }
 
@@ -66,7 +69,7 @@ func (d *drawerX11) IsApplicable(inp term.DrawerCheckerInput) bool {
 	}
 
 	// TODO close
-	c, err := wm.NewConn()
+	c, err := wm.NewConn(inp)
 	if err != nil {
 		return false
 	}
@@ -84,39 +87,36 @@ func (d *drawerX11) IsApplicable(inp term.DrawerCheckerInput) bool {
 
 func (d *drawerX11) Draw(img image.Image, bounds image.Rectangle, tm *term.Terminal) error {
 	if d == nil {
-		return errorsGo.New(`nil receiver or receiver with nil values`)
+		return errors.New(`nil receiver or receiver with nil values`)
 	}
 	if tm == nil || img == nil {
-		return errorsGo.New(`nil parameter`)
+		return errors.New(`nil parameter`)
 	}
 	tmw := tm.Window()
 	if tmw == nil {
-		return errorsGo.New(`nil window`)
+		return errors.New(`nil window`)
 	}
 	if tmw.WindowType() != `x11` {
-		return errorsGo.New(`wrong window type`)
+		return errors.New(`wrong window type`)
 	}
 	if err := tmw.WindowFind(); err != nil {
 		return err
 	}
 	connXU, okConn := tmw.WindowConn().Conn().(*xgbutil.XUtil) // TODO make generic Conn
 	if !okConn {
-		return errorsGo.New(`not a X11 connection`)
+		return errors.New(`not a X11 connection`)
 	}
 	if connXU == nil {
-		return errorsGo.New(`nil X11 connection`)
+		return errors.New(`nil X11 connection`)
 	}
 
-	timg, ok := img.(*term.Image)
-	if !ok {
-		timg = term.NewImage(img)
-	}
+	timg := term.NewImage(img)
 	if timg == nil {
-		return errorsGo.New(internal.ErrNilImage)
+		return errors.New(consts.ErrNilImage)
 	}
 	rsz := tm.Resizer()
 	if rsz == nil {
-		return errorsGo.New(`nil resizer`)
+		return errors.New(`nil resizer`)
 	}
 	if err := timg.Fit(bounds, rsz, tm); err != nil {
 		return err
@@ -129,9 +129,82 @@ func (d *drawerX11) Draw(img image.Image, bounds image.Rectangle, tm *term.Termi
 
 	// X11
 
+	fmt.Println()
+	tpw, tph, err := tm.SizeInPixels()
+	hasTermSize := err == nil && tpw > 0 && tph > 0
+	_ = hasTermSize
+	tpw97, tph97 := int(0.97*float64(tpw)), int(0.97*float64(tph))
+	_, _ = tpw, tph
+	_, _ = tpw97, tph97
 	w := xwindow.New(connXU, xproto.Window(tmw.WindowID()))
+	var xOffset, yOffset int
+	if hasTermSize {
+		treeRepl, err := xproto.QueryTree(connXU.Conn(), w.Id).Reply()
+		if err == nil && treeRepl != nil {
+			for _, child := range treeRepl.Children {
+				geomChild, err := xwindow.New(connXU, child).Geometry()
+				if err == nil && geomChild != nil {
+					wGeomChild := geomChild.Width()
+					hGeomChild := geomChild.Height()
+					if wGeomChild >= tpw97 && hGeomChild >= tph97 {
+						// xOffset = wGeomChild + geomChild.X() - int(tpw)
+						if hGeomChild >= int(tph) {
+							yOffset = hGeomChild + geomChild.Y() - int(tph)
+						} else {
+							yo := int(tph) - hGeomChild - geomChild.Y()
+							if yo > 0 && yo <= int(0.1*float64(tph)) {
+								yOffset = yo
+							}
+						}
+						break
+					}
+				}
+				// Println(geomChild, tpw, tph, xOffset, yOffset)
+			}
+		}
+	}
+	if xOffset == 0 && yOffset == 0 {
+		geom, err := w.Geometry()
+		if err == nil && geom != nil {
+			// geom.X(), geom.Y() offset to parent window
+			// xOffset = geom.X()
+			// yOffset = geom.Y()
+			wGeom := geom.Width()
+			hGeom := geom.Height()
+			if wGeom >= tpw97 && hGeom >= tph97 {
+				// x might contain scrollbar width
+				// xOffset = wGeom - int(tpw)
+				if hGeom >= int(tph) {
+					yOffset = hGeom - int(tph)
+				} else {
+					yo := int(tph) - hGeom
+					if yo > 0 && yo <= int(0.1*float64(tph)) {
+						yOffset = yo
+					}
+				}
+			}
+			// Println(geom, tpw, tph, xOffset, yOffset)
+		}
+	}
+	// Println("xOffset", xOffset, "yOffset", yOffset)
+	boundsPx := image.Rect(int(cw)*bounds.Min.X+xOffset, int(ch)*bounds.Min.Y+yOffset,
+		int(cw)*bounds.Max.X+xOffset, int(ch)*bounds.Max.Y+yOffset)
+
+	//
+
+	if err := draw(connXU, w, timg, boundsPx); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+type drawFunc func(connXU *xgbutil.XUtil, w *xwindow.Window, timg *term.Image, boundsPx image.Rectangle) error
+
+var draw drawFunc = drawCurrentImpl
+
+func drawCurrentImpl(connXU *xgbutil.XUtil, w *xwindow.Window, timg *term.Image, boundsPx image.Rectangle) error {
 	ximg := xgraphics.NewConvert(connXU, timg.Cropped)
-	boundsPx := image.Rect(int(cw)*bounds.Min.X, int(ch)*bounds.Min.Y, int(cw)*bounds.Max.X, int(ch)*bounds.Max.Y)
 
 	go xevent.Main(connXU)
 
@@ -140,10 +213,10 @@ func (d *drawerX11) Draw(img image.Image, bounds image.Rectangle, tm *term.Termi
 		return err
 	}
 	if err := ximg.XSurfaceSet(wCanvas.Id); err != nil {
-		return errorsGo.New(err)
+		return errors.New(err)
 	}
 	if err := ximg.XDrawChecked(); err != nil {
-		return errorsGo.New(err)
+		return errors.New(err)
 	}
 	ximg.XPaint(wCanvas.Id)
 	wCanvas.Map()

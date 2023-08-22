@@ -11,11 +11,10 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/go-errors/errors"
-
 	"github.com/srlehn/termimg"
-	"github.com/srlehn/termimg/internal"
+	"github.com/srlehn/termimg/internal/consts"
 	"github.com/srlehn/termimg/internal/encoder/encmulti"
+	"github.com/srlehn/termimg/internal/errors"
 	"github.com/srlehn/termimg/internal/exc"
 	"github.com/srlehn/termimg/pty"
 	"github.com/srlehn/termimg/resize/rdefault"
@@ -51,7 +50,7 @@ func PTermPrintImageHelper(
 		return err
 	}
 	if img == nil {
-		return errors.New(internal.ErrNilImage)
+		return errors.New(consts.ErrNilImage)
 	}
 	termNameStr := termName
 	if len(termNameStr) == 0 {
@@ -109,7 +108,7 @@ func PTermPrintImageHelper(
 	}
 
 	if doDisplay {
-		conn, err := wm.NewConn()
+		conn, err := wm.NewConn(nil)
 		if err != nil {
 			return err
 		}
@@ -127,10 +126,10 @@ var (
 func DrawFuncOnlyPicture(img image.Image, cellBounds image.Rectangle) pty.DrawFunc {
 	return func(tm *term.Terminal, dr term.Drawer, rsz term.Resizer, cpw, cph uint) (areaOfInterest image.Rectangle, scaleX, scaleY float64, e error) {
 		if img == nil {
-			return image.Rectangle{}, 0, 0, errors.New(internal.ErrNilImage)
+			return image.Rectangle{}, 0, 0, errors.New(consts.ErrNilImage)
 		}
 		if tm == nil || rsz == nil {
-			return image.Rectangle{}, 0, 0, errors.New(internal.ErrNilParam)
+			return image.Rectangle{}, 0, 0, errors.New(consts.ErrNilParam)
 		}
 		if cpw == 0 || cph == 0 {
 			return image.Rectangle{}, 0, 0, errors.New(`cell box side length of 0`)
@@ -155,10 +154,10 @@ func DrawFuncOnlyPicture(img image.Image, cellBounds image.Rectangle) pty.DrawFu
 func DrawFuncPictureWithFrame(img image.Image, cellBounds image.Rectangle) pty.DrawFunc {
 	return func(tm *term.Terminal, dr term.Drawer, rsz term.Resizer, cpw, cph uint) (areaOfInterest image.Rectangle, scaleX, scaleY float64, e error) {
 		if img == nil {
-			return image.Rectangle{}, 0, 0, errors.New(internal.ErrNilImage)
+			return image.Rectangle{}, 0, 0, errors.New(consts.ErrNilImage)
 		}
 		if tm == nil || rsz == nil {
-			return image.Rectangle{}, 0, 0, errors.New(internal.ErrNilParam)
+			return image.Rectangle{}, 0, 0, errors.New(consts.ErrNilParam)
 		}
 		if cpw == 0 || cph == 0 {
 			return image.Rectangle{}, 0, 0, errors.New(`cell box side length of 0`)
@@ -323,7 +322,10 @@ func infoHeader(tm *term.Terminal, dr term.Drawer, area image.Rectangle) string 
 	return str
 }
 
-func NumberArea(area image.Rectangle) string {
+func NumberArea(area image.Rectangle, cutOff int) string {
+	if cutOff < 0 {
+		cutOff = 0
+	}
 	countDecimals := func(d int) int {
 		var sign int
 		if d < 0 {
@@ -340,8 +342,8 @@ func NumberArea(area image.Rectangle) string {
 
 	var line string
 	for y := 0; y < maxDecimalsX; y++ {
-		line += fmt.Sprintf("\033[%d;%dH", area.Min.Y+y+1, area.Min.X+maxDecimalsY+1)
-		for x := area.Min.X + maxDecimalsY; x <= area.Max.X; x++ {
+		line += fmt.Sprintf("\033[%d;%dH", area.Min.Y+y+1, area.Min.X+maxInt(maxDecimalsY, cutOff)+1)
+		for x := area.Min.X + maxInt(maxDecimalsY, cutOff); x < area.Max.X-cutOff; x++ {
 			decPot := int(math.Pow(float64(10), float64(maxDecimalsX-y-1)))
 			digit := strconv.Itoa((x % (decPot * 10)) / decPot)
 			if len(digit) != 1 || (digit == `0` && (maxDecimalsX-y) > countDecimals(x)) {
@@ -350,8 +352,15 @@ func NumberArea(area image.Rectangle) string {
 			line += digit
 		}
 	}
-	for y := area.Min.Y + maxDecimalsX + 1; y <= area.Max.Y; y++ {
+	for y := area.Min.Y + maxInt(maxDecimalsX, cutOff) + 1; y <= area.Max.Y-cutOff; y++ {
 		line += fmt.Sprintf("\033[%d;%dH%"+maxDecimalsXStr+`d`, y, area.Min.X+1, y-1)
 	}
 	return line
+}
+
+func maxInt(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
 }

@@ -1,6 +1,7 @@
 package terminals
 
 import (
+	"github.com/srlehn/termimg/internal/consts"
 	"github.com/srlehn/termimg/internal/environ"
 	"github.com/srlehn/termimg/internal/propkeys"
 	"github.com/srlehn/termimg/term"
@@ -20,23 +21,23 @@ var _ term.TermChecker = (*termCheckerTabby)(nil)
 
 type termCheckerTabby struct{ term.TermChecker }
 
-func (t *termCheckerTabby) CheckExclude(ci environ.Proprietor) (mightBe bool, p environ.Proprietor) {
+func (t *termCheckerTabby) CheckExclude(pr environ.Proprietor) (mightBe bool, p environ.Proprietor) {
 	p = environ.NewProprietor()
-	if t == nil || ci == nil {
-		p.SetProperty(propkeys.CheckTermEnvExclPrefix+termNameTabby, term.CheckTermFailed)
+	if t == nil || pr == nil {
+		p.SetProperty(propkeys.CheckTermEnvExclPrefix+termNameTabby, consts.CheckTermFailed)
 		return false, p
 	}
-	envTP, okTP := ci.LookupEnv(`TERM_PROGRAM`)
+	envTP, okTP := pr.LookupEnv(`TERM_PROGRAM`)
 	if !okTP || envTP != `Tabby` {
-		p.SetProperty(propkeys.CheckTermEnvExclPrefix+termNameTabby, term.CheckTermFailed)
+		p.SetProperty(propkeys.CheckTermEnvExclPrefix+termNameTabby, consts.CheckTermFailed)
 		return false, p
 	}
-	_, okTVS := ci.LookupEnv(`TABBY_PLUGINS`)
+	_, okTVS := pr.LookupEnv(`TABBY_PLUGINS`)
 	if !okTVS {
-		p.SetProperty(propkeys.CheckTermEnvExclPrefix+termNameTabby, term.CheckTermFailed)
+		p.SetProperty(propkeys.CheckTermEnvExclPrefix+termNameTabby, consts.CheckTermFailed)
 		return false, p
 	}
-	p.SetProperty(propkeys.CheckTermEnvExclPrefix+termNameTabby, term.CheckTermPassed)
+	p.SetProperty(propkeys.CheckTermEnvExclPrefix+termNameTabby, consts.CheckTermPassed)
 	return true, p
 }
 

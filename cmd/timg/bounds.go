@@ -5,7 +5,6 @@ import (
 	_ "image/gif"
 	_ "image/jpeg"
 	_ "image/png"
-	"os"
 	"strconv"
 	"strings"
 
@@ -15,34 +14,34 @@ import (
 	_ "golang.org/x/image/vp8l"
 	_ "golang.org/x/image/webp"
 
-	errorsGo "github.com/go-errors/errors"
-
+	"github.com/srlehn/termimg/internal/errors"
 	"github.com/srlehn/termimg/term"
 )
 
-func splitDimArg(dim string, surv term.Surveyor, imgFile string) (x, y, w, h int, e error) {
+// func splitDimArg(dim string, surv term.Surveyor, imgFile string) (x, y, w, h int, e error) {
+func splitDimArg(dim string, surv term.Surveyor, img image.Image) (x, y, w, h int, e error) {
 	dimParts := strings.Split(dim, `,`)
 	if len(dimParts) > 4 {
-		return 0, 0, 0, 0, errorsGo.New(`image position string not "<x>,<y>,<w>x<h>"`)
+		return 0, 0, 0, 0, errors.New(`image position string not "<x>,<y>,<w>x<h>"`)
 	}
 	var err error
 	var xu, yu, wu, hu uint64
 	for i, dimPart := range dimParts {
 		if strings.Contains(dimPart, `x`) {
 			if i != len(dimParts)-1 {
-				return 0, 0, 0, 0, errorsGo.New(errShowUsage)
+				return 0, 0, 0, 0, errors.New(showUsageStr)
 			}
 			sizes := strings.SplitN(dimPart, `x`, 2)
 			if len(sizes[0]) > 0 {
 				wu, err = strconv.ParseUint(sizes[0], 10, 64)
 				if err != nil {
-					return 0, 0, 0, 0, errorsGo.New(errShowUsage)
+					return 0, 0, 0, 0, errors.New(showUsageStr)
 				}
 			}
 			if len(sizes[1]) > 0 {
 				hu, err = strconv.ParseUint(sizes[1], 10, 64)
 				if err != nil {
-					return 0, 0, 0, 0, errorsGo.New(errShowUsage)
+					return 0, 0, 0, 0, errors.New(showUsageStr)
 				}
 			}
 			break
@@ -52,7 +51,7 @@ func splitDimArg(dim string, surv term.Surveyor, imgFile string) (x, y, w, h int
 		if len(dimPart) > 0 {
 			val, err = strconv.ParseUint(dimPart, 10, 64)
 			if err != nil {
-				return 0, 0, 0, 0, errorsGo.New(errShowUsage)
+				return 0, 0, 0, 0, errors.New(showUsageStr)
 			}
 		}
 		switch i {
@@ -68,25 +67,18 @@ func splitDimArg(dim string, surv term.Surveyor, imgFile string) (x, y, w, h int
 	}
 	var wScaled, hScaled uint
 	if wu == 0 || hu == 0 {
-		// return 0, 0, 0, 0, errorsGo.New(`rectangle side with length 0`)
+		// return 0, 0, 0, 0, errors.New(`rectangle side with length 0`)
 		tcw, tch, err := surv.SizeInCells()
 		if err != nil {
-			return 0, 0, 0, 0, errorsGo.New(err)
+			return 0, 0, 0, 0, errors.New(err)
 		}
 		cpw, cph, err := surv.CellSize()
 		if err != nil {
-			return 0, 0, 0, 0, errorsGo.New(err)
+			return 0, 0, 0, 0, errors.New(err)
 		}
-		f, err := os.Open(imgFile) // TODO don't open image multiple times
-		if err != nil {
-			return 0, 0, 0, 0, errorsGo.New(errShowUsage)
+		if img == nil {
+			return 0, 0, 0, 0, errors.New(`nil image`)
 		}
-		defer f.Close()
-		img, _, err := image.Decode(f)
-		if err != nil {
-			return 0, 0, 0, 0, errorsGo.New(err)
-		}
-		_ = f.Close()
 		imgBounds := img.Bounds()
 		ar := float64(imgBounds.Dx()) / float64(imgBounds.Dy())
 		arc := ar * float64(cph) / float64(cpw)
@@ -126,7 +118,7 @@ func splitDimArg(dim string, surv term.Surveyor, imgFile string) (x, y, w, h int
 		h = int(hu)
 	}
 	if w < 1 && h < 1 {
-		return 0, 0, 0, 0, errorsGo.New(`image position outside visible area`)
+		return 0, 0, 0, 0, errors.New(`image position outside visible area`)
 	}
 	return x, y, w, h, nil
 }

@@ -2,7 +2,6 @@ package term
 
 import (
 	"bytes"
-	"errors"
 	"image"
 	"image/color"
 	"image/draw"
@@ -12,9 +11,9 @@ import (
 	"strings"
 	"sync"
 
-	errorsGo "github.com/go-errors/errors"
-
 	"github.com/srlehn/termimg/internal"
+	"github.com/srlehn/termimg/internal/consts"
+	"github.com/srlehn/termimg/internal/errors"
 )
 
 type ImageEncoder = internal.ImageEncoder
@@ -88,7 +87,7 @@ func NewImageBytes(imgBytes []byte) *Image {
 // Decode requires registration of image decoders.
 func (i *Image) Decode() error {
 	if i == nil {
-		return errorsGo.New(internal.ErrNilReceiver)
+		return errors.New(consts.ErrNilReceiver)
 	}
 	if i.Original != nil {
 		return nil
@@ -118,7 +117,7 @@ func (i *Image) Decode() error {
 // ColorModel ...
 func (i *Image) ColorModel() color.Model {
 	if i == nil {
-		panic(errorsGo.New(internal.ErrNilReceiver))
+		panic(errors.New(consts.ErrNilReceiver))
 	}
 	if err := i.Decode(); err != nil {
 		panic(err)
@@ -129,7 +128,7 @@ func (i *Image) ColorModel() color.Model {
 // Bounds ...
 func (i *Image) Bounds() image.Rectangle {
 	if i == nil {
-		panic(errorsGo.New(internal.ErrNilReceiver))
+		panic(errors.New(consts.ErrNilReceiver))
 	}
 	if err := i.Decode(); err != nil {
 		panic(err)
@@ -140,7 +139,7 @@ func (i *Image) Bounds() image.Rectangle {
 // At ...
 func (i *Image) At(x, y int) color.Color {
 	if i == nil {
-		panic(errorsGo.New(internal.ErrNilReceiver))
+		panic(errors.New(consts.ErrNilReceiver))
 	}
 	if err := i.Decode(); err != nil {
 		panic(err)
@@ -151,7 +150,7 @@ func (i *Image) At(x, y int) color.Color {
 // Image ...
 func (i *Image) Image() (image.Image, error) {
 	if i == nil {
-		return nil, errorsGo.New(internal.ErrNilReceiver)
+		return nil, errors.New(consts.ErrNilReceiver)
 	}
 	if err := i.Decode(); err != nil {
 		return nil, err
@@ -171,27 +170,27 @@ type inBandString struct {
 // GetInband ...
 func (i *Image) GetInband(placementCells image.Rectangle, d Drawer, t *Terminal) (string, error) {
 	if i == nil {
-		return ``, errorsGo.New(internal.ErrNilReceiver)
+		return ``, errors.New(consts.ErrNilReceiver)
 	}
 	if d == nil || t == nil {
-		return ``, errorsGo.New(`nil parameter`)
+		return ``, errors.New(`nil parameter`)
 	}
 	if placementCells.Dx() == 0 || placementCells.Dy() == 0 {
-		return ``, errorsGo.New(`no draw area`)
+		return ``, errors.New(`no draw area`)
 	}
 	if i.inBand == nil {
 		i.inBand = make(map[string]inBandString)
-		return ``, errorsGo.New(`struct field is nil`)
+		return ``, errors.New(`struct field is nil`)
 	}
 	k := d.Name() + `_` + t.Name()
 	i.inBandMu.RLock()
 	defer i.inBandMu.RUnlock()
 	v, ok := i.inBand[k]
 	if !ok {
-		return ``, errorsGo.New(`no entry`)
+		return ``, errors.New(`no entry`)
 	}
 	if v.placementCells != placementCells {
-		return ``, errorsGo.New(`different image placement`)
+		return ``, errors.New(`different image placement`)
 	}
 
 	tcw, tch, err := t.SizeInCells()
@@ -212,26 +211,26 @@ func (i *Image) GetInband(placementCells image.Rectangle, d Drawer, t *Terminal)
 		return v.cropped, nil
 	}
 
-	return ``, errorsGo.New(`no find`)
+	return ``, errors.New(`no find`)
 }
 
 // SetInband ...
 func (i *Image) SetInband(placementCells image.Rectangle, inband string, d Drawer, t *Terminal) error {
 	// TODO save objects for a restricted count of past placements
 	if i == nil {
-		return errorsGo.New(internal.ErrNilReceiver)
+		return errors.New(consts.ErrNilReceiver)
 	}
 	if d == nil || t == nil {
-		return errorsGo.New(`nil parameter`)
+		return errors.New(`nil parameter`)
 	}
 	if placementCells.Dx() == 0 || placementCells.Dy() == 0 {
-		return errorsGo.New(`no draw area`)
+		return errors.New(`no draw area`)
 	}
 	i.inBandMu.Lock()
 	defer i.inBandMu.Unlock()
 	if i.inBand == nil {
 		i.inBand = make(map[string]inBandString)
-		return errorsGo.New(`struct field is nil`)
+		return errors.New(`struct field is nil`)
 	}
 	k := d.Name() + `_` + t.Name()
 	v, ok := i.inBand[k]
@@ -269,27 +268,27 @@ type posObject struct {
 // GetPosObject ...
 func (i *Image) GetPosObject(placementCells image.Rectangle, d Drawer, t *Terminal) (any, error) {
 	if i == nil {
-		return ``, errorsGo.New(internal.ErrNilReceiver)
+		return ``, errors.New(consts.ErrNilReceiver)
 	}
 	if d == nil || t == nil {
-		return ``, errorsGo.New(`nil parameter`)
+		return ``, errors.New(`nil parameter`)
 	}
 	if placementCells.Dx() == 0 || placementCells.Dy() == 0 {
-		return ``, errorsGo.New(`no draw area`)
+		return ``, errors.New(`no draw area`)
 	}
 	i.posObjsMu.RLock()
 	defer i.posObjsMu.RUnlock()
 	if i.posObjs == nil {
 		i.posObjs = make(map[string]posObject)
-		return nil, errorsGo.New(`struct field is nil`)
+		return nil, errors.New(`struct field is nil`)
 	}
 	k := d.Name() + `_` + t.Name()
 	v, ok := i.posObjs[k]
 	if !ok {
-		return ``, errorsGo.New(`no entry`)
+		return ``, errors.New(`no entry`)
 	}
 	if v.placementCells != placementCells {
-		return ``, errorsGo.New(`different image placement`)
+		return ``, errors.New(`different image placement`)
 	}
 
 	tcw, tch, err := t.SizeInCells()
@@ -310,26 +309,26 @@ func (i *Image) GetPosObject(placementCells image.Rectangle, d Drawer, t *Termin
 		return v.cropped, nil
 	}
 
-	return ``, errorsGo.New(`no find`)
+	return ``, errors.New(`no find`)
 }
 
 // SetPosObject ...
 func (i *Image) SetPosObject(placementCells image.Rectangle, obj any, d Drawer, t *Terminal) error {
 	// TODO save objects for a restricted count of past placements
 	if i == nil {
-		return errorsGo.New(internal.ErrNilReceiver)
+		return errors.New(consts.ErrNilReceiver)
 	}
 	if d == nil || t == nil {
-		return errorsGo.New(`nil parameter`)
+		return errors.New(`nil parameter`)
 	}
 	if placementCells.Dx() == 0 || placementCells.Dy() == 0 {
-		return errorsGo.New(`no draw area`)
+		return errors.New(`no draw area`)
 	}
 	i.posObjsMu.Lock()
 	defer i.posObjsMu.Unlock()
 	if i.posObjs == nil {
 		i.posObjs = make(map[string]posObject)
-		return errorsGo.New(`struct field is nil`)
+		return errors.New(`struct field is nil`)
 	}
 	k := d.Name() + `_` + t.Name()
 	v, ok := i.posObjs[k]
@@ -359,17 +358,17 @@ func (i *Image) SetPosObject(placementCells image.Rectangle, obj any, d Drawer, 
 // GetDrawerObject ...
 func (i *Image) GetDrawerObject(d Drawer) (any, error) {
 	if i == nil || d == nil {
-		return nil, errorsGo.New(`nil receiver or parameter`)
+		return nil, errors.New(`nil receiver or parameter`)
 	}
 	i.drawerSpecMu.RLock()
 	defer i.drawerSpecMu.RUnlock()
 	if i.drawerSpec == nil {
 		i.drawerSpec = make(map[string]any)
-		return nil, errorsGo.New(`object not found`)
+		return nil, errors.New(`object not found`)
 	}
 	obj, exists := i.drawerSpec[d.Name()]
 	if !exists {
-		return nil, errorsGo.New(`object not found`)
+		return nil, errors.New(`object not found`)
 	}
 	return obj, nil
 }
@@ -377,7 +376,7 @@ func (i *Image) GetDrawerObject(d Drawer) (any, error) {
 // SetDrawerObject ...
 func (i *Image) SetDrawerObject(obj any, d Drawer) error {
 	if i == nil || d == nil {
-		return errorsGo.New(`nil receiver or parameter`)
+		return errors.New(`nil receiver or parameter`)
 	}
 	i.drawerSpecMu.Lock()
 	defer i.drawerSpecMu.Unlock()
@@ -393,7 +392,7 @@ func (i *Image) SetDrawerObject(obj any, d Drawer) error {
 func (i *Image) SaveAsFile(t *Terminal, fileExt string, enc ImageEncoder) (rm func() error, err error) {
 	// TODO allow creation of other file types
 	if i == nil {
-		return nil, errorsGo.New(internal.ErrNilReceiver)
+		return nil, errors.New(consts.ErrNilReceiver)
 	}
 	if len(i.FileName) > 0 {
 		return nil, nil
@@ -404,7 +403,7 @@ func (i *Image) SaveAsFile(t *Terminal, fileExt string, enc ImageEncoder) (rm fu
 	}
 	fileExt = strings.TrimPrefix(fileExt, `.`)
 	if err != nil {
-		return nil, errorsGo.New(err)
+		return nil, errors.New(err)
 	}
 	f, err := t.CreateTemp(`*.` + fileExt)
 	if err != nil {
@@ -436,19 +435,19 @@ type Resizer interface {
 // nil Resizer is allowed (default resizer crops instead of resize)
 func (i *Image) Fit(bounds image.Rectangle, rsz Resizer, sv Surveyor) error {
 	if i == nil {
-		return errorsGo.New(internal.ErrNilReceiver)
+		return errors.New(consts.ErrNilReceiver)
 	}
 	if sv == nil {
 		i.Cropped = nil
 		i.termSize = image.Point{}
-		return errorsGo.New(internal.ErrNilParam)
+		return errors.New(consts.ErrNilParam)
 	}
 	w := bounds.Dx()
 	h := bounds.Dy()
 	if bounds == (image.Rectangle{}) || w <= 0 || h <= 0 {
 		i.Cropped = nil
 		i.termSize = image.Point{}
-		return errorsGo.New(`resize: nil size`)
+		return errors.New(`resize: nil size`)
 	}
 	var cpw, cph float64
 	if w == i.pos.Dx() && h == i.pos.Dy() {
@@ -475,7 +474,7 @@ func (i *Image) Fit(bounds image.Rectangle, rsz Resizer, sv Surveyor) error {
 		if i.Original == nil {
 			i.Cropped = nil
 			i.termSize = image.Point{}
-			err := errorsGo.New(internal.ErrNilImage)
+			err := errors.New(consts.ErrNilImage)
 			return err
 		}
 		size := image.Point{X: w * int(cpw), Y: h * int(cph)}
@@ -488,12 +487,12 @@ func (i *Image) Fit(bounds image.Rectangle, rsz Resizer, sv Surveyor) error {
 		if imgResized == nil {
 			i.Cropped = nil
 			i.termSize = image.Point{}
-			return errorsGo.New(internal.ErrNilImage)
+			return errors.New(consts.ErrNilImage)
 		}
 		if imgResized.Bounds() == (image.Rectangle{}) {
 			i.Cropped = nil
 			i.termSize = image.Point{}
-			return errorsGo.New(`resize: nil size`)
+			return errors.New(`resize: nil size`)
 		}
 		i.Resized = imgResized
 		i.pos = bounds
@@ -509,7 +508,7 @@ crop:
 	if int(tcw) <= i.pos.Min.X || int(tch) <= i.pos.Min.Y {
 		i.Cropped = nil
 		i.termSize = image.Point{}
-		return errorsGo.New(`image outside visible area`)
+		return errors.New(`image outside visible area`)
 	}
 	if int(tcw) >= (i.pos.Max.X) && int(tch) >= (i.pos.Max.Y) {
 		// image fully visible
@@ -538,7 +537,7 @@ crop:
 	if imgCropped == nil {
 		i.Cropped = nil
 		i.termSize = image.Point{}
-		return errorsGo.New(internal.ErrNilImage)
+		return errors.New(consts.ErrNilImage)
 	}
 	i.Cropped = imgCropped
 	i.termSize = image.Point{int(tcw), int(tch)}
@@ -557,7 +556,7 @@ func (r *resizerFallback) Resize(img image.Image, size image.Point) (image.Image
 
 func cropImage(img image.Image, size image.Point) (image.Image, error) {
 	if img == nil {
-		return nil, errorsGo.New(internal.ErrNilImage)
+		return nil, errors.New(consts.ErrNilImage)
 	}
 	b := img.Bounds()
 	if simg, ok := img.(interface {

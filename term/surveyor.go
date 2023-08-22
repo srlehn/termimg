@@ -1,12 +1,9 @@
 package term
 
 import (
-	"errors"
-
-	errorsGo "github.com/go-errors/errors"
-
-	"github.com/srlehn/termimg/internal"
+	"github.com/srlehn/termimg/internal/consts"
 	"github.com/srlehn/termimg/internal/environ"
+	"github.com/srlehn/termimg/internal/errors"
 	"github.com/srlehn/termimg/internal/propkeys"
 	"github.com/srlehn/termimg/wm"
 )
@@ -179,7 +176,7 @@ func getSurveyor(s PartialSurveyor, p environ.Proprietor) SurveyorLight {
 
 func (s *surveyor) CellSize(tty TTY, qu Querier, w wm.Window, pr environ.Proprietor) (width, height float64, err error) {
 	if s == nil {
-		return 0, 0, errorsGo.New(internal.ErrNilReceiver)
+		return 0, 0, errors.New(consts.ErrNilReceiver)
 	}
 	var errs []error
 	for _, cellSizeFunc := range s.cellSizeFuncs {
@@ -222,11 +219,11 @@ func (s *surveyor) CellSize(tty TTY, qu Querier, w wm.Window, pr environ.Proprie
 			return cellWidth, cellHeight, nil
 		}
 		if !hasSizeInCells2 {
-			errs = append(errs, errorsGo.New(`received 0 length terminal sizes (in cells)`))
+			errs = append(errs, errors.New(`received 0 length terminal sizes (in cells)`))
 			continue
 		}
 		if !hasSizeInPixels2 {
-			errs = append(errs, errorsGo.New(`received 0 length terminal sizes (in pixels)`))
+			errs = append(errs, errors.New(`received 0 length terminal sizes (in pixels)`))
 			continue
 		}
 	}
@@ -247,11 +244,11 @@ func (s *surveyor) CellSize(tty TTY, qu Querier, w wm.Window, pr environ.Proprie
 					hasSizeInCells = true
 					break
 				}
-				errs = append(errs, errorsGo.New(`received 0 length terminal sizes (in cells)`))
+				errs = append(errs, errors.New(`received 0 length terminal sizes (in cells)`))
 			}
 		}
 		if !hasSizeInCells {
-			errs = append(errs, errorsGo.New("unable to query terminal resolution in cells"))
+			errs = append(errs, errors.New("unable to query terminal resolution in cells"))
 		} else if !hasSizeInPixels {
 			for _, SizeInPixelsFunc := range s.SizeInPixelsFuncs {
 				if SizeInPixelsFunc == nil {
@@ -278,15 +275,15 @@ func (s *surveyor) CellSize(tty TTY, qu Querier, w wm.Window, pr environ.Proprie
 	}
 	errRet := errors.Join(errs...)
 	if errRet == nil {
-		errRet = errorsGo.New("Surveyor.CellSize failed")
+		errRet = errors.New("Surveyor.CellSize failed")
 	} else {
-		errRet = errorsGo.Errorf("%s: %w", "Surveyor.CellSize failed", errRet)
+		errRet = errors.Errorf("%s: %w", "Surveyor.CellSize failed", errRet)
 	}
 	return 0, 0, errRet
 }
 func (s *surveyor) SizeInCells(tty TTY, qu Querier, w wm.Window, pr environ.Proprietor) (width, height uint, err error) {
 	if s == nil {
-		return 0, 0, errorsGo.New(internal.ErrNilReceiver)
+		return 0, 0, errors.New(consts.ErrNilReceiver)
 	}
 	var errs []error
 	for _, SizeInCellsFunc := range s.SizeInCellsFuncs {
@@ -362,16 +359,16 @@ func (s *surveyor) SizeInCells(tty TTY, qu Querier, w wm.Window, pr environ.Prop
 	}
 	errRet := errors.Join(errs...)
 	if errRet == nil {
-		errRet = errorsGo.New("Surveyor.SizeInCells failed")
+		errRet = errors.New("Surveyor.SizeInCells failed")
 
 	} else {
-		errRet = errorsGo.Errorf("%s: %w", "Surveyor.SizeInCells failed", errRet)
+		errRet = errors.Errorf("%s: %w", "Surveyor.SizeInCells failed", errRet)
 	}
 	return 0, 0, errRet
 }
 func (s *surveyor) SizeInPixels(tty TTY, qu Querier, w wm.Window, pr environ.Proprietor) (width, height uint, err error) {
 	if s == nil {
-		return 0, 0, errorsGo.New(internal.ErrNilReceiver)
+		return 0, 0, errors.New(consts.ErrNilReceiver)
 	}
 	var errs []error
 	for _, SizeInPixelsFunc := range s.SizeInPixelsFuncs {
@@ -385,18 +382,27 @@ func (s *surveyor) SizeInPixels(tty TTY, qu Querier, w wm.Window, pr environ.Pro
 		}
 		return w, h, nil
 	}
+	var widthInCells, heightInCells uint
 	for _, SizeInCellsAndPixelsFunc := range s.SizeInCellsAndPixelsFuncs {
 		if SizeInCellsAndPixelsFunc == nil {
 			continue
 		}
-		_, _, pw, ph, err := SizeInCellsAndPixelsFunc(tty, qu, w)
+		cw, ch, pw, ph, err := SizeInCellsAndPixelsFunc(tty, qu, w)
 		if err != nil {
 			errs = append(errs, err)
 			continue
 		}
+		if cw > 0 && ch > 0 {
+			widthInCells, heightInCells = cw, ch
+		}
+		if pw < 1 || ph < 1 {
+			errs = append(errs, errors.New(`no pixel size`))
+			continue
+		}
 		return pw, ph, nil
 	}
-	if len(s.cellSizeFuncs) > 0 && (len(s.SizeInCellsFuncs) > 0 || len(s.SizeInCellsAndPixelsFuncs) > 0) {
+	if len(s.cellSizeFuncs) > 0 &&
+		((widthInCells > 0 && heightInCells > 0) || len(s.SizeInCellsFuncs) > 0 || len(s.SizeInCellsAndPixelsFuncs) > 0) {
 		var cellWidth, cellHeight float64
 		var widthInCells, heightInCells uint
 		for _, cellSizeFunc := range s.cellSizeFuncs {
@@ -413,6 +419,9 @@ func (s *surveyor) SizeInPixels(tty TTY, qu Querier, w wm.Window, pr environ.Pro
 			break
 		}
 		if cellWidth > 0 && cellHeight > 0 {
+			if widthInCells > 0 && heightInCells > 0 {
+				goto divide
+			}
 			for _, SizeInCellsFunc := range s.SizeInCellsFuncs {
 				if SizeInCellsFunc == nil {
 					continue
@@ -447,16 +456,16 @@ func (s *surveyor) SizeInPixels(tty TTY, qu Querier, w wm.Window, pr environ.Pro
 	}
 	errRet := errors.Join(errs...)
 	if errRet == nil {
-		errRet = errorsGo.New("Surveyor.SizeInPixels failed")
+		errRet = errors.New("Surveyor.SizeInPixels failed")
 
 	} else {
-		errRet = errorsGo.Errorf("%s: %w", "Surveyor.SizeInPixels failed", errRet)
+		errRet = errors.Errorf("%s: %w", "Surveyor.SizeInPixels failed", errRet)
 	}
 	return 0, 0, errRet
 }
 func (s *surveyor) GetCursor(tty TTY, qu Querier, _ wm.Window, _ environ.Proprietor) (xPosCells, yPosCells uint, err error) {
 	if s == nil {
-		return 0, 0, errorsGo.New(internal.ErrNilReceiver)
+		return 0, 0, errors.New(consts.ErrNilReceiver)
 	}
 	var errs []error
 	for _, posGetFunc := range s.posGetFuncs {
@@ -473,16 +482,16 @@ func (s *surveyor) GetCursor(tty TTY, qu Querier, _ wm.Window, _ environ.Proprie
 	}
 	errRet := errors.Join(errs...)
 	if errRet == nil {
-		errRet = errorsGo.New("Surveyor.GetCursor failed")
+		errRet = errors.New("Surveyor.GetCursor failed")
 
 	} else {
-		errRet = errorsGo.Errorf("%s: %w", "Surveyor.GetCursor failed", errRet)
+		errRet = errors.Errorf("%s: %w", "Surveyor.GetCursor failed", errRet)
 	}
 	return 0, 0, errRet
 }
 func (s *surveyor) SetCursor(xPosCells, yPosCells uint, tty TTY, qu Querier, w wm.Window, pr environ.Proprietor) (err error) {
 	if s == nil {
-		return errorsGo.New(internal.ErrNilReceiver)
+		return errors.New(consts.ErrNilReceiver)
 	}
 	var errs []error
 	for _, posSetFunc := range s.posSetFuncs {
@@ -499,10 +508,10 @@ func (s *surveyor) SetCursor(xPosCells, yPosCells uint, tty TTY, qu Querier, w w
 	}
 	errRet := errors.Join(errs...)
 	if errRet == nil {
-		errRet = errorsGo.New("Surveyor.SetCursor failed")
+		errRet = errors.New("Surveyor.SetCursor failed")
 
 	} else {
-		errRet = errorsGo.Errorf("%s: %w", "Surveyor.SetCursor failed", errRet)
+		errRet = errors.Errorf("%s: %w", "Surveyor.SetCursor failed", errRet)
 	}
 	return errRet
 }

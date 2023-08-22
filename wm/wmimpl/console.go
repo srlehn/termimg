@@ -7,9 +7,8 @@ import (
 	"image/color"
 	"image/draw"
 
-	errorsGo "github.com/go-errors/errors"
-
 	"github.com/srlehn/termimg/internal/environ"
+	"github.com/srlehn/termimg/internal/errors"
 	"github.com/srlehn/termimg/internal/propkeys"
 	"github.com/srlehn/termimg/internal/wminternal"
 	"github.com/srlehn/termimg/wm"
@@ -66,7 +65,7 @@ func (w *windowConsole) Size() image.Point {
 }
 func (w *windowConsole) Screenshot() (image.Image, error) {
 	if w == nil || w.framebuffer == nil {
-		return nil, errorsGo.New(`nil receiver or framebuffer`)
+		return nil, errors.New(`nil receiver or framebuffer`)
 	}
 	if err := w.WindowFind(); err != nil {
 		return nil, err

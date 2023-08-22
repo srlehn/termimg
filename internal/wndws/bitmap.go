@@ -7,9 +7,10 @@ import (
 	"syscall"
 	"unsafe"
 
-	"github.com/go-errors/errors"
 	"github.com/gonutz/w32/v2"
 	"github.com/lxn/win"
+
+	"github.com/srlehn/termimg/internal/errors"
 )
 
 type GpBitmap win.GpBitmap

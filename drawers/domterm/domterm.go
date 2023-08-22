@@ -8,9 +8,8 @@ import (
 	"image"
 	"image/jpeg"
 
-	errorsGo "github.com/go-errors/errors"
-
-	"github.com/srlehn/termimg/internal"
+	"github.com/srlehn/termimg/internal/consts"
+	"github.com/srlehn/termimg/internal/errors"
 	"github.com/srlehn/termimg/mux"
 	"github.com/srlehn/termimg/term"
 )
@@ -30,14 +29,14 @@ func (d *drawerDomTerm) IsApplicable(inp term.DrawerCheckerInput) bool {
 
 func (d *drawerDomTerm) Draw(img image.Image, bounds image.Rectangle, tm *term.Terminal) error {
 	if d == nil || tm == nil || img == nil {
-		return errorsGo.New(`nil parameter`)
+		return errors.New(`nil parameter`)
 	}
 	timg, ok := img.(*term.Image)
 	if !ok {
 		timg = term.NewImage(img)
 	}
 	if timg == nil {
-		return errorsGo.New(internal.ErrNilImage)
+		return errors.New(consts.ErrNilImage)
 	}
 
 	domTermString, err := d.getInbandString(timg, bounds, tm)
@@ -50,7 +49,7 @@ func (d *drawerDomTerm) Draw(img image.Image, bounds image.Rectangle, tm *term.T
 
 func (d *drawerDomTerm) getInbandString(timg *term.Image, bounds image.Rectangle, tm *term.Terminal) (string, error) {
 	if timg == nil {
-		return ``, errorsGo.New(internal.ErrNilImage)
+		return ``, errors.New(consts.ErrNilImage)
 	}
 	domTermString, err := timg.GetInband(bounds, d, tm)
 	if err == nil {
@@ -58,7 +57,7 @@ func (d *drawerDomTerm) getInbandString(timg *term.Image, bounds image.Rectangle
 	}
 	rsz := tm.Resizer()
 	if rsz == nil {
-		return ``, errorsGo.New(`nil resizer`)
+		return ``, errors.New(`nil resizer`)
 	}
 	if err := timg.Fit(bounds, rsz, tm); err != nil {
 		return ``, err
@@ -75,15 +74,16 @@ func (d *drawerDomTerm) getInbandString(timg *term.Image, bounds image.Rectangle
 
 	imgBase64 := base64.StdEncoding.EncodeToString(buf.Bytes())
 
+	// https://domterm.org/Wire-byte-protocol.html#Miscellaneous-sequences
 	// valid attribute names: "alt", "longdesc", "height", "width", "border", "hspace", "vspace", "class"
 	var attrs string
 	if len(timg.FileName) > 0 {
 		attrs += `alt='` + html.EscapeString(timg.FileName) + `" `
 	}
-	attrs += `class='` + internal.LibraryName + `' `
+	attrs += `class='` + consts.LibraryName + `' `
 	attrs += fmt.Sprintf(`width='%d' height='%d'`, timg.Cropped.Bounds().Dx(), timg.Cropped.Bounds().Dy())
 	domTermString = mux.Wrap(fmt.Sprintf("\033]72;<img %s src='data:%s;base64,%s\n'/>\a", attrs, mimeType, imgBase64), tm)
-	// domTermString = fmt.Sprintf("\033[%d;%dH%s", bounds.Min.Y, bounds.Min.X, domTermString)
+	domTermString = fmt.Sprintf("\033[%d;%dH%s%s", bounds.Min.Y, bounds.Min.X, ` `, domTermString) // TODO
 	timg.SetInband(bounds, domTermString, d, tm)
 
 	return domTermString, nil

@@ -4,9 +4,8 @@ import (
 	"image"
 	"runtime"
 
-	"github.com/go-errors/errors"
-
-	"github.com/srlehn/termimg/internal"
+	"github.com/srlehn/termimg/internal/consts"
+	"github.com/srlehn/termimg/internal/errors"
 	"github.com/srlehn/termimg/resize/imaging"
 	"github.com/srlehn/termimg/resize/rez"
 	"github.com/srlehn/termimg/term"
@@ -48,7 +47,7 @@ repeat:
 				return nil, err
 			}
 			if it.Original == nil {
-				return nil, errors.New(internal.ErrNilImage)
+				return nil, errors.New(consts.ErrNilImage)
 			}
 			im = it
 			goto repeat

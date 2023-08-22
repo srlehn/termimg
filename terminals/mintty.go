@@ -1,6 +1,7 @@
 package terminals
 
 import (
+	"github.com/srlehn/termimg/internal/consts"
 	"github.com/srlehn/termimg/internal/environ"
 	"github.com/srlehn/termimg/internal/propkeys"
 	"github.com/srlehn/termimg/term"
@@ -20,10 +21,10 @@ var _ term.TermChecker = (*termCheckerMintty)(nil)
 
 type termCheckerMintty struct{ term.TermChecker }
 
-func (t *termCheckerMintty) CheckExclude(ci environ.Proprietor) (mightBe bool, p environ.Proprietor) {
+func (t *termCheckerMintty) CheckExclude(pr environ.Proprietor) (mightBe bool, p environ.Proprietor) {
 	p = environ.NewProprietor()
-	if t == nil || ci == nil {
-		p.SetProperty(propkeys.CheckTermEnvExclPrefix+termNameMintty, term.CheckTermFailed)
+	if t == nil || pr == nil {
+		p.SetProperty(propkeys.CheckTermEnvExclPrefix+termNameMintty, consts.CheckTermFailed)
 		return false, p
 	}
 	var r bool
@@ -35,22 +36,22 @@ func (t *termCheckerMintty) CheckExclude(ci environ.Proprietor) (mightBe bool, p
 	*/
 
 	// only set if mintty was started via .lnk shortcut
-	vMS, okMS := ci.LookupEnv(`MINTTY_SHORTCUT`)
+	vMS, okMS := pr.LookupEnv(`MINTTY_SHORTCUT`)
 	r = r || okMS
 	if okMS && len(vMS) > 0 {
 		p.SetProperty(propkeys.MinttyShortcut, vMS)
 	}
-	vTP, okTP := ci.LookupEnv(`TERM_PROGRAM`)
+	vTP, okTP := pr.LookupEnv(`TERM_PROGRAM`)
 	r = r || (okTP && vTP == `mintty`)
 	if r {
-		vTPV, okTPV := ci.LookupEnv(`TERM_PROGRAM_VERSION`)
+		vTPV, okTPV := pr.LookupEnv(`TERM_PROGRAM_VERSION`)
 		if okTPV && len(vTPV) > 0 {
 			p.SetProperty(propkeys.MinttyVersion, vTPV)
 		}
-		p.SetProperty(propkeys.CheckTermEnvExclPrefix+termNameMintty, term.CheckTermPassed)
+		p.SetProperty(propkeys.CheckTermEnvExclPrefix+termNameMintty, consts.CheckTermPassed)
 		return true, p
 	}
 
-	p.SetProperty(propkeys.CheckTermEnvExclPrefix+termNameMintty, term.CheckTermFailed)
+	p.SetProperty(propkeys.CheckTermEnvExclPrefix+termNameMintty, consts.CheckTermFailed)
 	return false, p
 }

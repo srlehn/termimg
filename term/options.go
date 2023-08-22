@@ -1,10 +1,10 @@
 package term
 
 import (
-	errorsGo "github.com/go-errors/errors"
 	"github.com/srlehn/termimg/env/advanced"
 	"github.com/srlehn/termimg/internal"
 	"github.com/srlehn/termimg/internal/environ"
+	"github.com/srlehn/termimg/internal/errors"
 	"github.com/srlehn/termimg/internal/propkeys"
 	"github.com/srlehn/termimg/wm"
 )
@@ -33,7 +33,7 @@ func (t *Terminal) SetOptions(opts ...Option) error {
 	}
 	for _, opt := range opts {
 		if err := opt.ApplyOption(t); err != nil {
-			return errorsGo.New(err)
+			return errors.New(err)
 		}
 	}
 	return nil
@@ -128,6 +128,9 @@ func SetExe(exe string) Option {
 		if t.proprietor == nil {
 			t.proprietor = environ.NewProprietor()
 		}
+		if len(exe) > 0 {
+			return nil
+		}
 		t.SetProperty(propkeys.Executable, exe)
 		return nil
 	})
@@ -155,7 +158,7 @@ var manualComposition Option = OptFunc(func(t *Terminal) error { t.SetProperty(p
 func replaceTerminal(t *Terminal) Option {
 	return OptFunc(func(tOld *Terminal) error {
 		if t == nil || tOld == nil {
-			return errorsGo.New(`cannot swap nil terminals`)
+			return errors.New(`cannot swap nil terminals`)
 		}
 		*tOld = *t
 		return nil
@@ -236,6 +239,28 @@ func setEnvAndMuxers(overwrite bool) Option {
 			t.SetProperty(propkeys.EnvIsLoaded, `true`)
 		}
 		t.passages = passages
+
+		// X11 Resources
+
+		xdgSessionType, hasXDGSessionType := t.proprietor.LookupEnv(`XDG_SESSION_TYPE`)
+		if !hasXDGSessionType || xdgSessionType != `x11` {
+			return nil
+		}
+
+		conn, err := wm.NewConn(t.proprietor)
+		if err != nil {
+			return err
+		}
+		res, err := conn.Resources()
+		if err != nil {
+			return err
+		}
+		if t.proprietor != nil {
+			t.proprietor.Merge(res)
+		} else {
+			t.proprietor = res
+		}
+
 		return nil
 	})
 }

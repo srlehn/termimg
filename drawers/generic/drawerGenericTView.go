@@ -6,9 +6,8 @@ import (
 	"math"
 	"strings"
 
-	"github.com/go-errors/errors"
-
-	"github.com/srlehn/termimg/internal"
+	"github.com/srlehn/termimg/internal/consts"
+	"github.com/srlehn/termimg/internal/errors"
 	"github.com/srlehn/termimg/term"
 )
 
@@ -18,7 +17,7 @@ func init() { term.RegisterDrawer(&DrawerGeneric{}) }
 
 type DrawerGeneric struct{}
 
-func (d *DrawerGeneric) Name() string                              { return internal.DrawerGenericName }
+func (d *DrawerGeneric) Name() string                              { return consts.DrawerGenericName }
 func (d *DrawerGeneric) New() term.Drawer                          { return &DrawerGeneric{} }
 func (d *DrawerGeneric) IsApplicable(term.DrawerCheckerInput) bool { return true }
 
@@ -33,7 +32,7 @@ func (d *DrawerGeneric) Draw(img image.Image, bounds image.Rectangle, tm *term.T
 		timg = term.NewImage(img)
 	}
 	if timg == nil {
-		return errors.New(internal.ErrNilImage)
+		return errors.New(consts.ErrNilImage)
 	}
 
 	blochCharString, err := d.getInbandString(timg, bounds, tm)
@@ -46,7 +45,7 @@ func (d *DrawerGeneric) Draw(img image.Image, bounds image.Rectangle, tm *term.T
 
 func (d *DrawerGeneric) getInbandString(timg *term.Image, bounds image.Rectangle, tm *term.Terminal) (string, error) {
 	if timg == nil {
-		return ``, errors.New(internal.ErrNilImage)
+		return ``, errors.New(consts.ErrNilImage)
 	}
 	blochCharString, err := timg.GetInband(bounds, d, tm)
 	if err == nil {

@@ -11,11 +11,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/go-errors/errors"
 	"github.com/jezek/xgb/xproto"
 	"github.com/shirou/gopsutil/process"
 
-	"github.com/srlehn/termimg/internal"
+	"github.com/srlehn/termimg/internal/consts"
+	"github.com/srlehn/termimg/internal/environ"
+	"github.com/srlehn/termimg/internal/errors"
 	"github.com/srlehn/termimg/wm"
 	"github.com/srlehn/termimg/wm/wmimpl"
 )
@@ -54,7 +55,7 @@ func ptyRun(termCmd []string, f PTYRunFunc) (errRet error) {
 	}
 
 	wm.SetImpl(wmimpl.Impl())
-	conn, err := wm.NewConn()
+	conn, err := wm.NewConn(environ.EnvToProprietor(cmd.Env))
 	if err != nil {
 		return err
 	}
@@ -179,7 +180,7 @@ waitForShell:
 
 func findShellProc(pr *process.Process) (*process.Process, error) {
 	if pr == nil {
-		return nil, errors.New(internal.ErrNilParam)
+		return nil, errors.New(consts.ErrNilParam)
 	}
 	children, err := pr.Children()
 	if err != nil {

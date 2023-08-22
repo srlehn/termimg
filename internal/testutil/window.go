@@ -3,14 +3,15 @@ package testutil
 import (
 	"fmt"
 
+	"github.com/srlehn/termimg/internal/environ"
 	"github.com/srlehn/termimg/wm"
 )
 
-func ListWindows() error {
+func ListWindows(env environ.Proprietor) error {
 	// TODO -> testutil
 	fmt.Println("name\tclass\tinstance")
 	fmt.Println() // make the linter shut up by separating terminal LF
-	conn, err := wm.NewConn()
+	conn, err := wm.NewConn(env)
 	if err != nil {
 		return err
 	}

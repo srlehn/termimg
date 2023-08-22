@@ -7,7 +7,7 @@ import (
 
 	"golang.org/x/sys/windows"
 
-	"github.com/go-errors/errors"
+	"github.com/srlehn/termimg/internal/errors"
 	// "github.com/lxn/win"
 )
 

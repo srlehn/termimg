@@ -34,6 +34,8 @@ const (
 	SixelCapable                = GeneralPrefix + `sixelCapable`
 	WindowingCapable            = GeneralPrefix + `windowingCapable`
 	DA3ID                       = GeneralPrefix + `DA3ID`
+	DA3IDHex                    = GeneralPrefix + `DA3IDHex`
+	XTVERSION                   = GeneralPrefix + `XTVERSION`
 	XTGETTCAPPrefix             = GeneralPrefix + `XTGETTCAP_`
 	XTGETTCAPKeyNamePrefix      = XTGETTCAPPrefix + `keyName_`
 	XTGETTCAPSpecialPrefix      = XTGETTCAPPrefix + `special_`
@@ -44,13 +46,30 @@ const (
 	// TODO positioning of uncropped image is dependent on terminal size (e.g. urxvt)
 	FullImgPosDepOnSize = GeneralPrefix + `fullImagePositionDependentOnSize`
 
-	SystemD    = `platform_systemd`
-	RunsOnWine = `platform_wine`
+	// TermChecker might set WindowBorder…Estimated+`_termname`
+	WindowPrefix                = `window_`
+	WindowBorderPrefix          = WindowPrefix + `border`
+	WindowBorderEstimated       = WindowBorderPrefix + `Estimated`
+	WindowBorderLeft            = WindowBorderPrefix + `Left`
+	WindowBorderRight           = WindowBorderPrefix + `Right`
+	WindowBorderTop             = WindowBorderPrefix + `Top`
+	WindowBorderBottom          = WindowBorderPrefix + `Bottom`
+	WindowBorderLeftEstimated   = WindowBorderLeft + `Estimated`
+	WindowBorderRightEstimated  = WindowBorderRight + `Estimated`
+	WindowBorderTopEstimated    = WindowBorderTop + `Estimated`
+	WindowBorderBottomEstimated = WindowBorderBottom + `Estimated`
+
+	PlatformPrefix = `platform_`
+	SystemD        = PlatformPrefix + `systemd`
+	RunsOnWine     = PlatformPrefix + `wine`
 
 	// Terminal type properties
-	AppleTermVersion      = `apple_version` // CFBundleVersion of Terminal.app
-	ContourVersion        = `contour_version`
-	DomTermPrefix         = `domterm_`
+	TerminalPrefix        = `terminal_`
+	AppleTermPrefix       = TerminalPrefix + `apple_`
+	AppleTermVersion      = AppleTermPrefix + `version` // CFBundleVersion of Terminal.app
+	ContourPrefix         = TerminalPrefix + `contour_`
+	ContourVersion        = ContourPrefix + `version`
+	DomTermPrefix         = TerminalPrefix + `domterm_`
 	DomTermLibWebSockets  = DomTermPrefix + `libwebsockets`
 	DomTermSession        = DomTermPrefix + `session`
 	DomTermTTY            = DomTermPrefix + `tty`
@@ -58,31 +77,42 @@ const (
 	DomTermVersion        = DomTermPrefix + `version`
 	DomTermWindowName     = DomTermPrefix + `windowName`
 	DomTermWindowInstance = DomTermPrefix + `windowInstance`
-	ITerm2Version         = `iterm2_version`
-	KittyWindowID         = `kitty_windowID`      // tab id
-	MacTermBuildNr        = `macterm_buildNumber` // YYYYMMDD
-	MltermVersion         = `mlterm_version`
-	MinttyPrefix          = `mintty_`
+	ITerm2Prefix          = TerminalPrefix + `iterm2_`
+	ITerm2Version         = ITerm2Prefix + `version`
+	KittyPrefix           = TerminalPrefix + `kitty_`
+	KittyWindowID         = KittyPrefix + `windowID` // tab id
+	MacTermPrefix         = TerminalPrefix + `macterm_`
+	MacTermBuildNr        = MacTermPrefix + `buildNumber` // YYYYMMDD
+	MltermPrefix          = TerminalPrefix + `mlterm_`
+	MltermVersion         = MltermPrefix + `version`
+	MinttyPrefix          = TerminalPrefix + `mintty_`
 	MinttyShortcut        = MinttyPrefix + `shortcut`
 	MinttyVersion         = MinttyPrefix + `version`
-	URXVTPrefix           = `urxvt_`
+	URXVTPrefix           = TerminalPrefix + `urxvt_`
 	URXVTExeName          = URXVTPrefix + `executableName`
 	URXVTVerFirstChar     = URXVTPrefix + `versionFirstChar`
 	URXVTVerThirdChar     = URXVTPrefix + `versionThirdChar`
-	VSCodePrefix          = `vscode_`
+	VSCodePrefix          = TerminalPrefix + `vscode_`
 	VSCodeVersion         = VSCodePrefix + `version`
 	VSCodeVersionMajor    = VSCodeVersion + `Major`
 	VSCodeVersionMinor    = VSCodeVersion + `Minor`
 	VSCodeVersionPatch    = VSCodeVersion + `Patch`
-	VTEPrefix             = `vte_`
+	HyperPrefix           = TerminalPrefix + `hyper_`
+	HyperVersion          = HyperPrefix + `version`
+	HyperVersionMajor     = HyperVersion + `Major`
+	HyperVersionMinor     = HyperVersion + `Minor`
+	HyperVersionPatch     = HyperVersion + `Patch`
+	HyperVersionCanary    = HyperVersion + `Canary`
+	VTEPrefix             = TerminalPrefix + `vte_`
 	VTEVersion            = VTEPrefix + `version`
 	VTEVersionMajor       = VTEVersion + `Major`
 	VTEVersionMinor       = VTEVersion + `Minor`
 	VTEVersionPatch       = VTEVersion + `Patch`
-	WezTermPrefix         = `wezterm_`
+	WezTermPrefix         = TerminalPrefix + `wezterm_`
 	WezTermExe            = WezTermPrefix + `executable`
 	WezTermExeDir         = WezTermPrefix + `executableDir`
 	WezTermPane           = WezTermPrefix + `pane`
 	WezTermUnixSocket     = WezTermPrefix + `unixSocket`
-	XTermVersion          = `xterm_version`
+	XTermPrefix           = TerminalPrefix + `xterm_`
+	XTermVersion          = XTermPrefix + `version`
 )

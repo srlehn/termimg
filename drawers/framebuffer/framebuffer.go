@@ -3,13 +3,11 @@
 package framebuffer
 
 import (
-	"errors"
 	"image"
 	"image/draw"
 
-	errorsGo "github.com/go-errors/errors"
-
-	"github.com/srlehn/termimg/internal"
+	"github.com/srlehn/termimg/internal/consts"
+	"github.com/srlehn/termimg/internal/errors"
 	"github.com/srlehn/termimg/term"
 )
 
@@ -46,19 +44,19 @@ func (d *drawerFramebuffer) Draw(img image.Image, bounds image.Rectangle, tm *te
 		return err
 	}
 	if w.WindowType() != `tty` {
-		return errorsGo.New(`window of wrong type`)
+		return errors.New(`window of wrong type`)
 	}
 	timg, ok := img.(*term.Image)
 	if !ok {
 		timg = term.NewImage(img)
 	}
 	if timg == nil {
-		return errorsGo.New(internal.ErrNilImage)
+		return errors.New(consts.ErrNilImage)
 	}
 
 	rsz := tm.Resizer()
 	if rsz == nil {
-		return errorsGo.New(`nil resizer`)
+		return errors.New(`nil resizer`)
 	}
 	if err := timg.Fit(bounds, rsz, tm); err != nil {
 		return err
@@ -68,7 +66,7 @@ func (d *drawerFramebuffer) Draw(img image.Image, bounds image.Rectangle, tm *te
 
 	dimg, ok := w.(draw.Image)
 	if !ok {
-		return errorsGo.New(`draw.Image not implemented by window`)
+		return errors.New(`draw.Image not implemented by window`)
 	}
 	cpw, cph, err := tm.CellSize()
 	if err != nil {

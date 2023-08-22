@@ -3,8 +3,8 @@ package pty
 import (
 	"image"
 
-	"github.com/go-errors/errors"
-	"github.com/srlehn/termimg/internal"
+	"github.com/srlehn/termimg/internal/consts"
+	"github.com/srlehn/termimg/internal/errors"
 	"github.com/srlehn/termimg/term"
 )
 
@@ -13,7 +13,7 @@ type PTYRunFunc = func(pty string, pidTerm uint) error
 // PTYRun starts a pseudo terminal and runs a function on its pty.
 func PTYRun(f PTYRunFunc, termCmd ...string) error {
 	if f == nil {
-		return errors.New(internal.ErrNilParam)
+		return errors.New(consts.ErrNilParam)
 	}
 	// TODO use default terminal: xterm, conhost, Terminal.app
 	if len(termCmd) == 0 {

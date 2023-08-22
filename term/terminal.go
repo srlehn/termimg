@@ -1,7 +1,6 @@
 package term
 
 import (
-	"errors"
 	"fmt"
 	"image"
 	"log"
@@ -14,10 +13,10 @@ import (
 
 	"golang.org/x/exp/maps"
 
-	errorsGo "github.com/go-errors/errors"
-
 	"github.com/srlehn/termimg/internal"
+	"github.com/srlehn/termimg/internal/consts"
 	"github.com/srlehn/termimg/internal/environ"
+	"github.com/srlehn/termimg/internal/errors"
 	"github.com/srlehn/termimg/internal/propkeys"
 	"github.com/srlehn/termimg/internal/wminternal"
 	"github.com/srlehn/termimg/mux"
@@ -144,14 +143,14 @@ func getTTYAndQuerier(tm *Terminal, tc *termCheckerCore) (TTY, Querier, error) {
 			return t, nil
 		}
 		if ttyProv == nil {
-			return nil, errorsGo.New(`nil tty provider`)
+			return nil, errors.New(`nil tty provider`)
 		}
 		tt, err := ttyProv(tm.ptyName())
 		if err != nil {
 			return nil, err
 		}
 		if tt == nil {
-			return nil, errorsGo.New(`nil tty received from tty provider`)
+			return nil, errors.New(`nil tty received from tty provider`)
 		}
 		return tt, nil
 	}
@@ -195,9 +194,9 @@ func getTTYAndQuerier(tm *Terminal, tc *termCheckerCore) (TTY, Querier, error) {
 	if ttyTemp == nil {
 		errTTYRet := errors.Join(errs...)
 		if errTTYRet != nil {
-			errTTYRet = errorsGo.WrapPrefix(errTTYRet, `no/failed tty provision;`, 0)
+			errTTYRet = errors.WrapPrefix(errTTYRet, `no/failed tty provision;`, 0)
 		} else {
-			errTTYRet = errorsGo.New(`no tty provided`)
+			errTTYRet = errors.New(`no tty provided`)
 		}
 		return nil, nil, errTTYRet
 	}
@@ -216,7 +215,7 @@ func getTTYAndQuerier(tm *Terminal, tc *termCheckerCore) (TTY, Querier, error) {
 		if quTemp == nil && tm.querierDefault != nil {
 			quTemp = tm.querierDefault
 		} else {
-			return nil, nil, errorsGo.New(`nil querier`)
+			return nil, nil, errors.New(`nil querier`)
 		}
 	}
 
@@ -226,10 +225,10 @@ func getTTYAndQuerier(tm *Terminal, tc *termCheckerCore) (TTY, Querier, error) {
 func findTermChecker(env environ.Proprietor, tty TTY, qu Querier) (tc TermChecker, _ environ.Proprietor, e error) {
 	var ttyTemp TTY
 	if tty == nil || qu == nil {
-		return GetRegTermChecker(internal.TermGenericName), nil, errorsGo.New(internal.ErrNilParam)
+		return GetRegTermChecker(consts.TermGenericName), nil, errors.New(consts.ErrNilParam)
 	}
 	if env == nil {
-		return GetRegTermChecker(internal.TermGenericName), nil, nil
+		return GetRegTermChecker(consts.TermGenericName), nil, nil
 	}
 	pr := environ.NewProprietor()
 	ptyName := tty.TTYDevName()
@@ -256,7 +255,7 @@ func findTermChecker(env environ.Proprietor, tty TTY, qu Querier) (tc TermChecke
 		}
 		log.Println(`panic in findTermEnv`) // TODO
 		var errs []error
-		err := errorsGo.New(r)
+		err := errors.New(r)
 		errs = append(errs, err)
 		if ttyTemp != nil {
 			log.Println(`closing temporary tty`) // TODO
@@ -268,8 +267,8 @@ func findTermChecker(env environ.Proprietor, tty TTY, qu Querier) (tc TermChecke
 			err := tty.Close()
 			errs = append(errs, err)
 		}
-		tc = GetRegTermChecker(internal.TermGenericName)
-		e = errorsGo.New(errors.Join(errs...))
+		tc = GetRegTermChecker(consts.TermGenericName)
+		e = errors.New(errors.Join(errs...))
 	}()
 	termGenericCheck(tty, qu, pr)
 	env.Merge(pr)
@@ -284,15 +283,15 @@ func findTermChecker(env environ.Proprietor, tty TTY, qu Querier) (tc TermChecke
 			var exclEnvSkipped bool
 			if okPassedExcl {
 				switch passedExcl {
-				case CheckTermPassed:
+				case consts.CheckTermPassed:
 					break
-				case CheckTermDummy:
+				case consts.CheckTermDummy:
 					exclEnvSkipped = true
 					fallthrough
-				case CheckTermFailed:
+				case consts.CheckTermFailed:
 					fallthrough
 				default:
-					pr.SetProperty(propkeys.CheckTermCompletePrefix+tchk.Name(), CheckTermFailed)
+					pr.SetProperty(propkeys.CheckTermCompletePrefix+tchk.Name(), consts.CheckTermFailed)
 					continue
 				}
 			}
@@ -322,14 +321,14 @@ func findTermChecker(env environ.Proprietor, tty TTY, qu Querier) (tc TermChecke
 				if exclSolePassed {
 					prI.Properties()
 					passedIs, okPassedIs := prI.Property(propkeys.CheckTermQueryIsPrefix + tchkName)
-					exclSolePassed = okPassedIs && passedIs == CheckTermDummy
+					exclSolePassed = okPassedIs && passedIs == consts.CheckTermDummy
 				}
 				if !exclSolePassed {
-					pr.SetProperty(propkeys.CheckTermCompletePrefix+tchkName, CheckTermFailed)
+					pr.SetProperty(propkeys.CheckTermCompletePrefix+tchkName, consts.CheckTermFailed)
 					continue
 				}
 			}
-			pr.SetProperty(propkeys.CheckTermCompletePrefix+tchkName, CheckTermPassed)
+			pr.SetProperty(propkeys.CheckTermCompletePrefix+tchkName, consts.CheckTermPassed)
 			pr.Merge(prI)
 		}
 	} else {
@@ -344,12 +343,12 @@ func findTermChecker(env environ.Proprietor, tty TTY, qu Querier) (tc TermChecke
 				continue
 			}
 			switch exclPassed {
-			case CheckTermPassed, CheckTermDummy:
-				pr.SetProperty(propkeys.CheckTermCompletePrefix+tchkName, CheckTermPassed)
-			case CheckTermFailed:
+			case consts.CheckTermPassed, consts.CheckTermDummy:
+				pr.SetProperty(propkeys.CheckTermCompletePrefix+tchkName, consts.CheckTermPassed)
+			case consts.CheckTermFailed:
 				fallthrough
 			default:
-				pr.SetProperty(propkeys.CheckTermCompletePrefix+tchkName, CheckTermFailed)
+				pr.SetProperty(propkeys.CheckTermCompletePrefix+tchkName, consts.CheckTermFailed)
 				continue
 			}
 		}
@@ -357,7 +356,7 @@ func findTermChecker(env environ.Proprietor, tty TTY, qu Querier) (tc TermChecke
 	for _, tchk := range terminalCheckersAll {
 		tchkName := tchk.Name()
 		passed, completed := pr.Property(propkeys.CheckTermCompletePrefix + tchkName)
-		if completed && passed == CheckTermPassed {
+		if completed && passed == consts.CheckTermPassed {
 			prTmChkMap[tchkName] = struct{}{}
 		}
 	}
@@ -367,7 +366,7 @@ func findTermChecker(env environ.Proprietor, tty TTY, qu Querier) (tc TermChecke
 	useGenericTermIfUncertain := true // TODO
 	switch l := len(prTmChkMap); {
 	case l == 0:
-		termMatchName = internal.TermGenericName
+		termMatchName = consts.TermGenericName
 	case l == 1:
 		for k := range prTmChkMap {
 			termMatchName = k
@@ -376,7 +375,7 @@ func findTermChecker(env environ.Proprietor, tty TTY, qu Querier) (tc TermChecke
 	case l == 2:
 		// assume `generic` is contained
 		for k := range prTmChkMap {
-			if k != internal.TermGenericName {
+			if k != consts.TermGenericName {
 				termMatchName = k
 				break
 			}
@@ -384,17 +383,17 @@ func findTermChecker(env environ.Proprietor, tty TTY, qu Querier) (tc TermChecke
 	case l > 2:
 		// TODO: if windowQuery == nil then try to find corresponding window and recheck
 		if useGenericTermIfUncertain {
-			termMatchName = internal.TermGenericName
+			termMatchName = consts.TermGenericName
 		} else {
 			termNames := maps.Keys(prTmChkMap)
 			sort.Strings(termNames)
 			termNamesStr := strings.Join(termNames, ` `)
-			return GetRegTermChecker(internal.TermGenericName), nil, errorsGo.Errorf(`more than 1 terminal check matched: %s`, termNamesStr)
+			return GetRegTermChecker(consts.TermGenericName), nil, errors.Errorf(`more than 1 terminal check matched: %s`, termNamesStr)
 		}
 	}
 	_, okMatch := prTmChkMap[termMatchName]
 	if !okMatch {
-		termMatchName = internal.TermGenericName
+		termMatchName = consts.TermGenericName
 	}
 	var checker TermChecker
 	for _, tchk := range terminalCheckersAll {
@@ -405,7 +404,7 @@ func findTermChecker(env environ.Proprietor, tty TTY, qu Querier) (tc TermChecke
 	}
 	if checker == nil {
 		// This should only be possible if the generic TermChecker was removed from the register.
-		return GetRegTermChecker(internal.TermGenericName), nil, errorsGo.New(`no matching terminal was found`)
+		return GetRegTermChecker(consts.TermGenericName), nil, errors.New(`no matching terminal was found`)
 	}
 
 	return checker, pr, nil
@@ -439,24 +438,24 @@ func (t *Terminal) Query(qs string, p Parser) (string, error) { return t.query(q
 
 func (t *Terminal) query(qs string, p Parser) (_ string, err error) {
 	if t == nil {
-		return ``, errorsGo.New(internal.ErrNilReceiver)
+		return ``, errors.New(consts.ErrNilReceiver)
 	}
 	if t.tty == nil {
-		return ``, errorsGo.New(`nil tty`)
+		return ``, errors.New(`nil tty`)
 	}
 	if t.querier == nil {
-		return ``, errorsGo.New(`nil querier`)
+		return ``, errors.New(`nil querier`)
 	}
 	if t.proprietor == nil {
-		return ``, errorsGo.New(`nil proprietor`)
+		return ``, errors.New(`nil proprietor`)
 	}
 	defer func() {
 		if r := recover(); r != nil {
-			err = errorsGo.New(r)
+			err = errors.New(r)
 		}
 	}()
 	if _, avoidANSI := t.Property(propkeys.AvoidANSI); avoidANSI {
-		return ``, errorsGo.New(internal.ErrPlatformNotSupported)
+		return ``, errors.New(consts.ErrPlatformNotSupported)
 	}
 	return t.querier.Query(qs, t.tty, p)
 }
@@ -464,11 +463,11 @@ func (t *Terminal) query(qs string, p Parser) (_ string, err error) {
 // CreateTemp ...
 func (t *Terminal) CreateTemp(pattern string) (*os.File, error) {
 	if t == nil {
-		return nil, internal.ErrNilReceiver
+		return nil, consts.ErrNilReceiver
 	}
 	tempDir := t.tempDir()
 	if len(tempDir) == 0 {
-		dir, err := os.MkdirTemp(``, internal.LibraryName+`.`)
+		dir, err := os.MkdirTemp(``, consts.LibraryName+`.`)
 		if err != nil {
 			return nil, err
 		}
@@ -483,7 +482,7 @@ func (t *Terminal) CreateTemp(pattern string) (*os.File, error) {
 	if err != nil {
 		return nil, err
 	}
-	onCloseFunc := func() error { return errorsGo.New(errors.Join(f.Close(), os.Remove(f.Name()))) }
+	onCloseFunc := func() error { return errors.New(errors.Join(f.Close(), os.Remove(f.Name()))) }
 	t.OnClose(onCloseFunc)
 	onCloseFin := func(f *os.File) { _ = f.Close(); os.Remove(f.Name()) }
 	runtime.SetFinalizer(f, onCloseFin)
@@ -536,25 +535,25 @@ func (t *Terminal) Drawers() []Drawer {
 
 func (t *Terminal) Printf(format string, a ...any) (int, error) {
 	if t == nil {
-		return 0, errorsGo.New(internal.ErrNilReceiver)
+		return 0, errors.New(consts.ErrNilReceiver)
 	}
 	n, err := t.WriteString(t.passages.Wrap(fmt.Sprintf(format, a...)))
 	if err != nil {
-		return n, errorsGo.New(err)
+		return n, errors.New(err)
 	}
 	return n, nil
 }
 
 func (t *Terminal) Write(p []byte) (n int, err error) {
 	if t == nil {
-		return 0, errorsGo.New(internal.ErrNilReceiver)
+		return 0, errors.New(consts.ErrNilReceiver)
 	}
 	if t.tty == nil {
-		return 0, errorsGo.New(`nil tty`)
+		return 0, errors.New(`nil tty`)
 	}
 	defer func() {
 		if r := recover(); r != nil {
-			err = errorsGo.New(r)
+			err = errors.New(r)
 		}
 	}()
 	t.printMu.Lock()
@@ -577,14 +576,14 @@ func (t *Terminal) Draw(img image.Image, bounds image.Rectangle) error {
 func (t *Terminal) CellScale(ptSrcPx, ptDstCl image.Point) (image.Point, error) {
 	var ret image.Point
 	if t == nil {
-		return image.Point{}, errorsGo.New(internal.ErrNilReceiver)
+		return image.Point{}, errors.New(consts.ErrNilReceiver)
 	}
 	cpw, cph, err := t.CellSize()
 	if err != nil {
 		return image.Point{}, err
 	}
 	if cpw < 1 || cph < 1 {
-		return image.Point{}, errorsGo.New(`received invalid terminal cell size`)
+		return image.Point{}, errors.New(`received invalid terminal cell size`)
 	}
 	if ptDstCl.X == 0 {
 		if ptDstCl.Y == 0 {
@@ -615,57 +614,57 @@ func (t *Terminal) CellScale(ptSrcPx, ptDstCl image.Point) (image.Point, error) 
 
 func (t *Terminal) CellSize() (width, height float64, err error) {
 	if t == nil {
-		return 0, 0, errorsGo.New(internal.ErrNilReceiver)
+		return 0, 0, errors.New(consts.ErrNilReceiver)
 	}
 	if t.surveyor == nil {
-		return 0, 0, errorsGo.New(`nil surveyor`)
+		return 0, 0, errors.New(`nil surveyor`)
 	}
 	cpw, cph, err := t.surveyor.CellSize(t.tty, t.querier, t.window, t.proprietor)
 	if err != nil {
 		return 0, 0, err
 	}
 	if cpw < 1 || cph < 1 {
-		return 0, 0, errorsGo.New(`CellSize failed`)
+		return 0, 0, errors.New(`CellSize failed`)
 	}
 	return cpw, cph, nil
 }
 
 func (t *Terminal) SizeInCells() (width, height uint, err error) {
 	if t == nil {
-		return 0, 0, errorsGo.New(internal.ErrNilReceiver)
+		return 0, 0, errors.New(consts.ErrNilReceiver)
 	}
 	if t.surveyor == nil {
-		return 0, 0, errorsGo.New(`nil surveyor`)
+		return 0, 0, errors.New(`nil surveyor`)
 	}
 	return t.surveyor.SizeInCells(t.tty, t.querier, t.window, t.proprietor)
 }
 
 func (t *Terminal) SizeInPixels() (width, height uint, err error) {
 	if t == nil {
-		return 0, 0, errorsGo.New(internal.ErrNilReceiver)
+		return 0, 0, errors.New(consts.ErrNilReceiver)
 	}
 	if t.surveyor == nil {
-		return 0, 0, errorsGo.New(`nil surveyor`)
+		return 0, 0, errors.New(`nil surveyor`)
 	}
 	return t.surveyor.SizeInPixels(t.tty, t.querier, t.window, t.proprietor)
 }
 
 func (t *Terminal) GetCursor() (xPosCells, yPosCells uint, err error) {
 	if t == nil {
-		return 0, 0, errorsGo.New(internal.ErrNilReceiver)
+		return 0, 0, errors.New(consts.ErrNilReceiver)
 	}
 	if t.surveyor == nil {
-		return 0, 0, errorsGo.New(`nil surveyor`)
+		return 0, 0, errors.New(`nil surveyor`)
 	}
 	return t.surveyor.GetCursor(t.tty, t.querier, t.window, t.proprietor)
 }
 
 func (t *Terminal) SetCursor(xPosCells, yPosCells uint) (err error) {
 	if t == nil {
-		return errorsGo.New(internal.ErrNilReceiver)
+		return errors.New(consts.ErrNilReceiver)
 	}
 	if t.surveyor == nil {
-		return errorsGo.New(`nil surveyor`)
+		return errors.New(`nil surveyor`)
 	}
 	return t.surveyor.SetCursor(xPosCells, yPosCells, t.tty, t.querier, t.window, t.proprietor)
 }
@@ -683,7 +682,7 @@ func (t *Terminal) Window() wm.Window {
 func (t *Terminal) Resizer() Resizer { return t.resizer }
 func (t *Terminal) NewCanvas(bounds image.Rectangle) (*Canvas, error) {
 	if t == nil {
-		return nil, errorsGo.New(internal.ErrNilReceiver)
+		return nil, errors.New(consts.ErrNilReceiver)
 	}
 	cpw, cph, err := t.CellSize()
 	if err != nil {

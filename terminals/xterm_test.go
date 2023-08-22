@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/srlehn/termimg/internal/consts"
 	"github.com/srlehn/termimg/internal/environ"
 	"github.com/srlehn/termimg/internal/propkeys"
 	"github.com/srlehn/termimg/term"
@@ -25,7 +26,7 @@ func TestTermCheckerXTermCheckExclude(t *testing.T) {
 	if !mightBe {
 		t.Fatal(`(*termCheckerXTerm)CheckExclude() failed`)
 	}
-	if p, ok := env.Property(propkeys.CheckTermEnvExclPrefix + termNameXTerm); ok && p != term.CheckTermPassed {
+	if p, ok := env.Property(propkeys.CheckTermEnvExclPrefix + termNameXTerm); ok && p != consts.CheckTermPassed {
 		t.Fatal(`(*termCheckerXTerm)CheckExclude() didn't set "passed" property`)
 	}
 }
@@ -39,7 +40,7 @@ func TestTermCheckerXTermCheckIsWindow(t *testing.T) {
 	if !is {
 		t.Fatal(`(*termCheckerXTerm)CheckIsWindow() failed`)
 	}
-	if p, ok := pr.Property(propkeys.CheckTermWindowIsPrefix + termNameXTerm); ok && p != term.CheckTermPassed {
+	if p, ok := pr.Property(propkeys.CheckTermWindowIsPrefix + termNameXTerm); ok && p != consts.CheckTermPassed {
 		t.Fatal(`(*termCheckerXTerm)CheckIsWindow() didn't set "passed" property`)
 	}
 }

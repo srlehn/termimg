@@ -3,6 +3,7 @@ package terminals
 import (
 	"strings"
 
+	"github.com/srlehn/termimg/internal/consts"
 	"github.com/srlehn/termimg/internal/environ"
 	"github.com/srlehn/termimg/internal/propkeys"
 	"github.com/srlehn/termimg/term"
@@ -23,20 +24,20 @@ var _ term.TermChecker = (*termCheckerDomTerm)(nil)
 
 type termCheckerDomTerm struct{ term.TermChecker }
 
-func (t *termCheckerDomTerm) CheckExclude(ci environ.Proprietor) (mightBe bool, p environ.Proprietor) {
+func (t *termCheckerDomTerm) CheckExclude(pr environ.Proprietor) (mightBe bool, p environ.Proprietor) {
 	p = environ.NewProprietor()
-	if t == nil || ci == nil {
-		p.SetProperty(propkeys.CheckTermEnvExclPrefix+termNameDomTerm, term.CheckTermFailed)
+	if t == nil || pr == nil {
+		p.SetProperty(propkeys.CheckTermEnvExclPrefix+termNameDomTerm, consts.CheckTermFailed)
 		return false, p
 	}
-	vDT, okEnvDT := ci.LookupEnv(`DOMTERM`)
+	vDT, okEnvDT := pr.LookupEnv(`DOMTERM`)
 	if !okEnvDT || len(vDT) == 0 {
 		/*
 			// TODO probably just from the chrome browser process
 			vArg, errEnvArg := t.EnvVar(`ARGV0`)
 			return errEnvArg == nil && vArg != `domterm`
 		*/
-		p.SetProperty(propkeys.CheckTermEnvExclPrefix+termNameDomTerm, term.CheckTermFailed)
+		p.SetProperty(propkeys.CheckTermEnvExclPrefix+termNameDomTerm, consts.CheckTermFailed)
 		return false, p
 	}
 	for _, propStr := range strings.Split(vDT, `;`) {
@@ -49,7 +50,7 @@ func (t *termCheckerDomTerm) CheckExclude(ci environ.Proprietor) (mightBe bool, 
 			break
 		}
 	}
-	if ciw, okW := ci.(wm.Window); okW && ciw != nil {
+	if ciw, okW := pr.(wm.Window); okW && ciw != nil {
 		wName := ciw.WindowName()
 		wInstance := ciw.WindowInstance()
 		if !strings.HasPrefix(wName, `[DomTerm:`) || !strings.HasSuffix(wInstance, `_domterm_start.html`) {
@@ -59,25 +60,25 @@ func (t *termCheckerDomTerm) CheckExclude(ci environ.Proprietor) (mightBe bool, 
 		p.SetProperty(propkeys.DomTermWindowInstance, wInstance)
 	}
 
-	p.SetProperty(propkeys.CheckTermEnvExclPrefix+termNameDomTerm, term.CheckTermPassed)
+	p.SetProperty(propkeys.CheckTermEnvExclPrefix+termNameDomTerm, consts.CheckTermPassed)
 	return true, p
 }
 
 func (t *termCheckerDomTerm) CheckIsWindow(w wm.Window) (is bool, p environ.Proprietor) {
 	p = environ.NewProprietor()
 	if t == nil || w == nil {
-		p.SetProperty(propkeys.CheckTermWindowIsPrefix+termNameDomTerm, term.CheckTermFailed)
+		p.SetProperty(propkeys.CheckTermWindowIsPrefix+termNameDomTerm, consts.CheckTermFailed)
 		return false, p
 	}
 	if strings.HasPrefix(w.WindowName(), `[DomTerm:`) || strings.HasSuffix(w.WindowInstance(), `_domterm_start.html`) {
-		p.SetProperty(propkeys.CheckTermWindowIsPrefix+termNameDomTerm, term.CheckTermPassed)
+		p.SetProperty(propkeys.CheckTermWindowIsPrefix+termNameDomTerm, consts.CheckTermPassed)
 		return true, p
 	}
-	p.SetProperty(propkeys.CheckTermWindowIsPrefix+termNameDomTerm, term.CheckTermFailed)
+	p.SetProperty(propkeys.CheckTermWindowIsPrefix+termNameDomTerm, consts.CheckTermFailed)
 	return false, p
 }
 
-func (t *termCheckerDomTerm) Args(ci environ.Proprietor) []string { return []string{`--no-daemonize`} }
+func (t *termCheckerDomTerm) Args(pr environ.Proprietor) []string { return []string{`--no-daemonize`} }
 
 /*
 example env: DOMTERM=version=2.9.0;libwebsockets=4.1.99-v4.1.0-339-g124cbe02;tty=/dev/pts/3;session#=1;pid=9471

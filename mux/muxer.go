@@ -14,11 +14,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/go-errors/errors"
 	"github.com/shirou/gopsutil/net"
 	"github.com/shirou/gopsutil/process"
 
 	"github.com/srlehn/termimg/internal/environ"
+	"github.com/srlehn/termimg/internal/errors"
 	"github.com/srlehn/termimg/internal/propkeys"
 )
 
@@ -263,7 +263,9 @@ Outer:
 	} else {
 		envInner = environ.NewProprietor()
 	}
-	envInner.SetProperty(propkeys.Passages, passages.String())
+	if passagesStr := passages.String(); len(passagesStr) > 0 {
+		envInner.SetProperty(propkeys.Passages, passagesStr)
+	}
 	if isRemoteTotal {
 		envInner.SetProperty(propkeys.IsRemote, `true`)
 	}

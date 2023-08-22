@@ -3,15 +3,15 @@
 package main
 
 import (
-	"errors"
 	"image"
 	"os"
 
-	errorsGo "github.com/go-errors/errors"
 	"github.com/spf13/cobra"
 
 	_ "github.com/srlehn/termimg/drawers/all"
+	"github.com/srlehn/termimg/internal/errors"
 	"github.com/srlehn/termimg/internal/testutil"
+	"github.com/srlehn/termimg/term"
 	_ "github.com/srlehn/termimg/terminals"
 )
 
@@ -43,17 +43,17 @@ var runTermCmdStr = "runterm"
 
 var errRunTermUsage = errors.New(`usage: ` + os.Args[0] + ` ` + runTermCmdStr + ` -t <terminal> -d <drawer> -p <x>,<y>,<w>x<h> /path/to/image.png`)
 
-func runTermFunc(cmd *cobra.Command, args []string) func() error {
-	return func() error {
+func runTermFunc(cmd *cobra.Command, args []string) func(**term.Terminal) error {
+	return func(tm **term.Terminal) error {
 		runTermImage = args[0]
 		imgFileBytes, err := os.ReadFile(runTermImage)
 		if err != nil {
-			return errorsGo.New(err)
+			return errors.New(err)
 		}
 
-		x, y, w, h, err := splitDimArg(runTermPosition, nil, runTermImage) // TODO pass term.Terminal
+		x, y, w, h, err := splitDimArg(runTermPosition, nil, term.NewImageBytes(imgFileBytes)) // TODO pass term.Terminal
 		if err != nil {
-			return errorsGo.New(errRunTermUsage)
+			return errors.New(errRunTermUsage)
 		}
 		bounds := image.Rect(x, y, x+w, y+h)
 

@@ -7,10 +7,9 @@ package wmimpl
 import (
 	"image"
 
-	errorsGo "github.com/go-errors/errors"
-
 	"github.com/srlehn/termimg/internal"
 	"github.com/srlehn/termimg/internal/environ"
+	"github.com/srlehn/termimg/internal/errors"
 	"github.com/srlehn/termimg/internal/wminternal"
 	"github.com/srlehn/termimg/wm"
 )
@@ -21,20 +20,20 @@ var _ wm.Connection = (*connOthers)(nil)
 type connOthers struct{}
 
 // NewConn ...
-func newConn() (*connOthers, error) { return nil, errorsGo.New(internal.ErrPlatformNotSupported) }
+func newConn() (*connOthers, error) { return nil, errors.New(consts.ErrPlatformNotSupported) }
 
 func (c *connOthers) Close() error { return nil }
 
 func (c *connOthers) Conn() any { return nil }
 
 func (c *connOthers) Windows() ([]wm.Window, error) {
-	return nil, errorsGo.New(internal.ErrPlatformNotSupported)
+	return nil, errors.New(consts.ErrPlatformNotSupported)
 }
 
 // DisplayImage ...
 func (c *connOthers) DisplayImage(img image.Image, windowName string) {}
 func (c *connOthers) Resources() (environ.Proprietor, error) {
-	return nil, errorsGo.New(internal.ErrNotImplemented)
+	return nil, errors.New(consts.ErrNotImplemented)
 }
 
 // windowOther ...

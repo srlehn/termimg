@@ -2,13 +2,16 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"os"
+	"os/exec"
+	"runtime/debug"
 
-	"github.com/go-errors/errors"
 	"github.com/spf13/cobra"
 
-	"github.com/srlehn/termimg/internal"
+	"github.com/srlehn/termimg/internal/consts"
+	"github.com/srlehn/termimg/internal/errors"
+	"github.com/srlehn/termimg/internal/exc"
+	"github.com/srlehn/termimg/term"
 )
 
 var rootCmd = &cobra.Command{
@@ -23,7 +26,7 @@ var rootCmd = &cobra.Command{
 
 func init() {
 	cobra.EnablePrefixMatching = true
-	rootCmd.PersistentFlags().BoolVar(&debug, `debug`, false, `debug errors`)
+	rootCmd.PersistentFlags().BoolVar(&debugFlag, `debug`, false, `debug errors`)
 }
 
 func main() {
@@ -32,19 +35,42 @@ func main() {
 	}
 }
 
-var debug bool
+var debugFlag bool
 
-func run(fn func() error) {
+func run(fn func(tm **term.Terminal) error) {
 	var err error
 	if fn == nil {
-		err = errors.New(internal.ErrNilParam)
+		err = errors.New(consts.ErrNilParam)
 	}
-	err = fn()
+	var tm *term.Terminal
+	var exitCode int
+	defer func() {
+		// catch panics to ascertain the terminal is reset
+		if r := recover(); r != nil {
+			exitCode = 1
+			if stackFramer, ok := r.(interface{ ErrorStack() string }); ok {
+				fmt.Fprintln(os.Stderr, "\n"+stackFramer.ErrorStack())
+			} else {
+				debug.PrintStack()
+			}
+		}
+		if err := tm.Close(); err != nil {
+			// fallback
+			sttyAbs, err := exc.LookSystemDirs(`stty`)
+			if err == nil {
+				// _ = exec.Command(sttyAbs, `echo`).Run()
+				_ = exec.Command(sttyAbs, `sane`).Run()
+			}
+		}
+		os.Exit(exitCode)
+	}()
+	err = fn(&tm)
 	if err != nil {
-		if stackFramer, ok := err.(interface{ ErrorStack() string }); debug && ok {
-			fmt.Println(stackFramer.ErrorStack())
+		exitCode = 1
+		if stackFramer, ok := err.(interface{ ErrorStack() string }); debugFlag && ok {
+			fmt.Fprintln(os.Stderr, "\n"+stackFramer.ErrorStack())
 		} else {
-			log.Fatal(err)
+			fmt.Fprintln(os.Stderr, "\n"+err.Error())
 		}
 	}
 }

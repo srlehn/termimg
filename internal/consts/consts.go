@@ -1,7 +1,7 @@
-package internal
+package consts
 
 import (
-	"github.com/go-errors/errors"
+	"errors"
 )
 
 var (
@@ -12,9 +12,15 @@ var (
 	ErrPlatformNotSupported    = errors.New(`platform not supported`)
 	ErrTimeoutInterval         = errors.New(`terminal querying timeout (interval)`)
 	ErrXTGetTCapInvalidRequest = errors.New(`invalid XTGETTCAP request`)
+)
 
+const (
 	DrawerGenericName = `generic`
 	TermGenericName   = `generic`
 
 	LibraryName = `termimg`
+
+	CheckTermPassed = `passed`
+	CheckTermFailed = `failed`
+	CheckTermDummy  = `dummy` // promoted dummy core method
 )

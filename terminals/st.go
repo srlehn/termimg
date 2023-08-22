@@ -1,6 +1,7 @@
 package terminals
 
 import (
+	"github.com/srlehn/termimg/internal/consts"
 	"github.com/srlehn/termimg/internal/environ"
 	"github.com/srlehn/termimg/internal/propkeys"
 	"github.com/srlehn/termimg/term"
@@ -19,18 +20,18 @@ var _ term.TermChecker = (*termCheckerSt)(nil)
 
 type termCheckerSt struct{ term.TermChecker }
 
-func (t *termCheckerSt) CheckExclude(ci environ.Proprietor) (mightBe bool, p environ.Proprietor) {
+func (t *termCheckerSt) CheckExclude(pr environ.Proprietor) (mightBe bool, p environ.Proprietor) {
 	p = environ.NewProprietor()
-	if t == nil || ci == nil {
-		p.SetProperty(propkeys.CheckTermEnvExclPrefix+termNameSt, term.CheckTermFailed)
+	if t == nil || pr == nil {
+		p.SetProperty(propkeys.CheckTermEnvExclPrefix+termNameSt, consts.CheckTermFailed)
 		return false, p
 	}
-	v, ok := ci.LookupEnv(`TERM`)
+	v, ok := pr.LookupEnv(`TERM`)
 	if ok && v == "st-256color" {
-		p.SetProperty(propkeys.CheckTermEnvExclPrefix+termNameSt, term.CheckTermPassed)
+		p.SetProperty(propkeys.CheckTermEnvExclPrefix+termNameSt, consts.CheckTermPassed)
 		return true, p
 	}
-	p.SetProperty(propkeys.CheckTermEnvExclPrefix+termNameSt, term.CheckTermFailed)
+	p.SetProperty(propkeys.CheckTermEnvExclPrefix+termNameSt, consts.CheckTermFailed)
 	return false, p
 }
 

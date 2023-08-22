@@ -1,17 +1,17 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 	"image"
 	"os"
 	"strconv"
 	"strings"
 
-	errorsGo "github.com/go-errors/errors"
 	"github.com/spf13/cobra"
 
 	"github.com/srlehn/termimg"
+	"github.com/srlehn/termimg/internal/errors"
+	"github.com/srlehn/termimg/term"
 )
 
 func init() { rootCmd.AddCommand(scaleCmd) }
@@ -38,16 +38,17 @@ var (
 	errScaleUsage = errors.New(scaleUsageStr)
 )
 
-func scaleFunc(cmd *cobra.Command, args []string) func() error {
-	return func() error {
-		tm, err := termimg.Terminal()
+func scaleFunc(cmd *cobra.Command, args []string) func(**term.Terminal) error {
+	return func(tm **term.Terminal) error {
+		tm2, err := termimg.Terminal()
 		if err != nil {
 			return err
 		}
-		defer tm.Close()
+		defer tm2.Close()
+		*tm = tm2
 		srcSizePixelsParts := strings.SplitN(args[0], `x`, 2)
 		if len(srcSizePixelsParts) != 2 {
-			return errorsGo.New(errScaleUsage)
+			return errors.New(errScaleUsage)
 		}
 		var (
 			srcSizePixelsW uint64
@@ -58,34 +59,34 @@ func scaleFunc(cmd *cobra.Command, args []string) func() error {
 		if len(srcSizePixelsParts[0]) > 0 {
 			srcSizePixelsW, err = strconv.ParseUint(srcSizePixelsParts[0], 10, 64)
 			if err != nil {
-				return errorsGo.New(errScaleUsage)
+				return errors.New(errScaleUsage)
 			}
 		}
 		if len(srcSizePixelsParts[1]) > 0 {
 			srcSizePixelsH, err = strconv.ParseUint(srcSizePixelsParts[1], 10, 64)
 			if err != nil {
-				return errorsGo.New(errScaleUsage)
+				return errors.New(errScaleUsage)
 			}
 		}
 		dstSizeCellsParts := strings.SplitN(args[1], `x`, 2)
 		if len(dstSizeCellsParts) != 2 {
-			return errorsGo.New(errScaleUsage)
+			return errors.New(errScaleUsage)
 		}
 		if len(dstSizeCellsParts[0]) > 0 {
 			dstSizeCellsW, err = strconv.ParseUint(dstSizeCellsParts[0], 10, 64)
 			if err != nil {
-				return errorsGo.New(errScaleUsage)
+				return errors.New(errScaleUsage)
 			}
 		}
 		if len(dstSizeCellsParts[1]) > 0 {
 			dstSizeCellsH, err = strconv.ParseUint(dstSizeCellsParts[1], 10, 64)
 			if err != nil {
-				return errorsGo.New(errScaleUsage)
+				return errors.New(errScaleUsage)
 			}
 		}
 		ptSrcPx := image.Point{X: int(srcSizePixelsW), Y: int(srcSizePixelsH)}
 		ptDstCl := image.Point{X: int(dstSizeCellsW), Y: int(dstSizeCellsH)}
-		ptScaledCl, err := tm.CellScale(ptSrcPx, ptDstCl)
+		ptScaledCl, err := tm2.CellScale(ptSrcPx, ptDstCl)
 		if err != nil {
 			return err
 		}

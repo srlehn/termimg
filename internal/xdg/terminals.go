@@ -7,8 +7,9 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/go-errors/errors"
 	"github.com/rkoesters/xdg/desktop"
+
+	"github.com/srlehn/termimg/internal/errors"
 )
 
 func InstalledTerminals() ([]*desktop.Entry, error) {

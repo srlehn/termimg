@@ -3,12 +3,11 @@
 package pkgterm
 
 import (
-	"errors"
-
-	errorsGo "github.com/go-errors/errors"
 	pkgTerm "github.com/pkg/term"
 
 	"github.com/srlehn/termimg/internal"
+	"github.com/srlehn/termimg/internal/consts"
+	"github.com/srlehn/termimg/internal/errors"
 	"github.com/srlehn/termimg/term"
 )
 
@@ -37,7 +36,7 @@ func New(ttyFile string) (term.TTY, error) {
 func (t *ttyPkgTerm) ReadRune() (r rune, size int, err error) {
 	// TODO implement ReadRune()
 	r = '\uFFFD'
-	return r, 0, errorsGo.New(internal.ErrNotImplemented)
+	return r, 0, errors.New(consts.ErrNotImplemented)
 }
 
 func (t *ttyPkgTerm) TTYDevName() string {
@@ -57,7 +56,7 @@ func (t *ttyPkgTerm) Close() error {
 	errClose := t.Term.Close()
 	err := errors.Join(errRestore, errClose)
 	if err != nil {
-		return errorsGo.New(err)
+		return errors.New(err)
 	}
 	return nil
 }

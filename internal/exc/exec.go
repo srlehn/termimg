@@ -4,7 +4,7 @@ import (
 	"os"
 	"os/user"
 
-	"github.com/go-errors/errors"
+	"github.com/srlehn/termimg/internal/errors"
 )
 
 var systemDirs = []string{

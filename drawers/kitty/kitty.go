@@ -7,9 +7,8 @@ import (
 	"image"
 	"image/png"
 
-	errorsGo "github.com/go-errors/errors"
-
-	"github.com/srlehn/termimg/internal"
+	"github.com/srlehn/termimg/internal/consts"
+	"github.com/srlehn/termimg/internal/errors"
 	"github.com/srlehn/termimg/mux"
 	"github.com/srlehn/termimg/term"
 )
@@ -46,19 +45,19 @@ func (d *drawerKitty) IsApplicable(inp term.DrawerCheckerInput) bool {
 
 func (d *drawerKitty) Draw(img image.Image, bounds image.Rectangle, tm *term.Terminal) error {
 	if d == nil || tm == nil || img == nil {
-		return errorsGo.New(`nil parameter`)
+		return errors.New(`nil parameter`)
 	}
 	timg, ok := img.(*term.Image)
 	if !ok {
 		timg = term.NewImage(img)
 	}
 	if timg == nil {
-		return errorsGo.New(internal.ErrNilImage)
+		return errors.New(consts.ErrNilImage)
 	}
 
 	rsz := tm.Resizer()
 	if rsz == nil {
-		return errorsGo.New(`nil resizer`)
+		return errors.New(`nil resizer`)
 	}
 	if err := timg.Fit(bounds, rsz, tm); err != nil {
 		return err
@@ -72,7 +71,7 @@ func (d *drawerKitty) Draw(img image.Image, bounds image.Rectangle, tm *term.Ter
 		return err
 	}
 	if tcw == 0 || tch == 0 {
-		return errorsGo.New("could not query terminal dimensions")
+		return errors.New("could not query terminal dimensions")
 	}
 
 	var imgHeight uint

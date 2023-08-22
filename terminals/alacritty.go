@@ -1,6 +1,7 @@
 package terminals
 
 import (
+	"github.com/srlehn/termimg/internal/consts"
 	"github.com/srlehn/termimg/internal/environ"
 	"github.com/srlehn/termimg/internal/propkeys"
 	"github.com/srlehn/termimg/term"
@@ -21,24 +22,24 @@ var _ term.TermChecker = (*termCheckerAlacritty)(nil)
 
 type termCheckerAlacritty struct{ term.TermChecker }
 
-func (t *termCheckerAlacritty) CheckExclude(ci environ.Proprietor) (mightBe bool, p environ.Proprietor) {
+func (t *termCheckerAlacritty) CheckExclude(pr environ.Proprietor) (mightBe bool, p environ.Proprietor) {
 	p = environ.NewProprietor()
-	if t == nil || ci == nil {
-		p.SetProperty(propkeys.CheckTermEnvExclPrefix+termNameAlacritty, term.CheckTermFailed)
+	if t == nil || pr == nil {
+		p.SetProperty(propkeys.CheckTermEnvExclPrefix+termNameAlacritty, consts.CheckTermFailed)
 		return false, p
 	}
-	v, ok := ci.LookupEnv(`ALACRITTY_LOG`)
+	v, ok := pr.LookupEnv(`ALACRITTY_LOG`)
 	if ok && len(v) > 0 {
-		p.SetProperty(propkeys.CheckTermEnvExclPrefix+termNameAlacritty, term.CheckTermPassed)
+		p.SetProperty(propkeys.CheckTermEnvExclPrefix+termNameAlacritty, consts.CheckTermPassed)
 		return true, p
 	}
-	p.SetProperty(propkeys.CheckTermEnvExclPrefix+termNameAlacritty, term.CheckTermFailed)
+	p.SetProperty(propkeys.CheckTermEnvExclPrefix+termNameAlacritty, consts.CheckTermFailed)
 	return false, p
 }
 func (t *termCheckerAlacritty) CheckIsWindow(w wm.Window) (is bool, p environ.Proprietor) {
 	p = environ.NewProprietor()
 	if t == nil || w == nil {
-		p.SetProperty(propkeys.CheckTermWindowIsPrefix+termNameAlacritty, term.CheckTermFailed)
+		p.SetProperty(propkeys.CheckTermWindowIsPrefix+termNameAlacritty, consts.CheckTermFailed)
 		return false, p
 	}
 	isWindow := w.WindowType() == `x11` &&
@@ -46,9 +47,9 @@ func (t *termCheckerAlacritty) CheckIsWindow(w wm.Window) (is bool, p environ.Pr
 		w.WindowClass() == `Alacritty` &&
 		w.WindowInstance() == `Alacritty`
 	if isWindow {
-		p.SetProperty(propkeys.CheckTermWindowIsPrefix+termNameAlacritty, term.CheckTermPassed)
+		p.SetProperty(propkeys.CheckTermWindowIsPrefix+termNameAlacritty, consts.CheckTermPassed)
 	} else {
-		p.SetProperty(propkeys.CheckTermWindowIsPrefix+termNameAlacritty, term.CheckTermFailed)
+		p.SetProperty(propkeys.CheckTermWindowIsPrefix+termNameAlacritty, consts.CheckTermFailed)
 	}
 	return isWindow, p
 }

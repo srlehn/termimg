@@ -7,11 +7,12 @@ import (
 
 	"golang.org/x/sys/windows"
 
-	"github.com/go-errors/errors"
 	"github.com/lxn/win"
 
 	"github.com/srlehn/termimg/internal"
+	"github.com/srlehn/termimg/internal/consts"
 	"github.com/srlehn/termimg/internal/environ"
+	"github.com/srlehn/termimg/internal/errors"
 	"github.com/srlehn/termimg/internal/propkeys"
 	"github.com/srlehn/termimg/internal/wminternal"
 	"github.com/srlehn/termimg/internal/wndws"
@@ -35,27 +36,27 @@ type termCheckerConHost struct {
 	term.TermChecker
 }
 
-func (t *termCheckerConHost) CheckExclude(ci environ.Proprietor) (mightBe bool, p environ.Proprietor) {
+func (t *termCheckerConHost) CheckExclude(pr environ.Proprietor) (mightBe bool, p environ.Proprietor) {
 	p = environ.NewProprietor()
-	if t == nil || ci == nil {
-		p.SetProperty(propkeys.CheckTermEnvExclPrefix+termNameConHost, term.CheckTermFailed)
+	if t == nil || pr == nil {
+		p.SetProperty(propkeys.CheckTermEnvExclPrefix+termNameConHost, consts.CheckTermFailed)
 		return false, p
 	}
 	// cmd.exe probably runs in conhost
-	v, ok := ci.LookupEnv(`PROMPT`)
+	v, ok := pr.LookupEnv(`PROMPT`)
 	if ok && len(v) > 0 {
-		p.SetProperty(propkeys.CheckTermEnvExclPrefix+termNameConHost, term.CheckTermPassed)
+		p.SetProperty(propkeys.CheckTermEnvExclPrefix+termNameConHost, consts.CheckTermPassed)
 		p.SetProperty(propkeys.AvoidANSI, ``)
 		return true, p
 	}
-	p.SetProperty(propkeys.CheckTermEnvExclPrefix+termNameConHost, term.CheckTermFailed)
+	p.SetProperty(propkeys.CheckTermEnvExclPrefix+termNameConHost, consts.CheckTermFailed)
 	return false, p
 }
 
-func (t *termCheckerConHost) Windower(ci environ.Proprietor) (wm.Window, error) {
+func (t *termCheckerConHost) Windower(pr environ.Proprietor) (wm.Window, error) {
 	return getConHostWindow()
 }
-func (t *termCheckerConHost) Surveyor(ci environ.Proprietor) term.PartialSurveyor {
+func (t *termCheckerConHost) Surveyor(pr environ.Proprietor) term.PartialSurveyor {
 	return &surveyorConhost{}
 }
 
@@ -109,7 +110,7 @@ type surveyorConhost struct {
 // CellSize - cell size in pixels
 func (s *surveyorConhost) CellSize(term.TTY) (width, height float64, err error) {
 	if s == nil {
-		return 0, 0, errors.New(internal.ErrNilReceiver)
+		return 0, 0, errors.New(consts.ErrNilReceiver)
 	}
 	if err := s.init(); err != nil {
 		return 0, 0, err
@@ -148,7 +149,7 @@ func (s *surveyorConhost) SizeInCells(tty term.TTY) (widthCells, heightCells uin
 
 func (s *surveyorConhost) init() error {
 	if s == nil {
-		return errors.New(internal.ErrNilReceiver)
+		return errors.New(consts.ErrNilReceiver)
 	}
 	if s.Closer == nil {
 		s.Closer = internal.NewCloser()

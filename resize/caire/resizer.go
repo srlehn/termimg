@@ -10,9 +10,9 @@ import (
 	"image/draw"
 
 	"github.com/esimov/caire"
-	"github.com/go-errors/errors"
 
-	"github.com/srlehn/termimg/internal"
+	"github.com/srlehn/termimg/internal/consts"
+	"github.com/srlehn/termimg/internal/errors"
 	"github.com/srlehn/termimg/term"
 )
 
@@ -50,9 +50,8 @@ func NewResizer(blurRadius, sobelThreshold int, faceDetect bool, shapeType strin
 
 func (r *resizer) Resize(img image.Image, size image.Point) (image.Image, error) {
 	if r == nil {
-		return nil, errors.New(internal.ErrNilReceiver)
+		return nil, errors.New(consts.ErrNilReceiver)
 	}
-	// util.PrintfAt(20, 30, "%.03f", float64(size.X)/float64(size.Y)) // TODO rm
 	r.proc.NewWidth = size.X
 	r.proc.NewHeight = size.Y
 	var nimg *image.NRGBA
@@ -74,7 +73,7 @@ repeat:
 				return nil, err
 			}
 			if it.Original == nil {
-				return nil, errors.New(internal.ErrNilImage)
+				return nil, errors.New(consts.ErrNilImage)
 			}
 			im = it
 			goto repeat
