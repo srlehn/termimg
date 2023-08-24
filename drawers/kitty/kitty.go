@@ -6,9 +6,12 @@ import (
 	"fmt"
 	"image"
 	"image/png"
+	"strings"
 
 	"github.com/srlehn/termimg/internal/consts"
 	"github.com/srlehn/termimg/internal/errors"
+	"github.com/srlehn/termimg/internal/parser"
+	"github.com/srlehn/termimg/internal/queries"
 	"github.com/srlehn/termimg/mux"
 	"github.com/srlehn/termimg/term"
 )
@@ -38,9 +41,17 @@ func (d *drawerKitty) IsApplicable(inp term.DrawerCheckerInput) bool {
 	case `kitty`:
 		// `wayst`: // untested
 		return true
-	default:
+	case `urxvt`,
+		`darktile`:
+		// TODO bugged parsing
 		return false
 	}
+
+	repl, err := term.CachedQuery(inp, queries.KittyTest+queries.DA1, inp, parser.NewParser(false, true), inp, inp)
+	ret := err == nil &&
+		(len(strings.SplitN(repl, queries.ST, 2)) == 2 ||
+			len(strings.SplitN(repl, "\a", 2)) == 2)
+	return ret
 }
 
 func (d *drawerKitty) Draw(img image.Image, bounds image.Rectangle, tm *term.Terminal) error {
@@ -67,7 +78,6 @@ func (d *drawerKitty) Draw(img image.Image, bounds image.Rectangle, tm *term.Ter
 
 	tcw, tch, err := tm.SizeInCells()
 	if err != nil {
-		fmt.Println(err)
 		return err
 	}
 	if tcw == 0 || tch == 0 {
@@ -105,10 +115,12 @@ func (d *drawerKitty) Draw(img image.Image, bounds image.Rectangle, tm *term.Ter
 	settings := fmt.Sprintf("a=T,t=d,f=100,X=%d,Y=%d,c=%d,r=%d,z=%d,", bounds.Min.X+1, bounds.Min.Y+1, bounds.Dx(), imgHeight, zIndex)
 	i := 0
 	for ; i < (lenImgB64-1)/kittyLimit; i++ {
-		kittyString += mux.Wrap(fmt.Sprintf("\033_G%sm=1;%s\033\\", settings, imgBase64[i*kittyLimit:(i+1)*kittyLimit]), tm)
+		// kittyString += mux.Wrap(fmt.Sprintf("\033_G%sm=1;%s\033\\", settings, imgBase64[i*kittyLimit:(i+1)*kittyLimit]), tm)
+		kittyString += mux.Wrap(fmt.Sprintf("\033_G%sC=1,m=1;%s\033\\", settings, imgBase64[i*kittyLimit:(i+1)*kittyLimit]), tm)
 		settings = ""
 	}
-	kittyString += mux.Wrap(fmt.Sprintf("\033_G%sm=0;%s\033\\", settings, imgBase64[i*kittyLimit:lenImgB64]), tm)
+	// kittyString += mux.Wrap(fmt.Sprintf("\033_G%sm=0;%s\033\\", settings, imgBase64[i*kittyLimit:lenImgB64]), tm)
+	kittyString += mux.Wrap(fmt.Sprintf("\033_G%sC=1,m=0;%s\033\\", settings, imgBase64[i*kittyLimit:lenImgB64]), tm)
 	kittyString = fmt.Sprintf("\033[%d;%dH%s", bounds.Min.Y+1, bounds.Min.X+1, kittyString)
 
 	timg.SetInband(bounds, kittyString, d, tm)

@@ -32,6 +32,11 @@ func (t *termCheckerApple) CheckExclude(pr environ.Proprietor) (mightBe bool, p 
 		p.SetProperty(propkeys.CheckTermEnvExclPrefix+termNameApple, consts.CheckTermFailed)
 		return false, p
 	}
+	v, ok = pr.LookupEnv(`__CFBundleIdentifier`)
+	if !ok || v != `com.apple.Terminal` {
+		p.SetProperty(propkeys.CheckTermEnvExclPrefix+termNameApple, consts.CheckTermFailed)
+		return false, p
+	}
 	p.SetProperty(propkeys.CheckTermEnvExclPrefix+termNameApple, consts.CheckTermPassed)
 	if ver, okV := pr.LookupEnv(`TERM_PROGRAM_VERSION`); okV && len(ver) > 0 {
 		p.SetProperty(propkeys.AppleTermVersion, ver) // CFBundleVersion of Terminal.app

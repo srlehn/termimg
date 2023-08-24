@@ -31,10 +31,28 @@ func (d *drawerITerm2) IsApplicable(inp term.DrawerCheckerInput) bool {
 	}
 	switch inp.Name() {
 	case `iterm2`,
+		`mintty`,
 		`macterm`,
 		// `wayst`, // untested
 		`wezterm`:
 		return true
+	case `konsole`:
+		// https://konsole.kde.org/changelogs/22.04.html
+		// https://invent.kde.org/utilities/konsole/-/merge_requests/594
+		verMajStr, okMaj := inp.Property(propkeys.KonsoleVersionMajorXTVersion)
+		verMinStr, okMin := inp.Property(propkeys.KonsoleVersionMinorXTVersion)
+		if !okMaj || !okMin {
+			return false
+		}
+		verMaj, err := strconv.ParseUint(verMajStr, 10, 64)
+		if err != nil || verMaj < 22 {
+			return false
+		}
+		if verMaj >= 23 {
+			return true
+		}
+		verMin, err := strconv.ParseUint(verMinStr, 10, 64)
+		return err == nil && verMin >= 4
 	case `vscode`:
 		// VSCode v1.80.0 required
 		// https://code.visualstudio.com/updates/v1_80#_image-supportm

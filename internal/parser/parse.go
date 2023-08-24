@@ -157,3 +157,35 @@ func (p *parser) Parse(r rune) bool {
 	}
 	return ret
 }
+
+// for queries.ITerm2PropVersion+queries.DA1 queries
+type ITerm2DA1Parser struct {
+	lastRune                     rune
+	insideITerm2Reply, insideCSI bool
+}
+
+func (p *ITerm2DA1Parser) Parse(r rune) bool {
+	var ret bool
+	if r == '\033' {
+		goto end
+	}
+	if r == '[' && p.lastRune == '\033' {
+		p.insideCSI = true
+		goto end
+	}
+	if p.insideCSI && p.lastRune == '[' && r != '?' {
+		// not a DA1 reply
+		p.insideCSI = false
+		p.insideITerm2Reply = true
+	}
+	if p.insideITerm2Reply && r == 'n' {
+		p.insideITerm2Reply = false
+	}
+	if p.insideCSI && r == 'c' {
+		p.insideCSI = false
+		ret = true
+	}
+end:
+	p.lastRune = r
+	return ret
+}

@@ -22,3 +22,7 @@ func (t *Terminal) Exe() string {
 	}
 	return t.Name() + suffix
 }
+
+func XTGetTCap(tm *Terminal, tcap string) (string, error) {
+	return xtGetTCap(tcap, tm.querier, tm.tty, tm.proprietor, tm.proprietor)
+}

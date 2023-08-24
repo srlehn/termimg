@@ -14,6 +14,7 @@ import (
 	"github.com/srlehn/termimg/internal/consts"
 	"github.com/srlehn/termimg/internal/environ"
 	"github.com/srlehn/termimg/internal/errors"
+	"github.com/srlehn/termimg/internal/linux"
 	"github.com/srlehn/termimg/internal/propkeys"
 	"github.com/srlehn/termimg/internal/wndws"
 	"github.com/srlehn/termimg/wm"
@@ -296,10 +297,21 @@ func (c *termCheckerCore) NewTerminal(opts ...Option) (*Terminal, error) {
 
 func termGenericPreCheck(pr environ.Proprietor) {
 	if isRemotePreCheck(pr) {
-		pr.SetProperty(propkeys.IsRemote, ``)
+		pr.SetProperty(propkeys.IsRemote, `true`)
 	}
 	// TODO store map keys as exported internal vars
 	pr.SetProperty(propkeys.RunsOnWine, fmt.Sprintf(`%v`, wndws.RunsOnWine()))
+	tty, ok := pr.Property(propkeys.TerminalTTY)
+	if ok && len(tty) > 0 {
+		f, err := os.Open(tty)
+		if err == nil && f != nil {
+			mode, isLinuxConsole, _ := linux.KDGetMode(f.Fd())
+			pr.SetProperty(propkeys.IsLinuxConsole, fmt.Sprintf(`%v`, isLinuxConsole))
+			if isLinuxConsole {
+				pr.SetProperty(propkeys.LinuxConsoleMode, fmt.Sprintf(`%v`, mode))
+			}
+		}
+	}
 }
 
 func termGenericCheck(tty TTY, qu Querier, pr environ.Proprietor) {
@@ -308,7 +320,7 @@ func termGenericCheck(tty TTY, qu Querier, pr environ.Proprietor) {
 	}
 	_ = QueryDeviceAttributes(qu, tty, pr, pr)
 	for _, spcl := range xtGetTCapSpecialStrs {
-		_, _ = XTGetTCap(spcl, qu, tty, pr, pr)
+		_, _ = xtGetTCap(spcl, qu, tty, pr, pr)
 	}
 	_, _ = xtVersion(qu, tty, pr, pr)
 }

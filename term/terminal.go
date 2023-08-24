@@ -3,7 +3,6 @@ package term
 import (
 	"fmt"
 	"image"
-	"log"
 	"os"
 	"runtime"
 	"sort"
@@ -225,10 +224,10 @@ func getTTYAndQuerier(tm *Terminal, tc *termCheckerCore) (TTY, Querier, error) {
 func findTermChecker(env environ.Proprietor, tty TTY, qu Querier) (tc TermChecker, _ environ.Proprietor, e error) {
 	var ttyTemp TTY
 	if tty == nil || qu == nil {
-		return GetRegTermChecker(consts.TermGenericName), nil, errors.New(consts.ErrNilParam)
+		return RegisteredTermChecker(consts.TermGenericName), nil, errors.New(consts.ErrNilParam)
 	}
 	if env == nil {
-		return GetRegTermChecker(consts.TermGenericName), nil, nil
+		return RegisteredTermChecker(consts.TermGenericName), nil, nil
 	}
 	pr := environ.NewProprietor()
 	ptyName := tty.TTYDevName()
@@ -253,21 +252,18 @@ func findTermChecker(env environ.Proprietor, tty TTY, qu Querier) (tc TermChecke
 		if r == nil {
 			return
 		}
-		log.Println(`panic in findTermEnv`) // TODO
 		var errs []error
 		err := errors.New(r)
 		errs = append(errs, err)
 		if ttyTemp != nil {
-			log.Println(`closing temporary tty`) // TODO
 			err := ttyTemp.Close()
 			errs = append(errs, err)
 		}
 		if tty != nil {
-			log.Println(`closing tty`) // TODO
 			err := tty.Close()
 			errs = append(errs, err)
 		}
-		tc = GetRegTermChecker(consts.TermGenericName)
+		tc = RegisteredTermChecker(consts.TermGenericName)
 		e = errors.New(errors.Join(errs...))
 	}()
 	termGenericCheck(tty, qu, pr)
@@ -287,7 +283,6 @@ func findTermChecker(env environ.Proprietor, tty TTY, qu Querier) (tc TermChecke
 					break
 				case consts.CheckTermDummy:
 					exclEnvSkipped = true
-					fallthrough
 				case consts.CheckTermFailed:
 					fallthrough
 				default:
@@ -388,7 +383,7 @@ func findTermChecker(env environ.Proprietor, tty TTY, qu Querier) (tc TermChecke
 			termNames := maps.Keys(prTmChkMap)
 			sort.Strings(termNames)
 			termNamesStr := strings.Join(termNames, ` `)
-			return GetRegTermChecker(consts.TermGenericName), nil, errors.Errorf(`more than 1 terminal check matched: %s`, termNamesStr)
+			return RegisteredTermChecker(consts.TermGenericName), nil, errors.Errorf(`more than 1 terminal check matched: %s`, termNamesStr)
 		}
 	}
 	_, okMatch := prTmChkMap[termMatchName]
@@ -404,7 +399,7 @@ func findTermChecker(env environ.Proprietor, tty TTY, qu Querier) (tc TermChecke
 	}
 	if checker == nil {
 		// This should only be possible if the generic TermChecker was removed from the register.
-		return GetRegTermChecker(consts.TermGenericName), nil, errors.New(`no matching terminal was found`)
+		return RegisteredTermChecker(consts.TermGenericName), nil, errors.New(`no matching terminal was found`)
 	}
 
 	return checker, pr, nil

@@ -1,15 +1,25 @@
 package queries
 
 const (
-	DA1 = "\033[0c"  // https://terminalguide.namepad.de/seq/csi_sc/
-	DA2 = "\033[>0c" // https://terminalguide.namepad.de/seq/csi_sc__q/
-	DA3 = "\033[=0c" // https://terminalguide.namepad.de/seq/csi_sc__r/
-	// DCS       = "\033P"    // Device Control String - Terminated by ST
-	// ST        = "\033\\"   // string terminator
-	XTVERSION = "\033[>0q" // https://invisible-island.net/xterm/terminfo-contents.html#tic-_Report_xterm_name_and_version__X_T_V_E_R_S_I_O_N_
+	// https://terminalguide.namepad.de/seq/csi_sc/
+	DA1 = CSI + `0c`
+	// https://terminalguide.namepad.de/seq/csi_sc__q/
+	DA2 = CSI + `>0c`
+	// https://terminalguide.namepad.de/seq/csi_sc__r/
+	DA3 = CSI + `=0c`
+	// https://invisible-island.net/xterm/terminfo-contents.html#tic-_Report_xterm_name_and_version__X_T_V_E_R_S_I_O_N_
+	XTVERSION = CSI + `>0q`
+	// https://iterm2.com/documentation-escape-codes.html
+	ITerm2CellSize = OSC + `1337;ReportCellSize` + ST
+	// https://iterm2.com/utilities/it2check
+	// https://github.com/mintty/mintty/issues/881#issuecomment-614601911
+	// n-terminated, implemented by iterm2, tmux
+	ITerm2PropVersion = CSI + `1337n`
+	// https://sw.kovidgoyal.net/kitty/graphics-protocol/#querying-support-and-available-transmission-mediums
+	KittyTest = APC + `Ga=q,i=1,t=d;Cg==` + ST
 )
 
-var (
+const (
 	SP = ` ` // https://vt100.net/docs/vt510-rm/chapter4.html - 4.3.1 SP = space
 
 	// https://en.wikipedia.org/wiki/ANSIescapecode

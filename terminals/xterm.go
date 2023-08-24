@@ -38,11 +38,64 @@ func (t *termCheckerXTerm) CheckExclude(pr environ.Proprietor) (mightBe bool, p 
 	xtermVerPrefix := `XTerm(`
 	if ok && len(v) > len(xtermVerPrefix) && v[len(v)-1] == ')' {
 		p.SetProperty(propkeys.CheckTermEnvExclPrefix+termNameXTerm, consts.CheckTermPassed)
-		p.SetProperty(propkeys.XTermVersion, v[len(xtermVerPrefix):len(v)-1])
+		p.SetProperty(propkeys.XTermVersionEnv, v[len(xtermVerPrefix):len(v)-1])
 		return true, p
 	}
 	p.SetProperty(propkeys.CheckTermEnvExclPrefix+termNameXTerm, consts.CheckTermFailed)
 	return false, p
+}
+func (t *termCheckerXTerm) CheckIsQuery(qu term.Querier, tty term.TTY, pr environ.Proprietor) (is bool, p environ.Proprietor) {
+	p = environ.NewProprietor()
+	if t == nil || pr == nil {
+		p.SetProperty(propkeys.CheckTermQueryIsPrefix+termNameXTerm, consts.CheckTermFailed)
+		return false, p
+	}
+	xtVer, okDA2Model := pr.Property(propkeys.XTVERSION)
+	if !okDA2Model {
+		p.SetProperty(propkeys.CheckTermQueryIsPrefix+termNameXTerm, consts.CheckTermFailed)
+		return false, p
+	}
+	xtVersionPrefix := `XTerm(`
+	xtVer, hasPrefix := strings.CutPrefix(xtVer, xtVersionPrefix)
+	xtVer, hasSuffix := strings.CutSuffix(xtVer, `)`)
+	if !hasPrefix || !hasSuffix {
+		p.SetProperty(propkeys.CheckTermQueryIsPrefix+termNameXTerm, consts.CheckTermFailed)
+		return false, p
+	}
+	p.SetProperty(propkeys.XTermVersionXTVersion, xtVer)
+	term.QueryDeviceAttributes(qu, tty, pr, pr)
+	da2Model, okDA2Model := pr.Property(propkeys.DA2Model)
+	if okDA2Model {
+		// https://terminalguide.namepad.de/seq/csi_sc__q/
+		var decTerminalID string
+		switch da2Model {
+		case `0`:
+			decTerminalID = `<200`
+		case `1`:
+			decTerminalID = `220`
+		case `2`:
+			decTerminalID = `240`
+		case `24`:
+			decTerminalID = `320`
+		case `18`:
+			decTerminalID = `330`
+		case `19`:
+			decTerminalID = `340`
+		case `41`:
+			decTerminalID = `420`
+		case `61`:
+			decTerminalID = `510`
+		case `64`:
+			decTerminalID = `520`
+		case `65`:
+			decTerminalID = `525`
+		}
+		if len(decTerminalID) > 0 {
+			p.SetProperty(propkeys.XTermDECTerminalIDDA2, decTerminalID)
+		}
+	}
+	p.SetProperty(propkeys.CheckTermQueryIsPrefix+termNameXTerm, consts.CheckTermPassed)
+	return true, p
 }
 func (t *termCheckerXTerm) CheckIsWindow(w wm.Window) (is bool, p environ.Proprietor) {
 	p = environ.NewProprietor()

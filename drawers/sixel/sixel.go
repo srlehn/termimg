@@ -41,13 +41,12 @@ func (d *drawerSixel) IsApplicable(inp term.DrawerCheckerInput) bool {
 		return false
 	}
 
-	tn := inp.Name()
 	if slices.Contains([]string{
 		`domterm`,
 		`st`,
 		`tabby`, // no images
 		`wayst`, // spews character salad
-	}, tn) {
+	}, inp.Name()) {
 		return false // skip buggy implementations
 	}
 

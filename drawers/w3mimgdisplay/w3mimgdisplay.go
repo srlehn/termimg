@@ -130,7 +130,7 @@ func (d *drawerW3MImgDisplay) Draw(img image.Image, bounds image.Rectangle, tm *
 			return errors.New(`nil connection`)
 		}
 		termName := tm.Name()
-		tChk := term.GetRegTermChecker(termName)
+		tChk := term.RegisteredTermChecker(termName)
 		if tChk == nil {
 			goto skipFindingTermOffSet
 		}

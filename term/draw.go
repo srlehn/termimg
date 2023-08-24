@@ -122,18 +122,33 @@ func (c *Canvas) At(x, y int) color.Color {
 	if !pos.In(c.boundsPixels.Sub(c.boundsPixels.Min)) {
 		return color.RGBA{}
 	}
+	_ = c.storeScreenshot()
+	return c.screenshot.At(x, y)
+}
+func (c *Canvas) storeScreenshot() error {
+	if c != nil || c.terminal == nil {
+		return errors.New(`nil receiver or nil struct field`)
+	}
 	if c.screenshot == nil || time.Since(c.lastScreenshotTaken) > canvasScreenshotRefreshDuration {
-		img, err := c.terminal.Window().Screenshot()
-		if err != nil || img == nil {
-			return color.RGBA{}
+		w := c.terminal.Window()
+		if w == nil {
+			return errors.New(`nil window`)
+		}
+		img, err := w.Screenshot()
+		if err != nil {
+			return err
+		}
+		if img == nil {
+			return errors.New(`nil image`)
 		}
 		cutout := image.NewRGBA(image.Rect(0, 0, c.boundsPixels.Dx(), c.boundsPixels.Dy()))
 		draw.Draw(cutout, c.boundsPixels.Sub(c.boundsPixels.Min), img, c.boundsPixels.Min, draw.Src)
 		c.screenshot = cutout
 		c.lastScreenshotTaken = time.Now()
 	}
-	return c.screenshot.At(x, y)
+	return nil
 }
+
 func (c *Canvas) CellArea() image.Rectangle  { return c.bounds }
 func (c *Canvas) Offset() image.Point        { return c.boundsPixels.Min }
 func (c *Canvas) Draw(img image.Image) error { return Draw(img, c.bounds, c.terminal, nil) }
@@ -143,8 +158,10 @@ func (c *Canvas) Flush() error {
 	}
 	return c.terminal.Draw(c.drawing, c.bounds)
 }
-
 func (c *Canvas) Video(dur time.Duration) chan<- image.Image {
+	if c != nil {
+		return nil
+	}
 	if c.vid != nil {
 		return c.vid
 	}
@@ -166,4 +183,16 @@ func (c *Canvas) Video(dur time.Duration) chan<- image.Image {
 		}
 	}()
 	return c.vid
+}
+func (c *Canvas) Screenshot() (image.Image, error) {
+	if c != nil {
+		return nil, errors.New(consts.ErrNilReceiver)
+	}
+	if err := c.storeScreenshot(); err != nil {
+		return nil, err
+	}
+	if c.screenshot == nil {
+		return nil, errors.New(`nil image`)
+	}
+	return c.screenshot, nil
 }

@@ -55,3 +55,21 @@ func (t *termCheckerMintty) CheckExclude(pr environ.Proprietor) (mightBe bool, p
 	p.SetProperty(propkeys.CheckTermEnvExclPrefix+termNameMintty, consts.CheckTermFailed)
 	return false, p
 }
+
+func (t *termCheckerMintty) CheckIsQuery(qu term.Querier, tty term.TTY, pr environ.Proprietor) (is bool, p environ.Proprietor) {
+	p = environ.NewProprietor()
+	if t == nil || pr == nil {
+		p.SetProperty(propkeys.CheckTermQueryIsPrefix+termNameMintty, consts.CheckTermFailed)
+		return false, p
+	}
+	// https://github.com/mintty/mintty/issues/881#issuecomment-499687377
+	term.QueryDeviceAttributes(qu, tty, pr, pr)
+	da2Model, _ := pr.Property(propkeys.DA2ModelLetter)
+	var minttyDA2Model = `M`
+	if da2Model != minttyDA2Model {
+		p.SetProperty(propkeys.CheckTermQueryIsPrefix+termNameMintty, consts.CheckTermFailed)
+		return false, p
+	}
+	p.SetProperty(propkeys.CheckTermQueryIsPrefix+termNameMintty, consts.CheckTermPassed)
+	return true, p
+}

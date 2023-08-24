@@ -63,9 +63,9 @@ func TakeScreenshot(termName string, termProvider TermProviderFunc, drawerName s
 			return nil, err
 		}
 		defer termimg.CleanUp()
-		termChecker = term.GetRegTermChecker(tm.Name())
+		termChecker = term.RegisteredTermChecker(tm.Name())
 	} else {
-		termChecker = term.GetRegTermChecker(termName)
+		termChecker = term.RegisteredTermChecker(termName)
 	}
 	img, _, err := image.Decode(bytes.NewReader(imgBytes))
 	if err != nil {

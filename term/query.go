@@ -3,6 +3,7 @@ package term
 import (
 	"encoding/base64"
 	"encoding/hex"
+	"strconv"
 	"strings"
 
 	"github.com/srlehn/termimg/internal/consts"
@@ -156,15 +157,13 @@ func QueryDeviceAttributes(qu Querier, tty TTY, prIn, prOut environ.Proprietor) 
 		case queries.DA1:
 			// DA1 - Primary Device Attributes
 			// https://vt100.net/docs/vt510-rm/DA1.html
-			var found bool
-			// var replDec []byte
 			// remove CSI+"?" (control sequence introducer)
-			repl, found = strings.CutPrefix(repl, "\033[?")
+			repl, found := strings.CutPrefix(repl, queries.CSI+`?`)
 			if !found {
 				goto skipExtraction
 			}
-			// remove ST (string terminator)
-			repl, found = strings.CutSuffix(repl, "c")
+			// remove CSI terminator
+			repl, found = strings.CutSuffix(repl, `c`)
 			if !found {
 				goto skipExtraction
 			}
@@ -185,16 +184,39 @@ func QueryDeviceAttributes(qu Querier, tty TTY, prIn, prOut environ.Proprietor) 
 					prOut.SetProperty(propkeys.WindowingCapable, `true`)
 				}
 			}
-		case queries.DA2: // Version
+		case queries.DA2: // Model & Version
+			// https://vt100.net/docs/vt510-rm/DA2.html
+			// https://terminalguide.namepad.de/seq/csi_sc__q/
+			// remove CSI+">" (control sequence introducer)
+			repl, found := strings.CutPrefix(repl, queries.CSI+`>`)
+			if !found {
+				goto skipExtraction
+			}
+			// remove CSI terminator
+			repl, found = strings.CutSuffix(repl, `c`)
+			if !found {
+				goto skipExtraction
+			}
+			attrs := strings.Split(repl, `;`)
+			if len(attrs) != 3 {
+				goto skipExtraction
+			}
+			prOut.SetProperty(propkeys.DA2Model, attrs[0])
+			prOut.SetProperty(propkeys.DA2Version, attrs[1])
+			prOut.SetProperty(propkeys.DA2Keyboard, attrs[2])
+			model, err := strconv.Atoi(attrs[0])
+			if err == nil && model >= 0x20 && model <= 0x7E {
+				// store if printable
+				prOut.SetProperty(propkeys.DA2ModelLetter, string(rune(model)))
+			}
 		case queries.DA3:
 			// DA3 - Tertiary Device Attributes
 			// https://vt100.net/docs/vt510-rm/DA3.html
 			// DECRPTUI - Report Terminal Unit ID
 			// https://www.vt100.net/docs/vt510-rm/DECRPTUI.html
-			var found bool
 			var replDec []byte
 			// remove DCS+"!|" (device control string)
-			repl, found = strings.CutPrefix(repl, "\033P!|")
+			repl, found := strings.CutPrefix(repl, "\033P!|")
 			if !found {
 				goto skipExtraction
 			}
@@ -227,7 +249,7 @@ var (
 	xtGetTCapSpecialStrs = []string{`TN`, `Co`, `RGB`}
 )
 
-func XTGetTCap(tcap string, qu Querier, tty TTY, prIn, prOut environ.Proprietor) (string, error) {
+func xtGetTCap(tcap string, qu Querier, tty TTY, prIn, prOut environ.Proprietor) (string, error) {
 	// TODO multiple tcaps
 	// https://invisible-island.net/xterm/ctlseqs/ctlseqs.html /XTGETTCAP
 	// https://github.com/dankamongmen/notcurses/blob/master/TERMINALS.md#queries
@@ -243,7 +265,7 @@ func XTGetTCap(tcap string, qu Querier, tty TTY, prIn, prOut environ.Proprietor)
 	}
 
 	// add DA1 so that we don't have to wait for a timeout
-	qsXTGETTCAP := queries.DCS + tcapHex + queries.ST + queries.DA1
+	qsXTGETTCAP := queries.DCS + `+q` + tcapHex + queries.ST + queries.DA1
 
 	var encounteredST bool
 	var prs ParserFunc = func(r rune) bool {

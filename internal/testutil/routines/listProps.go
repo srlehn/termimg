@@ -96,6 +96,9 @@ func ListTermProps(tm *term.Terminal, listTerm, listDrawers, listQueries, listEn
 		}
 		pr(`DA1 class`, propkeys.DeviceClass)
 		pr(`DA1 attrs`, propkeys.DeviceAttributes)
+		pr(`DA2 model letter`, propkeys.DA2ModelLetter)
+		pr(`DA2 model`, propkeys.DA2Model)
+		pr(`DA2 version`, propkeys.DA2Version)
 		pr(`DA3 ID`, propkeys.DA3ID)
 		pr(`DA3 ID hex`, propkeys.DA3IDHex)
 		pr(`XTVERSION`, propkeys.XTVERSION)

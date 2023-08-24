@@ -18,7 +18,7 @@ func AllTerminalCheckers() []TermChecker {
 	return terminalCheckers
 }
 
-func GetAllRegTermCheckers() []TermChecker {
+func AllRegisteredTermCheckers() []TermChecker {
 	l := len(terminalCheckersRegistered)
 	terminalCheckersRegistered = terminalCheckersRegistered[:l:l]
 	return terminalCheckersRegistered
@@ -26,8 +26,7 @@ func GetAllRegTermCheckers() []TermChecker {
 
 var mapTermCheckers map[string]TermChecker
 
-// GetRegTermChecker returns registered terminal checker
-func GetRegTermChecker(name string) TermChecker {
+func RegisteredTermChecker(name string) TermChecker {
 	if mapTermCheckers == nil {
 		mapTermCheckers = make(map[string]TermChecker)
 		for _, tm := range terminalCheckersRegistered {
