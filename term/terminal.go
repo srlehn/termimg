@@ -3,6 +3,7 @@ package term
 import (
 	"fmt"
 	"image"
+	"math"
 	"os"
 	"runtime"
 	"sort"
@@ -583,16 +584,16 @@ func (t *Terminal) CellScale(ptSrcPx, ptDstCl image.Point) (image.Point, error) 
 	if ptDstCl.X == 0 {
 		if ptDstCl.Y == 0 {
 			ret = image.Point{
-				X: int(float64(ptSrcPx.X) / cpw),
-				Y: int(float64(ptSrcPx.Y) / cph),
+				X: roundInf(float64(ptSrcPx.X) / cpw),
+				Y: roundInf(float64(ptSrcPx.Y) / cph),
 			}
 		} else {
 			ret.Y = ptDstCl.Y
-			ret.X = int((float64(ptSrcPx.X) * float64(cph) * float64(ptDstCl.Y)) / (float64(ptSrcPx.Y) * float64(cpw)))
+			ret.X = roundInf((float64(ptSrcPx.X) * float64(cph) * float64(ptDstCl.Y)) / (float64(ptSrcPx.Y) * float64(cpw)))
 		}
 	} else {
 		ret.X = ptDstCl.X
-		yScaled := int((float64(ptSrcPx.Y) * float64(cpw) * float64(ptDstCl.X)) / (float64(ptSrcPx.X) * float64(cph)))
+		yScaled := roundInf((float64(ptSrcPx.Y) * float64(cpw) * float64(ptDstCl.X)) / (float64(ptSrcPx.X) * float64(cph)))
 		if ptDstCl.Y == 0 {
 			ret.Y = yScaled
 		} else {
@@ -600,11 +601,19 @@ func (t *Terminal) CellScale(ptSrcPx, ptDstCl image.Point) (image.Point, error) 
 				ret.Y = yScaled
 			} else {
 				ret.Y = ptDstCl.Y
-				ret.X = int((float64(ptSrcPx.X) * float64(cph) * float64(ptDstCl.Y)) / (float64(ptSrcPx.Y) * float64(cpw)))
+				ret.X = roundInf((float64(ptSrcPx.X) * float64(cph) * float64(ptDstCl.Y)) / (float64(ptSrcPx.Y) * float64(cpw)))
 			}
 		}
 	}
 	return ret, nil
+}
+
+// round away from zero (toward infinity)
+func roundInf(f float64) int {
+	if f > 0 {
+		return int(math.Ceil(f))
+	}
+	return int(math.Floor(f))
 }
 
 func (t *Terminal) CellSize() (width, height float64, err error) {
