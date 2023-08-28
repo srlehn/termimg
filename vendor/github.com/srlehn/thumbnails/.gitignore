@@ -1,0 +1,10 @@
+/cmd/
+/testdata/
+*.code-workspace
+.vscode
+*.exe
+/go.work
+/go.work.sum
+/*.png
+/*.jpg
+/*.jpeg
