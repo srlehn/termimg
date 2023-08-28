@@ -11,10 +11,10 @@ import (
 	"github.com/fogleman/gg"
 	"github.com/golang/freetype/truetype"
 	"github.com/spf13/cobra"
-	"github.com/srlehn/termimg"
 	"github.com/srlehn/thumbnails"
 	"golang.org/x/image/font/gofont/goregular"
 
+	"github.com/srlehn/termimg"
 	"github.com/srlehn/termimg/internal"
 	"github.com/srlehn/termimg/resize/rdefault"
 	"github.com/srlehn/termimg/term"
@@ -66,7 +66,7 @@ func listFunc(cmd *cobra.Command, args []string) func(**term.Terminal) error {
 		defer tm2.Close()
 		*tm = tm2
 
-		tcw, tch, err := tm2.SizeInCells()
+		tcw, _, err := tm2.SizeInCells()
 		if err != nil {
 			return err
 		}
@@ -85,8 +85,6 @@ func listFunc(cmd *cobra.Command, args []string) func(**term.Terminal) error {
 			return err
 		}
 		maxTilesX := int(float64(tcw) / float64(szTile.X+1))
-		maxTilesY := int(float64(tch) / float64(szTile.Y+1))
-		_ = maxTilesY
 
 		goFont, err := truetype.Parse(goregular.TTF)
 		if err != nil {
@@ -116,10 +114,23 @@ func listFunc(cmd *cobra.Command, args []string) func(**term.Terminal) error {
 			if fi.IsDir() {
 				return nil
 			}
-			img, err = thumbnails.OpenThumbnail(path, image.Point{Y: 128}, true)
+			img, err = thumbnails.OpenThumbnail(path, image.Point{Y: tileBaseSize}, true)
 			if err != nil {
 				return err
 			}
+			var imgOffsetY int
+			if bounds := img.Bounds(); bounds.Dx() > bounds.Dy() {
+				// if image can't be resized - it will be cropped by fogleman/gg
+				if rsz := tm2.Resizer(); rsz != nil {
+					h := int(float64(tileBaseSize*bounds.Dy()) / float64(bounds.Dx()))
+					imgOffsetY = (tileBaseSize - h) / 2
+					m, err := rsz.Resize(img, image.Point{X: tileBaseSize, Y: h})
+					if err == nil && m != nil {
+						img = m
+					}
+				}
+			}
+
 			{
 				offset := image.Point{
 					X: (imgCtr % maxTilesX) * (szTile.X + 1),
@@ -159,7 +170,7 @@ func listFunc(cmd *cobra.Command, args []string) func(**term.Terminal) error {
 			c.NewSubPath()
 			c.Clear()
 			c.SetRGB(0, 0, 0)
-			c.DrawImage(img, 0, 0)
+			c.DrawImage(img, 0, imgOffsetY)
 			for i, line := range lines {
 				if i >= maxLines {
 					break
