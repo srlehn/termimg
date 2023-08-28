@@ -17,6 +17,10 @@ const (
 	ITerm2PropVersion = CSI + `1337n`
 	// https://sw.kovidgoyal.net/kitty/graphics-protocol/#querying-support-and-available-transmission-mediums
 	KittyTest = APC + `Ga=q,i=1,t=d;Cg==` + ST
+	// DECSCNM - https://vt100.net/docs/vt510-rm/DECSCNM.html
+	Foreground   = OSC + `10;?` + ST
+	Background   = OSC + `11;?` + ST
+	ReverseVideo = CSI + `?5$p`
 )
 
 const (

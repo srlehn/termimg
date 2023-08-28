@@ -7,6 +7,8 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"strconv"
+	"strings"
 
 	"github.com/fogleman/gg"
 	"github.com/golang/freetype/truetype"
@@ -16,6 +18,10 @@ import (
 
 	"github.com/srlehn/termimg"
 	"github.com/srlehn/termimg/internal"
+	"github.com/srlehn/termimg/internal/errors"
+	"github.com/srlehn/termimg/internal/parser"
+	"github.com/srlehn/termimg/internal/queries"
+	"github.com/srlehn/termimg/internal/util"
 	"github.com/srlehn/termimg/resize/rdefault"
 	"github.com/srlehn/termimg/term"
 	"github.com/srlehn/termimg/wm"
@@ -75,6 +81,8 @@ func listFunc(cmd *cobra.Command, args []string) func(**term.Terminal) error {
 			return err
 		}
 
+		fg, bg, _ := getForegroundBackground(tm2)
+
 		maxLines := 3
 		textHeight := int(math.Ceil(float64(maxLines) * cph))
 		tileBaseSize := 128 // 128 is the "small" xdg thumbnail size
@@ -118,15 +126,30 @@ func listFunc(cmd *cobra.Command, args []string) func(**term.Terminal) error {
 			if err != nil {
 				return err
 			}
+			var imgOffsetX int
 			var imgOffsetY int
-			if bounds := img.Bounds(); bounds.Dx() > bounds.Dy() {
-				// if image can't be resized - it will be cropped by fogleman/gg
-				if rsz := tm2.Resizer(); rsz != nil {
-					h := int(float64(tileBaseSize*bounds.Dy()) / float64(bounds.Dx()))
-					imgOffsetY = (tileBaseSize - h) / 2
-					m, err := rsz.Resize(img, image.Point{X: tileBaseSize, Y: h})
-					if err == nil && m != nil {
-						img = m
+			{
+				bounds := img.Bounds()
+				dx := bounds.Dx()
+				dy := bounds.Dy()
+				if dx > dy {
+					// if image can't be resized - it will be cropped by fogleman/gg
+					if rsz := tm2.Resizer(); rsz != nil {
+						h := int(float64(tileBaseSize*dy) / float64(dx))
+						imgOffsetY = (tileBaseSize - h) / 2
+						m, err := rsz.Resize(img, image.Point{X: tileBaseSize, Y: h})
+						if err == nil && m != nil {
+							img = m
+						}
+					}
+				} else if dx < dy {
+					if rsz := tm2.Resizer(); rsz != nil {
+						w := int(float64(tileBaseSize*dx) / float64(dy))
+						imgOffsetX = (tileBaseSize - w) / 2
+						m, err := rsz.Resize(img, image.Point{X: w, Y: tileBaseSize})
+						if err == nil && m != nil {
+							img = m
+						}
 					}
 				}
 			}
@@ -166,11 +189,10 @@ func listFunc(cmd *cobra.Command, args []string) func(**term.Terminal) error {
 			if len(line) >= 1 && line[len(line)-1] != abbrChar {
 				lines = append(lines, string(line))
 			}
-			c.SetRGB(1, 1, 1)
-			c.NewSubPath()
+			c.SetRGB(bg[0], bg[1], bg[2])
 			c.Clear()
-			c.SetRGB(0, 0, 0)
-			c.DrawImage(img, 0, imgOffsetY)
+			c.SetRGB(fg[0], fg[1], fg[2])
+			c.DrawImage(img, imgOffsetX, imgOffsetY)
 			for i, line := range lines {
 				if i >= maxLines {
 					break
@@ -212,4 +234,71 @@ func listFunc(cmd *cobra.Command, args []string) func(**term.Terminal) error {
 
 		return nil
 	}
+}
+
+func getForegroundBackground(tm *term.Terminal) (fg, bg [3]float64, _ error) {
+	fg = [3]float64{1, 1, 1} // default
+	if tm == nil {
+		return fg, bg, errors.New(`nil terminal`)
+	}
+	// DECSCNM - https://vt100.net/docs/vt510-rm/DECSCNM.html
+	prs := parser.NewParser(false, true)
+	replFG, err := tm.Query(queries.Foreground+queries.DA1, prs)
+	if err != nil {
+		return fg, bg, err
+	}
+	replBG, err := tm.Query(queries.Background+queries.DA1, prs)
+	if err != nil {
+		return fg, bg, err
+	}
+	parseRGB := func(s string) (rgb [3]float64, _ error) {
+		parts := strings.SplitN(s, queries.ST, 2)
+		if len(parts) < 2 {
+			return rgb, errors.New(`no reply`)
+		}
+		s, okFG := strings.CutPrefix(parts[0], queries.OSC+"10;rgb:")
+		s, okBG := strings.CutPrefix(s, queries.OSC+"11;rgb:")
+		if !okFG && !okBG {
+			return rgb, errors.New(`invalid reply`)
+		}
+		cols := strings.SplitN(s, `/`, 3)
+		if len(cols) < 3 {
+			return rgb, errors.New(`invalid reply`)
+		}
+		for i, col := range cols {
+			h, err := strconv.ParseUint(col, 16, 64)
+			if err != nil {
+				return rgb, errors.New(err)
+			}
+			rgb[i] = float64(h) / float64(1<<16)
+		}
+		return rgb, nil
+	}
+	fg, err = parseRGB(replFG)
+	if err != nil {
+		return fg, bg, err
+	}
+	bg, err = parseRGB(replBG)
+	if err != nil {
+		return fg, bg, err
+	}
+	replRevVid, err := tm.Query(queries.ReverseVideo+queries.DA1, parser.StopOnC)
+	if err != nil {
+		return fg, bg, err
+	}
+	{
+		parts := strings.SplitN(replRevVid, `$y`, 2)
+		if len(parts) != 2 {
+			return fg, bg, errors.New(`invalid reply`)
+		}
+		parts = strings.SplitN(parts[0], `;`, 2)
+		if len(parts) != 2 {
+			return fg, bg, errors.New(`invalid reply`)
+		}
+		util.Printfq(parts)
+		if parts[1] == `1` || parts[1] == `3` {
+			fg, bg = bg, fg
+		}
+	}
+	return fg, bg, nil
 }

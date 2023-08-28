@@ -8,6 +8,8 @@ var StopOnBackSlash ParserFunc = func(r rune) bool { return r == '\\' }
 
 var StopOnR ParserFunc = func(r rune) bool { return r == 'R' }
 
+var StopOnC ParserFunc = func(r rune) bool { return r == 'c' }
+
 // Parser.Parse returns true when end of terminal reply is reached.
 type Parser interface {
 	Parse(rune) bool
