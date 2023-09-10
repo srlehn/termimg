@@ -11,6 +11,7 @@ import (
 	"github.com/lxn/win"
 
 	"github.com/srlehn/termimg/internal/consts"
+	"github.com/srlehn/termimg/internal/environ"
 	"github.com/srlehn/termimg/internal/errors"
 	"github.com/srlehn/termimg/internal/wndws"
 	"github.com/srlehn/termimg/term"
@@ -27,8 +28,8 @@ type drawerGDI struct {
 
 func (d *drawerGDI) Name() string     { return `conhost_gdi` }
 func (d *drawerGDI) New() term.Drawer { return &drawerGDI{} }
-func (d *drawerGDI) IsApplicable(inp term.DrawerCheckerInput) bool {
-	return inp != nil && inp.Name() == `conhost` && !wndws.RunsOnWine()
+func (d *drawerGDI) IsApplicable(inp term.DrawerCheckerInput) (bool, environ.Proprietor) {
+	return inp != nil && inp.Name() == `conhost` && !wndws.RunsOnWine(), nil
 }
 func (d *drawerGDI) init() error {
 	if d == nil {

@@ -23,8 +23,6 @@ func KDGetMode(fd uintptr) (mode KDMode, isLinuxConsole bool, _ error) {
 	return -1, false, err
 }
 
-type KDMode int
-
 func (k *KDMode) String() string {
 	if k == nil {
 		return `<nil>`
