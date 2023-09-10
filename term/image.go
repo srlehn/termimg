@@ -43,6 +43,15 @@ func NewImage(img image.Image) *Image {
 			if m.inBand == nil {
 				m.inBand = make(map[string]inBandString)
 			}
+			if m.posObjs == nil {
+				m.posObjs = make(map[string]posObject)
+			}
+			if m.drawerSpec == nil {
+				m.drawerSpec = make(map[string]any)
+			}
+			if m.Closer == nil {
+				m.Closer = internal.NewCloser()
+			}
 			return m
 		}
 	}
@@ -101,14 +110,14 @@ func (i *Image) Decode() error {
 	} else if len(i.FileName) > 0 {
 		f, err := os.Open(i.FileName)
 		if err != nil {
-			return err
+			return errors.New(err)
 		}
 		defer f.Close()
 		rdr = f
 	}
 	image, _, err := image.Decode(rdr)
 	if err != nil {
-		return err
+		return errors.New(err)
 	}
 	i.Original = image
 	return nil
@@ -117,10 +126,11 @@ func (i *Image) Decode() error {
 // ColorModel ...
 func (i *Image) ColorModel() color.Model {
 	if i == nil {
-		panic(errors.New(consts.ErrNilReceiver))
+		return color.RGBAModel
 	}
 	if err := i.Decode(); err != nil {
-		panic(err)
+		// TODO log error
+		return color.RGBAModel
 	}
 	return i.Original.ColorModel()
 }
@@ -128,10 +138,11 @@ func (i *Image) ColorModel() color.Model {
 // Bounds ...
 func (i *Image) Bounds() image.Rectangle {
 	if i == nil {
-		panic(errors.New(consts.ErrNilReceiver))
+		return image.Rectangle{}
 	}
 	if err := i.Decode(); err != nil {
-		panic(err)
+		// TODO log error
+		return image.Rectangle{}
 	}
 	return i.Original.Bounds()
 }
@@ -139,10 +150,12 @@ func (i *Image) Bounds() image.Rectangle {
 // At ...
 func (i *Image) At(x, y int) color.Color {
 	if i == nil {
-		panic(errors.New(consts.ErrNilReceiver))
+		// TODO log error
+		return color.RGBA{}
 	}
 	if err := i.Decode(); err != nil {
-		panic(err)
+		// TODO log error
+		return color.RGBA{}
 	}
 	return i.Original.At(x, y)
 }

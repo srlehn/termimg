@@ -211,7 +211,7 @@ func (c *termCheckerCore) NewTerminal(opts ...Option) (*Terminal, error) {
 		w:          w,
 		name:       c.parent.Name(),
 	}
-	drawers, err := DrawersFor(drCkInp)
+	drawers, drProps, err := drawersFor(drCkInp)
 	if err != nil {
 		return nil, err
 	}
@@ -220,6 +220,7 @@ func (c *termCheckerCore) NewTerminal(opts ...Option) (*Terminal, error) {
 		// drawers = []Drawer{&generic.DrawerGeneric{}} // TODO import cycle
 		return nil, errors.New(`no drawers found`) // TODO rm
 	}
+	tm.Merge(drProps)
 	var lessFn func(i, j int) bool
 	drawerMap := make(map[string]struct{})
 	if _, isRemote := tm.proprietor.Property(propkeys.IsRemote); isRemote {

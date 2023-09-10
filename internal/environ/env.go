@@ -26,7 +26,6 @@ func CleanEnv(envParent, envInner []string) (env Proprietor) {
 		`OLDPWD`:                      {},
 		`PWD`:                         {},
 		`PATH`:                        {},
-		`PS1`:                         {},
 		`PS2`:                         {},
 		`PS3`:                         {},
 		`PS4`:                         {},
@@ -49,6 +48,7 @@ func CleanEnv(envParent, envInner []string) (env Proprietor) {
 		`ANDROID_HOME`:                {},
 	}
 	preserveVars := map[string]struct{}{
+		`PS1`:              {},
 		`TERM`:             {},
 		`DISPLAY`:          {},
 		`XDG_SESSION_TYPE`: {},

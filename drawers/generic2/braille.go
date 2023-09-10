@@ -10,6 +10,7 @@ import (
 
 	"github.com/srlehn/termimg/internal/consts"
 	"github.com/srlehn/termimg/internal/encoder/encpng"
+	"github.com/srlehn/termimg/internal/environ"
 	"github.com/srlehn/termimg/internal/errors"
 	"github.com/srlehn/termimg/internal/util"
 	"github.com/srlehn/termimg/term"
@@ -24,7 +25,9 @@ type drawerBraille struct{}
 func (d *drawerBraille) Name() string     { return `generic2` }
 func (d *drawerBraille) New() term.Drawer { return &drawerBraille{} }
 
-func (d *drawerBraille) IsApplicable(inp term.DrawerCheckerInput) bool { return true }
+func (d *drawerBraille) IsApplicable(inp term.DrawerCheckerInput) (bool, environ.Proprietor) {
+	return true, nil
+}
 
 func (d *drawerBraille) Draw(img image.Image, bounds image.Rectangle, tm *term.Terminal) error {
 	if d == nil || tm == nil || img == nil {

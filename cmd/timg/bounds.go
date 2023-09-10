@@ -15,11 +15,12 @@ import (
 	_ "golang.org/x/image/webp"
 
 	"github.com/srlehn/termimg/internal/errors"
+	"github.com/srlehn/termimg/internal/prompt"
 	"github.com/srlehn/termimg/term"
 )
 
 // func splitDimArg(dim string, surv term.Surveyor, imgFile string) (x, y, w, h int, e error) {
-func splitDimArg(dim string, surv term.Surveyor, img image.Image) (x, y, w, h int, e error) {
+func splitDimArg(dim string, surv term.Surveyor, env []string, img image.Image) (x, y, w, h int, e error) {
 	dimParts := strings.Split(dim, `,`)
 	if len(dimParts) > 4 {
 		return 0, 0, 0, 0, errors.New(`image position string not "<x>,<y>,<w>x<h>"`)
@@ -67,6 +68,10 @@ func splitDimArg(dim string, surv term.Surveyor, img image.Image) (x, y, w, h in
 	}
 	var wScaled, hScaled uint
 	if wu == 0 || hu == 0 {
+		if img == nil {
+			return 0, 0, 0, 0, errors.New(`nil image`)
+		}
+		imgBounds := img.Bounds()
 		// return 0, 0, 0, 0, errors.New(`rectangle side with length 0`)
 		tcw, tch, err := surv.SizeInCells()
 		if err != nil {
@@ -76,13 +81,15 @@ func splitDimArg(dim string, surv term.Surveyor, img image.Image) (x, y, w, h in
 		if err != nil {
 			return 0, 0, 0, 0, errors.New(err)
 		}
-		if img == nil {
-			return 0, 0, 0, 0, errors.New(`nil image`)
+		_, ph, err := prompt.GetPromptSize(env)
+		if err != nil {
+			// TODO log error
+			ph = 1
 		}
-		imgBounds := img.Bounds()
-		ar := float64(imgBounds.Dx()) / float64(imgBounds.Dy())
-		arc := ar * float64(cph) / float64(cpw)
-		var wAvail, hAvail uint // TODO subtract prompt height
+		tch -= ph                                               // subtract shell prompt height
+		ar := float64(imgBounds.Dx()) / float64(imgBounds.Dy()) // aspect ratio (pixels)
+		arc := ar * float64(cph) / float64(cpw)                 // aspect ratio (cells)
+		var wAvail, hAvail uint                                 // TODO subtract prompt height
 		if uint(xu) < tcw {
 			wAvail = tcw - uint(xu)
 		}
@@ -103,6 +110,14 @@ func splitDimArg(dim string, surv term.Surveyor, img image.Image) (x, y, w, h in
 			} else {
 				wScaled = wAvail
 				hScaled = uint((float64(hAvail) * areaRatio) / arc)
+			}
+			sizeScaled, err := surv.CellScale(img.Bounds().Size(), image.Point{})
+			if err == nil &&
+				(sizeScaled.X > 0 && sizeScaled.Y > 0) &&
+				(sizeScaled.X < int(wScaled) || sizeScaled.Y < int(hScaled)) {
+				// TODO log error
+				wScaled = uint(sizeScaled.X)
+				hScaled = uint(sizeScaled.Y)
 			}
 		}
 	}

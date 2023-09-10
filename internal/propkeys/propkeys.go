@@ -69,6 +69,10 @@ const (
 	SystemD        = PlatformPrefix + `systemd`
 	RunsOnWine     = PlatformPrefix + `wine`
 
+	// Drawer type properties
+	DrawerPrefix         = `drawer_`
+	DrawerVolatileSuffix = `_volatile`
+
 	// Terminal type properties
 	TerminalPrefix               = `terminal_`
 	AppleTermPrefix              = TerminalPrefix + `apple_`

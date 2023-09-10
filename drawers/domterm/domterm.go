@@ -9,6 +9,7 @@ import (
 	"image/jpeg"
 
 	"github.com/srlehn/termimg/internal/consts"
+	"github.com/srlehn/termimg/internal/environ"
 	"github.com/srlehn/termimg/internal/errors"
 	"github.com/srlehn/termimg/mux"
 	"github.com/srlehn/termimg/term"
@@ -23,8 +24,8 @@ type drawerDomTerm struct{}
 func (d *drawerDomTerm) Name() string     { return `domterm` }
 func (d *drawerDomTerm) New() term.Drawer { return &drawerDomTerm{} }
 
-func (d *drawerDomTerm) IsApplicable(inp term.DrawerCheckerInput) bool {
-	return inp != nil && inp.Name() == `domterm`
+func (d *drawerDomTerm) IsApplicable(inp term.DrawerCheckerInput) (bool, environ.Proprietor) {
+	return inp != nil && inp.Name() == `domterm`, nil
 }
 
 func (d *drawerDomTerm) Draw(img image.Image, bounds image.Rectangle, tm *term.Terminal) error {

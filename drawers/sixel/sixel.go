@@ -11,6 +11,7 @@ import (
 	sixel "github.com/mattn/go-sixel"
 
 	"github.com/srlehn/termimg/internal/consts"
+	"github.com/srlehn/termimg/internal/environ"
 	"github.com/srlehn/termimg/internal/errors"
 	"github.com/srlehn/termimg/internal/parser"
 	"github.com/srlehn/termimg/internal/propkeys"
@@ -28,17 +29,17 @@ type drawerSixel struct{}
 func (d *drawerSixel) Name() string     { return `sixel` }
 func (d *drawerSixel) New() term.Drawer { return &drawerSixel{} }
 
-func (d *drawerSixel) IsApplicable(inp term.DrawerCheckerInput) bool {
+func (d *drawerSixel) IsApplicable(inp term.DrawerCheckerInput) (bool, environ.Proprietor) {
 	// example query: "\033[0c"
 	// possible answer from the terminal (here xterm): "\033[[?63;1;2;4;6;9;15;22c", vte(?): ...62,9;c
 	// the "4" signals that the terminal is capable of sixel
 	// conhost.exe knows this sequence.
 	if inp == nil {
-		return false
+		return false, nil
 	}
 	sixelCapable, isSixelCapable := inp.Property(propkeys.SixelCapable)
 	if !isSixelCapable && sixelCapable == `true` {
-		return false
+		return false, nil
 	}
 
 	if slices.Contains([]string{
@@ -47,25 +48,25 @@ func (d *drawerSixel) IsApplicable(inp term.DrawerCheckerInput) bool {
 		`tabby`, // no images
 		`wayst`, // spews character salad
 	}, inp.Name()) {
-		return false // skip buggy implementations
+		return false, nil // skip buggy implementations
 	}
 
 	repl, err := term.CachedQuery(inp, mux.Wrap(queries.DA1, inp), inp, parser.StopOnAlpha, inp, nil)
 	// TODO fix mintty - querying in general on windows?
 	if err != nil {
-		return false
+		return false, nil
 	}
 	if len(repl) == 0 || repl[len(repl)-1] != 'c' {
-		return false
+		return false, nil
 	}
 	repl = repl[:len(repl)-1]
 	termCapabilities := strings.Split(repl, `;`)[1:]
 	for _, cap := range termCapabilities {
 		if cap == `4` {
-			return true
+			return true, nil
 		}
 	}
-	return false
+	return false, nil
 }
 
 func (d *drawerSixel) Draw(img image.Image, bounds image.Rectangle, tm *term.Terminal) error {

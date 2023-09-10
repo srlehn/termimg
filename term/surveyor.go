@@ -1,6 +1,8 @@
 package term
 
 import (
+	"image"
+
 	"github.com/srlehn/termimg/internal/consts"
 	"github.com/srlehn/termimg/internal/environ"
 	"github.com/srlehn/termimg/internal/errors"
@@ -24,6 +26,7 @@ type Surveyor interface {
 	SizeInPixels() (width, height uint, err error)
 	GetCursor() (xPosCells, yPosCells uint, err error)
 	SetCursor(xPosCells, yPosCells uint) (err error)
+	CellScale(ptSrcPx, ptDstCl image.Point) (ptSrcCl image.Point, _ error)
 }
 
 // PartialSurveyor implements some of:
@@ -48,6 +51,7 @@ type PartialSurveyor interface {
 var _ SurveyorLight = (*surveyor)(nil)
 
 type surveyor struct {
+	// TODO pass self as SurveyorLight to inner PartialSurveyor via stored funcs
 	s                         PartialSurveyor
 	avoidQuery                bool
 	isRemote                  bool

@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/srlehn/termimg/internal/consts"
+	"github.com/srlehn/termimg/internal/environ"
 	"github.com/srlehn/termimg/internal/errors"
 	"github.com/srlehn/termimg/internal/parser"
 	"github.com/srlehn/termimg/internal/queries"
@@ -29,9 +30,9 @@ type drawerKitty struct {
 func (d *drawerKitty) Name() string     { return `kitty` }
 func (d *drawerKitty) New() term.Drawer { return &drawerKitty{} }
 
-func (d *drawerKitty) IsApplicable(inp term.DrawerCheckerInput) bool {
+func (d *drawerKitty) IsApplicable(inp term.DrawerCheckerInput) (bool, environ.Proprietor) {
 	if inp == nil {
-		return false
+		return false, nil
 	}
 	// TODO query if supported
 	// https://sw.kovidgoyal.net/kitty/graphics-protocol/#querying-support-and-available-transmission-mediums
@@ -40,18 +41,20 @@ func (d *drawerKitty) IsApplicable(inp term.DrawerCheckerInput) bool {
 	switch inp.Name() {
 	case `kitty`:
 		// `wayst`: // untested
-		return true
+		return true, nil
 	case `urxvt`,
+		`terminology`,
 		`darktile`:
 		// TODO bugged parsing
-		return false
+		return false, nil
 	}
 
+	// TODO disable on Terminology
 	repl, err := term.CachedQuery(inp, queries.KittyTest+queries.DA1, inp, parser.NewParser(false, true), inp, inp)
 	ret := err == nil &&
 		(len(strings.SplitN(repl, queries.ST, 2)) == 2 ||
 			len(strings.SplitN(repl, "\a", 2)) == 2)
-	return ret
+	return ret, nil
 }
 
 func (d *drawerKitty) Draw(img image.Image, bounds image.Rectangle, tm *term.Terminal) error {

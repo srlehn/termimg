@@ -18,7 +18,7 @@ var (
 )
 
 func init() {
-	resolutionCmd.PersistentFlags().StringVarP(&resolutionFormat, `format`, `f`, ``, `format`)
+	resolutionCmd.Flags().StringVarP(&resolutionFormat, `format`, `f`, ``, `format`)
 	rootCmd.AddCommand(resolutionCmd)
 }
 
@@ -36,7 +36,8 @@ var resolutionCmd = &cobra.Command{
                                 %f    terminal resolution in pixels (height)
                                 %a    terminal cell resolution in pixels (width) (floating number)
                                 %b    terminal cell resolution in pixels (height) (floating number)`,
-	Args: cobra.NoArgs,
+	Args:             cobra.NoArgs,
+	TraverseChildren: true,
 	Run: func(cmd *cobra.Command, args []string) {
 		run(resolutionFunc(cmd, args))
 	},
@@ -47,7 +48,7 @@ var (
 	resolutionUsageStr = `usage: ` + os.Args[0] + ` ` + resolutionCmdStr + ` (-f <format>)`
 )
 
-func resolutionFunc(cmd *cobra.Command, args []string) func(**term.Terminal) error {
+func resolutionFunc(cmd *cobra.Command, args []string) terminalSwapper {
 	return func(tm **term.Terminal) error {
 		tm2, err := termimg.Terminal()
 		if err != nil {

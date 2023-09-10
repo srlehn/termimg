@@ -7,6 +7,7 @@ import (
 	"image/draw"
 
 	"github.com/srlehn/termimg/internal/consts"
+	"github.com/srlehn/termimg/internal/environ"
 	"github.com/srlehn/termimg/internal/errors"
 	"github.com/srlehn/termimg/term"
 )
@@ -20,20 +21,20 @@ type drawerFramebuffer struct{}
 func (d *drawerFramebuffer) Name() string     { return `framebuffer` }
 func (d *drawerFramebuffer) New() term.Drawer { return &drawerFramebuffer{} }
 
-func (d *drawerFramebuffer) IsApplicable(inp term.DrawerCheckerInput) bool {
+func (d *drawerFramebuffer) IsApplicable(inp term.DrawerCheckerInput) (bool, environ.Proprietor) {
 	if inp == nil {
-		return false
+		return false, nil
 	}
 	// systemd: XDG_SESSION_TYPE == tty
 	sessionType, okST := inp.LookupEnv(`XDG_SESSION_TYPE`)
 	if okST && sessionType != `tty` {
 		// might be `x11`, `wayland`, ...
-		return false
+		return false, nil
 	}
 
 	// TODO check if user has permission for /dev/fb0 (video group)
 
-	return true
+	return true, nil
 }
 func (d *drawerFramebuffer) Draw(img image.Image, bounds image.Rectangle, tm *term.Terminal) error {
 	if d == nil || tm == nil || img == nil {

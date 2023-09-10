@@ -13,6 +13,7 @@ import (
 
 	"github.com/srlehn/termimg/internal/consts"
 	"github.com/srlehn/termimg/internal/encoder/encpng"
+	"github.com/srlehn/termimg/internal/environ"
 	"github.com/srlehn/termimg/internal/errors"
 	"github.com/srlehn/termimg/term"
 	"github.com/srlehn/termimg/wm"
@@ -35,30 +36,30 @@ type drawerW3MImgDisplay struct{}
 func (d *drawerW3MImgDisplay) Name() string     { return `w3mimgdisplay` }
 func (d *drawerW3MImgDisplay) New() term.Drawer { return &drawerW3MImgDisplay{} }
 
-func (d *drawerW3MImgDisplay) IsApplicable(inp term.DrawerCheckerInput) bool {
+func (d *drawerW3MImgDisplay) IsApplicable(inp term.DrawerCheckerInput) (bool, environ.Proprietor) {
 	if inp == nil {
-		return false
+		return false, nil
 	}
 	// systemd: XDG_SESSION_TYPE == x11
 	sessionType, okST := inp.LookupEnv(`XDG_SESSION_TYPE`)
 	if okST && sessionType != `x11` {
 		// might be `tty`, `wayland`, ...
-		return false
+		return false, nil
 	}
 	switch inp.Name() {
 	case `conhost`,
 		`alacritty`,
 		`vscode`:
-		return false
+		return false, nil
 	case `vte`:
 		if _, ok := inp.LookupEnv(`TERMINATOR_UUID`); ok {
-			return false
+			return false, nil
 		}
 		if _, ok := inp.LookupEnv(`TERMINATOR_DBUS_NAME`); ok {
-			return false
+			return false, nil
 		}
 		if _, ok := inp.LookupEnv(`TERMINATOR_DBUS_PATH`); ok {
-			return false
+			return false, nil
 		}
 	}
 	for _, pth := range exeW3MImgDisplayCommonPaths {
@@ -66,10 +67,10 @@ func (d *drawerW3MImgDisplay) IsApplicable(inp term.DrawerCheckerInput) bool {
 		existsAndExecutable := err == nil && fi != nil && fi.Mode()&0b001 == 0b001
 		if existsAndExecutable {
 			exeW3MImgDisplay = pth
-			return true
+			return true, nil
 		}
 	}
-	return false
+	return false, nil
 }
 
 func (d *drawerW3MImgDisplay) Draw(img image.Image, bounds image.Rectangle, tm *term.Terminal) error {

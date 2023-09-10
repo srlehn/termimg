@@ -2,22 +2,37 @@ package term
 
 import (
 	"github.com/srlehn/termimg/internal/consts"
+	"github.com/srlehn/termimg/internal/environ"
 	"github.com/srlehn/termimg/internal/errors"
 )
 
 // DrawersFor ...
 func DrawersFor(inp DrawerCheckerInput) ([]Drawer, error) {
+	drs, _, err := drawersFor(inp)
+	return drs, err
+}
+
+func drawersFor(inp DrawerCheckerInput) ([]Drawer, environ.Proprietor, error) {
 	if inp == nil {
-		return nil, errors.New(consts.ErrNilParam)
+		return nil, nil, errors.New(consts.ErrNilParam)
 	}
+	prs := environ.NewProprietor()
 	var applDrawers []Drawer
 	for _, dr := range drawersRegistered {
-		if dr == nil || !dr.IsApplicable(inp) {
+		if dr == nil {
+			continue
+		}
+		isApplicable, pr := dr.IsApplicable(inp)
+		if !isApplicable {
 			continue
 		}
 		applDrawers = append(applDrawers, dr)
+		prs.Merge(pr)
 	}
-	return applDrawers, nil
+	if len(applDrawers) == 0 {
+		prs = nil
+	}
+	return applDrawers, prs, nil
 }
 
 var drawersRegistered []Drawer

@@ -7,6 +7,7 @@ import (
 
 	"github.com/srlehn/termimg/internal/consts"
 	"github.com/srlehn/termimg/internal/encoder/encpng"
+	"github.com/srlehn/termimg/internal/environ"
 	"github.com/srlehn/termimg/internal/errors"
 	"github.com/srlehn/termimg/mux"
 	"github.com/srlehn/termimg/term"
@@ -21,8 +22,8 @@ type drawerTerminology struct{}
 func (d *drawerTerminology) Name() string     { return `terminology` }
 func (d *drawerTerminology) New() term.Drawer { return &drawerTerminology{} }
 
-func (d *drawerTerminology) IsApplicable(inp term.DrawerCheckerInput) bool {
-	return inp != nil && inp.Name() == `terminology`
+func (d *drawerTerminology) IsApplicable(inp term.DrawerCheckerInput) (bool, environ.Proprietor) {
+	return inp != nil && inp.Name() == `terminology`, nil
 }
 
 func (d *drawerTerminology) Draw(img image.Image, bounds image.Rectangle, tm *term.Terminal) error {

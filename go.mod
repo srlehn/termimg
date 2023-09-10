@@ -12,7 +12,7 @@ require (
 	github.com/fogleman/gg v1.3.0
 	github.com/gdamore/tcell/v2 v2.6.0
 	github.com/gizak/termui/v3 v3.1.0
-	github.com/go-errors/errors v1.4.2
+	github.com/go-errors/errors v1.5.0
 	github.com/golang/freetype v0.0.0-20170609003504-e2365dfdc4a0
 	github.com/gonutz/w32/v2 v2.10.0
 	github.com/iancoleman/strcase v0.3.0
@@ -20,6 +20,7 @@ require (
 	github.com/lxn/win v0.0.0-20210218163916-a377121e959e
 	github.com/mattn/go-sixel v0.0.5
 	github.com/mattn/go-tty v0.0.5
+	github.com/mitchellh/go-ps v1.0.0
 	github.com/nfnt/resize v0.0.0-20180221191011-83c6a9932646
 	github.com/pkg/term v1.1.0
 	github.com/rivo/tview v0.0.0-20230621164836-6cc0565babaf
@@ -30,7 +31,8 @@ require (
 	github.com/srlehn/xgbutil v0.0.0-20230718194130-098830f60574
 	golang.org/x/exp v0.0.0-20230817173708-d852ddb80c63
 	golang.org/x/image v0.11.0
-	golang.org/x/sys v0.11.0
+	golang.org/x/sys v0.12.0
+	mvdan.cc/sh v2.6.4+incompatible
 )
 
 require (
@@ -50,6 +52,7 @@ require (
 	github.com/go-text/typesetting v0.0.0-20230803102845-24e03d8b5372 // indirect
 	github.com/golang/geo v0.0.0-20230421003525-6adc56603217 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
+	github.com/kr/pretty v0.3.1 // indirect
 	github.com/lucasb-eyer/go-colorful v1.2.0 // indirect
 	github.com/mattn/go-isatty v0.0.19 // indirect
 	github.com/mattn/go-runewidth v0.0.15 // indirect
@@ -61,9 +64,11 @@ require (
 	github.com/tklauser/go-sysconf v0.3.12 // indirect
 	github.com/tklauser/numcpus v0.6.1 // indirect
 	github.com/yusufpapurcu/wmi v1.2.3 // indirect
+	golang.org/x/crypto v0.12.0 // indirect
 	golang.org/x/exp/shiny v0.0.0-20230817173708-d852ddb80c63 // indirect
 	golang.org/x/net v0.14.0 // indirect
-	golang.org/x/term v0.11.0 // indirect
+	golang.org/x/sync v0.3.0 // indirect
+	golang.org/x/term v0.12.0 // indirect
 	golang.org/x/text v0.12.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 )

@@ -10,6 +10,7 @@ import (
 	"strconv"
 
 	"github.com/srlehn/termimg/internal/consts"
+	"github.com/srlehn/termimg/internal/environ"
 	"github.com/srlehn/termimg/internal/errors"
 	"github.com/srlehn/termimg/internal/propkeys"
 	"github.com/srlehn/termimg/mux"
@@ -25,9 +26,9 @@ type drawerITerm2 struct{}
 func (d *drawerITerm2) Name() string     { return `iterm2` }
 func (d *drawerITerm2) New() term.Drawer { return &drawerITerm2{} }
 
-func (d *drawerITerm2) IsApplicable(inp term.DrawerCheckerInput) bool {
+func (d *drawerITerm2) IsApplicable(inp term.DrawerCheckerInput) (bool, environ.Proprietor) {
 	if inp == nil {
-		return false
+		return false, nil
 	}
 	switch inp.Name() {
 	case `iterm2`,
@@ -35,72 +36,72 @@ func (d *drawerITerm2) IsApplicable(inp term.DrawerCheckerInput) bool {
 		`macterm`,
 		// `wayst`, // untested
 		`wezterm`:
-		return true
+		return true, nil
 	case `konsole`:
 		// https://konsole.kde.org/changelogs/22.04.html
 		// https://invent.kde.org/utilities/konsole/-/merge_requests/594
 		verMajStr, okMaj := inp.Property(propkeys.KonsoleVersionMajorXTVersion)
 		verMinStr, okMin := inp.Property(propkeys.KonsoleVersionMinorXTVersion)
 		if !okMaj || !okMin {
-			return false
+			return false, nil
 		}
 		verMaj, err := strconv.ParseUint(verMajStr, 10, 64)
 		if err != nil || verMaj < 22 {
-			return false
+			return false, nil
 		}
 		if verMaj >= 23 {
-			return true
+			return true, nil
 		}
 		verMin, err := strconv.ParseUint(verMinStr, 10, 64)
-		return err == nil && verMin >= 4
+		return err == nil && verMin >= 4, nil
 	case `vscode`:
 		// VSCode v1.80.0 required
 		// https://code.visualstudio.com/updates/v1_80#_image-supportm
 		verMajStr, okMaj := inp.Property(propkeys.VSCodeVersionMajor)
 		verMinStr, okMin := inp.Property(propkeys.VSCodeVersionMinor)
 		if !okMaj || !okMin {
-			return false
+			return false, nil
 		}
 		verMaj, err := strconv.ParseUint(verMajStr, 10, 64)
 		if err != nil || verMaj < 1 {
-			return false
+			return false, nil
 		}
 		if verMaj >= 2 {
-			return true
+			return true, nil
 		}
 		verMin, err := strconv.ParseUint(verMinStr, 10, 64)
-		return err == nil && verMin >= 80
+		return err == nil && verMin >= 80, nil
 	case `hyper`:
 		// Hyper v4.0.0-canary.4 required
 		// https://github.com/vercel/hyper/releases/tag/v4.0.0-canary.4
 		verMajStr, okMaj := inp.Property(propkeys.HyperVersionMajor)
 		verMinStr, okMin := inp.Property(propkeys.HyperVersionMinor)
 		if !okMaj || !okMin {
-			return false
+			return false, nil
 		}
 		verMaj, err := strconv.ParseUint(verMajStr, 10, 64)
 		if err != nil || verMaj < 4 {
-			return false
+			return false, nil
 		}
 		if verMaj >= 5 {
-			return true
+			return true, nil
 		}
 		verMin, err := strconv.ParseUint(verMinStr, 10, 64)
 		if err != nil {
-			return false
+			return false, nil
 		}
 		if verMin >= 1 {
-			return true
+			return true, nil
 		}
 		_, okPtc := inp.Property(propkeys.HyperVersionPatch)
 		verCnrStr, okCnr := inp.Property(propkeys.HyperVersionCanary)
 		if okPtc && !okCnr {
-			return true
+			return true, nil
 		}
 		verCnr, err := strconv.ParseUint(verCnrStr, 10, 64)
-		return err == nil && verCnr >= 4
+		return err == nil && verCnr >= 4, nil
 	default:
-		return false
+		return false, nil
 	}
 }
 

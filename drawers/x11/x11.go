@@ -3,37 +3,35 @@
 package x11
 
 import (
-	"fmt"
 	"image"
 	"strings"
-	"time"
 
 	"github.com/jezek/xgb/xproto"
 	"github.com/srlehn/xgbutil"
-	"github.com/srlehn/xgbutil/xevent"
 	"github.com/srlehn/xgbutil/xgraphics"
 	"github.com/srlehn/xgbutil/xwindow"
 
 	"github.com/srlehn/termimg/internal/consts"
+	"github.com/srlehn/termimg/internal/environ"
 	"github.com/srlehn/termimg/internal/errors"
-	. "github.com/srlehn/termimg/internal/util"
+	"github.com/srlehn/termimg/internal/propkeys"
 	"github.com/srlehn/termimg/term"
 	"github.com/srlehn/termimg/wm"
 	"github.com/srlehn/termimg/wm/x11"
 )
 
-var _ = Println // TODO rm util import
-
 func init() { term.RegisterDrawer(&drawerX11{}) }
+
+const drawerNameX11 = `x11`
 
 type drawerX11 struct{}
 
-func (d *drawerX11) Name() string     { return `x11` }
+func (d *drawerX11) Name() string     { return drawerNameX11 }
 func (d *drawerX11) New() term.Drawer { return &drawerX11{} }
 
-func (d *drawerX11) IsApplicable(inp term.DrawerCheckerInput) bool {
+func (d *drawerX11) IsApplicable(inp term.DrawerCheckerInput) (bool, environ.Proprietor) {
 	if d == nil || inp == nil {
-		return false
+		return false, nil
 	}
 
 	tn := inp.Name()
@@ -42,36 +40,36 @@ func (d *drawerX11) IsApplicable(inp term.DrawerCheckerInput) bool {
 		`foot`,    // wayland
 	} {
 		if tn == n {
-			return false
+			return false, nil
 		}
 	}
 	switch inp.Name() {
 	case `conhost`, // Windows
 		`foot`,   // wayland
 		`edexui`: // lots of frills around terminal area in window
-		return false
+		return false, nil
 	}
 
 	// systemd: XDG_SESSION_TYPE == x11
 	sessionType, okST := inp.LookupEnv(`XDG_SESSION_TYPE`)
 	if okST && sessionType != `x11` {
 		// TODO `wayland`
-		return false
+		return false, nil
 	}
 
 	display, okD := inp.LookupEnv(`DISPLAY`)
 	if !okD || len(display) == 0 {
-		return false
+		return false, nil
 	}
 	host := strings.Split(display, `:`)[0]
 	if len(host) > 0 && host != `localhost` {
-		return false
+		return false, nil
 	}
 
 	// TODO close
 	c, err := wm.NewConn(inp)
 	if err != nil {
-		return false
+		return false, nil
 	}
 	defer c.Close()
 
@@ -79,10 +77,13 @@ func (d *drawerX11) IsApplicable(inp term.DrawerCheckerInput) bool {
 	w := wm.NewWindow(nil, inp)
 	err = w.WindowFind()
 	if err != nil || w == nil {
-		return false
+		return false, nil
 	}
 
-	return true
+	pr := environ.NewProprietor()
+	pr.SetProperty(propkeys.DrawerPrefix+drawerNameX11+propkeys.DrawerVolatileSuffix, `true`)
+
+	return true, pr
 }
 
 func (d *drawerX11) Draw(img image.Image, bounds image.Rectangle, tm *term.Terminal) error {
@@ -129,13 +130,9 @@ func (d *drawerX11) Draw(img image.Image, bounds image.Rectangle, tm *term.Termi
 
 	// X11
 
-	fmt.Println()
 	tpw, tph, err := tm.SizeInPixels()
 	hasTermSize := err == nil && tpw > 0 && tph > 0
-	_ = hasTermSize
 	tpw97, tph97 := int(0.97*float64(tpw)), int(0.97*float64(tph))
-	_, _ = tpw, tph
-	_, _ = tpw97, tph97
 	w := xwindow.New(connXU, xproto.Window(tmw.WindowID()))
 	var xOffset, yOffset int
 	if hasTermSize {
@@ -159,7 +156,6 @@ func (d *drawerX11) Draw(img image.Image, bounds image.Rectangle, tm *term.Termi
 						break
 					}
 				}
-				// Println(geomChild, tpw, tph, xOffset, yOffset)
 			}
 		}
 	}
@@ -183,14 +179,10 @@ func (d *drawerX11) Draw(img image.Image, bounds image.Rectangle, tm *term.Termi
 					}
 				}
 			}
-			// Println(geom, tpw, tph, xOffset, yOffset)
 		}
 	}
-	// Println("xOffset", xOffset, "yOffset", yOffset)
 	boundsPx := image.Rect(int(cw)*bounds.Min.X+xOffset, int(ch)*bounds.Min.Y+yOffset,
 		int(cw)*bounds.Max.X+xOffset, int(ch)*bounds.Max.Y+yOffset)
-
-	//
 
 	if err := draw(connXU, w, timg, boundsPx); err != nil {
 		return err
@@ -206,8 +198,6 @@ var draw drawFunc = drawCurrentImpl
 func drawCurrentImpl(connXU *xgbutil.XUtil, w *xwindow.Window, timg *term.Image, boundsPx image.Rectangle) error {
 	ximg := xgraphics.NewConvert(connXU, timg.Cropped)
 
-	go xevent.Main(connXU)
-
 	wCanvas, err := x11.AttachWindow(connXU, w, boundsPx)
 	if err != nil {
 		return err
@@ -220,7 +210,6 @@ func drawCurrentImpl(connXU *xgbutil.XUtil, w *xwindow.Window, timg *term.Image,
 	}
 	ximg.XPaint(wCanvas.Id)
 	wCanvas.Map()
-	time.Sleep(2 * time.Second)
 	// wCanvas.Unmap()
 	// ximg.Destroy()
 	// wCanvas.Destroy()

@@ -21,22 +21,26 @@ import (
 	"github.com/srlehn/termimg/internal/errors"
 	"github.com/srlehn/termimg/internal/parser"
 	"github.com/srlehn/termimg/internal/queries"
-	"github.com/srlehn/termimg/internal/util"
 	"github.com/srlehn/termimg/resize/rdefault"
 	"github.com/srlehn/termimg/term"
 	"github.com/srlehn/termimg/wm"
 	"github.com/srlehn/termimg/wm/wmimpl"
 )
 
+var (
+	listDrawer string
+)
+
 func init() {
+	listCmd.Flags().StringVarP(&listDrawer, `drawer`, `d`, ``, `drawer to use`)
 	rootCmd.AddCommand(listCmd)
 }
 
 var listCmd = &cobra.Command{
-	Use:   listCmdStr,
-	Short: `list images`,
-	Long:  `list images and other previewable files`,
-	Args:  cobra.MaximumNArgs(1),
+	Use:              listCmdStr,
+	Short:            `list images`,
+	Long:             `list images and other previewable files`,
+	TraverseChildren: true,
 	Run: func(cmd *cobra.Command, args []string) {
 		run(listFunc(cmd, args))
 	},
@@ -47,7 +51,7 @@ var (
 	// listUsageStr = `usage: ` + os.Args[0] + ` ` + listCmdStr
 )
 
-func listFunc(cmd *cobra.Command, args []string) func(**term.Terminal) error {
+func listFunc(cmd *cobra.Command, args []string) terminalSwapper {
 	return func(tm **term.Terminal) error {
 		paths := args
 		if len(paths) == 0 {
@@ -72,13 +76,28 @@ func listFunc(cmd *cobra.Command, args []string) func(**term.Terminal) error {
 		defer tm2.Close()
 		*tm = tm2
 
-		tcw, _, err := tm2.SizeInCells()
+		var dr term.Drawer
+		if len(listDrawer) > 0 {
+			dr = term.GetRegDrawerByName(listDrawer)
+			if dr == nil {
+				return errors.New(`unknown drawer "` + listDrawer + `"`)
+			}
+		} else {
+			dr = tm2.Drawers()[0]
+		}
+
+		tcw, tch, err := tm2.SizeInCells()
 		if err != nil {
 			return err
 		}
 		_, cph, err := tm2.CellSize()
 		if err != nil {
 			return err
+		}
+		var rowCursor uint
+		_, rowCursor, errRowCursor := tm2.GetCursor() // TODO log error
+		if errRowCursor != nil {
+			rowCursor = 0
 		}
 
 		fg, bg, _ := getForegroundBackground(tm2)
@@ -103,12 +122,15 @@ func listFunc(cmd *cobra.Command, args []string) func(**term.Terminal) error {
 		})
 		defer goFontFace.Close()
 
-		var imgCtr int
+		var (
+			imgCtr int
+			shifts int
+			bounds image.Rectangle
+		)
 		handlePath := func(path string) (err error) {
 			var (
-				fi     fs.FileInfo
-				img    image.Image
-				bounds image.Rectangle
+				fi  fs.FileInfo
+				img image.Image
 			)
 			path, err = filepath.Abs(path)
 			if err != nil {
@@ -129,9 +151,9 @@ func listFunc(cmd *cobra.Command, args []string) func(**term.Terminal) error {
 			var imgOffsetX int
 			var imgOffsetY int
 			{
-				bounds := img.Bounds()
-				dx := bounds.Dx()
-				dy := bounds.Dy()
+				imgBounds := img.Bounds()
+				dx := imgBounds.Dx()
+				dy := imgBounds.Dy()
 				if dx > dy {
 					// if image can't be resized - it will be cropped by fogleman/gg
 					if rsz := tm2.Resizer(); rsz != nil {
@@ -157,9 +179,24 @@ func listFunc(cmd *cobra.Command, args []string) func(**term.Terminal) error {
 			{
 				offset := image.Point{
 					X: (imgCtr % maxTilesX) * (szTile.X + 1),
-					Y: (imgCtr / maxTilesX) * (szTile.Y + 1),
+					Y: (imgCtr/maxTilesX-shifts)*(szTile.Y+1) + int(rowCursor),
 				}
 				bounds = image.Rectangle{Min: offset, Max: offset.Add(szTile)}
+				if bounds.Max.Y >= int(tch) {
+					if err := tm2.SetCursor(0, tch); err != nil {
+						return err
+					}
+					switch tm2.Name() { // TODO scroll query
+					case `terminology`:
+						tm2.Printf(`%s`, strings.Repeat("\n", szTile.Y+1))
+					default:
+						// tm2.Printf("\033[%dB", szTile.Y+1)
+						tm2.Printf(`%s`, strings.Repeat("\033D", szTile.Y+1)) // scroll query
+					}
+					shifts++
+					offset.Y = (imgCtr/maxTilesX-shifts)*(szTile.Y+1) + int(rowCursor)
+					bounds = image.Rectangle{Min: offset, Max: offset.Add(szTile)}
+				}
 			}
 			c := gg.NewContext(tileWidth, tileHeight)
 			c.SetFontFace(goFontFace)
@@ -202,13 +239,12 @@ func listFunc(cmd *cobra.Command, args []string) func(**term.Terminal) error {
 			c.Clip()
 			img = c.Image()
 
-			if err = tm2.Draw(img, bounds); err != nil {
+			if err := term.Draw(img, bounds, tm2, dr); err != nil {
 				goto end
 			}
 		end:
 			imgCtr++
 			return nil
-
 		}
 		for _, path := range paths {
 			pathAbs, err := filepath.Abs(path)
@@ -232,6 +268,12 @@ func listFunc(cmd *cobra.Command, args []string) func(**term.Terminal) error {
 
 		}
 
+		_ = tm2.SetCursor(0, uint(bounds.Max.Y))
+		pauseVolatile(tm2, dr)
+
+		if errRowCursor != nil {
+			return errRowCursor
+		}
 		return nil
 	}
 }
@@ -295,7 +337,6 @@ func getForegroundBackground(tm *term.Terminal) (fg, bg [3]float64, _ error) {
 		if len(parts) != 2 {
 			return fg, bg, errors.New(`invalid reply`)
 		}
-		util.Printfq(parts)
 		if parts[1] == `1` || parts[1] == `3` {
 			fg, bg = bg, fg
 		}

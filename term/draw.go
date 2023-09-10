@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/srlehn/termimg/internal/consts"
+	"github.com/srlehn/termimg/internal/environ"
 	"github.com/srlehn/termimg/internal/errors"
 	"github.com/srlehn/termimg/internal/util"
 )
@@ -22,7 +23,7 @@ func AllDrawers() []Drawer {
 type Drawer interface {
 	Name() string
 	New() Drawer
-	IsApplicable(DrawerCheckerInput) bool
+	IsApplicable(DrawerCheckerInput) (bool, environ.Proprietor)
 	Draw(img image.Image, bounds image.Rectangle, term *Terminal) error
 }
 
@@ -68,8 +69,6 @@ func drawWith(img image.Image, bounds image.Rectangle, term *Terminal, dr Drawer
 	// TODO check if redraw is necessary
 
 	imgTerm := NewImage(img)
-	// TODO leave the decoding to the drawers
-	// if err := imgTerm.Decode(); err != nil {return err}
 
 	return dr.Draw(imgTerm, bounds, term)
 }

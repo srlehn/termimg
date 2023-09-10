@@ -8,7 +8,7 @@ import (
 )
 
 func init() {
-	showCmd.PersistentFlags().BoolVarP(&showCaire, `caire`, `c`, false, `enable content aware image resizing`)
+	showCmd.Flags().BoolVarP(&showCaire, `caire`, `c`, false, `enable content aware image resizing`)
 	showResizerCaire = func() term.Resizer {
 		blurRadius := 4
 		sobelThreshold := 2

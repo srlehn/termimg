@@ -23,17 +23,18 @@ var (
 )
 
 func init() {
-	runTermCmd.PersistentFlags().StringVarP(&runTermTerm, `term`, `t`, ``, `terminal to run`)
-	runTermCmd.PersistentFlags().StringVarP(&runTermDrawer, `drawer`, `d`, ``, `drawer to use`)
-	runTermCmd.PersistentFlags().StringVarP(&runTermPosition, `position`, `p`, ``, `image position in cell coordinates <x>,<y>,<w>x<h>`)
+	runTermCmd.Flags().StringVarP(&runTermTerm, `term`, `t`, ``, `terminal to run`)
+	runTermCmd.Flags().StringVarP(&runTermDrawer, `drawer`, `d`, ``, `drawer to use`)
+	runTermCmd.Flags().StringVarP(&runTermPosition, `position`, `p`, ``, `image position in cell coordinates <x>,<y>,<w>x<h>`)
 	rootCmd.AddCommand(runTermCmd)
 }
 
 var runTermCmd = &cobra.Command{
-	Use:   runTermCmdStr,
-	Short: "open image in new terminal and screenshot",
-	Long:  `open image in new terminal and screenshot`,
-	Args:  cobra.ExactArgs(1),
+	Use:              runTermCmdStr,
+	Short:            "open image in new terminal and screenshot",
+	Long:             `open image in new terminal and screenshot`,
+	Args:             cobra.ExactArgs(1),
+	TraverseChildren: true,
 	Run: func(cmd *cobra.Command, args []string) {
 		run(runTermFunc(cmd, args))
 	},
@@ -43,7 +44,7 @@ var runTermCmdStr = "runterm"
 
 var errRunTermUsage = errors.New(`usage: ` + os.Args[0] + ` ` + runTermCmdStr + ` -t <terminal> -d <drawer> -p <x>,<y>,<w>x<h> /path/to/image.png`)
 
-func runTermFunc(cmd *cobra.Command, args []string) func(**term.Terminal) error {
+func runTermFunc(cmd *cobra.Command, args []string) terminalSwapper {
 	return func(tm **term.Terminal) error {
 		runTermImage = args[0]
 		imgFileBytes, err := os.ReadFile(runTermImage)
@@ -51,7 +52,7 @@ func runTermFunc(cmd *cobra.Command, args []string) func(**term.Terminal) error 
 			return errors.New(err)
 		}
 
-		x, y, w, h, err := splitDimArg(runTermPosition, nil, term.NewImageBytes(imgFileBytes)) // TODO pass term.Terminal
+		x, y, w, h, err := splitDimArg(runTermPosition, nil, nil, term.NewImageBytes(imgFileBytes)) // TODO pass term.Terminal
 		if err != nil {
 			return errors.New(errRunTermUsage)
 		}

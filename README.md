@@ -27,7 +27,7 @@ The `show` command draws the image in the current terminal:
 ```sh
 timg show -p 10,10,15x15 picture.png
 ```
-If an error occurs the `--debug=true` argument shows where in the code it happens.
+If an error occurs the `--debug/-d` flag shows where in the code it happens.
 
 The `runterm` command starts the terminal specified with the `-t` flag. If no drawer is enforced by the optional `-d` flag, the best fitting one is used. This command is probably only useful for testing.
 ```sh

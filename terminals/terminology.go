@@ -65,7 +65,9 @@ func (t *termCheckerTerminology) Surveyor(pr environ.Proprietor) term.PartialSur
 
 var _ term.PartialSurveyor = (*surveyorTerminology)(nil)
 
-type surveyorTerminology struct{}
+type surveyorTerminology struct {
+	surveyorDefault term.SurveyorDefault
+}
 
 func (s *surveyorTerminology) IsPartialSurveyor() {}
 func (s *surveyorTerminology) SizeInCellsQuery(qu term.Querier, tty term.TTY) (widthCells, heightCells uint, err error) {
@@ -123,6 +125,22 @@ func queryTerminalAndCellSizeTerminology(qu term.Querier, tty term.TTY) (tpw, tp
 		return 0, 0, 0, 0, errors.New(errFormatStr)
 	}
 	return uint(termWidth), uint(termHeight), uint(fontWidth), uint(fontHeigth), err
+}
+
+// GetCursorQuery
+func (s *surveyorTerminology) GetCursorQuery(qu term.Querier, tty term.TTY) (widthCells, heightCells uint, err error) {
+	if s == nil {
+		return 0, 0, errors.New(consts.ErrNilReceiver)
+	}
+	return s.surveyorDefault.GetCursorQuery(qu, tty)
+}
+
+// SetCursorQuery
+func (s *surveyorTerminology) SetCursorQuery(xPosCells, yPosCells uint, qu term.Querier, tty term.TTY) (err error) {
+	if s == nil {
+		return errors.New(consts.ErrNilReceiver)
+	}
+	return s.surveyorDefault.SetCursorQuery(xPosCells, yPosCells, qu, tty)
 }
 
 // func (t *TermTerminology) X11WindowClass() string { return `terminology` }

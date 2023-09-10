@@ -9,10 +9,13 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/srlehn/termimg"
+	"github.com/srlehn/termimg/internal"
 	"github.com/srlehn/termimg/internal/errors"
 	"github.com/srlehn/termimg/internal/parser"
 	"github.com/srlehn/termimg/internal/queries"
 	"github.com/srlehn/termimg/term"
+	"github.com/srlehn/termimg/wm"
+	"github.com/srlehn/termimg/wm/wmimpl"
 )
 
 var (
@@ -20,21 +23,22 @@ var (
 	queryBasic bool
 	queryHex   bool
 	queryST    bool
+	queryTTY   string
 )
 
 func init() {
-	queryCmd.PersistentFlags().BoolVarP(&queryRaw, `raw`, `r`, false, `unmodified terminal reply. this will likely be an escape sequence which will affect the terminal if stdout is not caught.`)
-	queryCmd.PersistentFlags().BoolVarP(&queryBasic, `basic`, `b`, false, `disable replacing escape sequence names in the input with their values.`)
-	queryCmd.PersistentFlags().BoolVarP(&queryHex, `hex`, `x`, false, `display non-printable characters as hexadecimal values.`)
-	queryCmd.PersistentFlags().BoolVarP(&queryST, `st`, `t`, false, `don't try terminating rogue escape sequences with an ST at the beginning of the output.`)
+	queryCmd.Flags().BoolVarP(&queryRaw, `raw`, `r`, false, `unmodified terminal reply. this will likely be an escape sequence which will affect the terminal if stdout is not caught.`)
+	queryCmd.Flags().BoolVarP(&queryBasic, `basic`, `b`, false, `disable replacing escape sequence names in the input with their values.`)
+	queryCmd.Flags().BoolVarP(&queryHex, `hex`, `x`, false, `display non-printable characters as hexadecimal values.`)
+	queryCmd.Flags().BoolVarP(&queryST, `st`, `T`, false, `don't try terminating rogue escape sequences with an ST at the beginning of the output.`)
 	rootCmd.AddCommand(queryCmd)
 }
 
 var queryCmd = &cobra.Command{
-	Use:   queryCmdStr,
-	Short: `query terminal`,
-	Long:  `query terminal`,
-	Args:  cobra.MaximumNArgs(1),
+	Use:              queryCmdStr,
+	Short:            `query terminal`,
+	Long:             `query terminal`,
+	TraverseChildren: true,
 	Run: func(cmd *cobra.Command, args []string) {
 		run(queryFunc(cmd, args))
 	},
@@ -45,23 +49,45 @@ var (
 	// queryUsageStr = `usage: ` + os.Args[0] + ` ` + queryCmdStr + ` (-r)`
 )
 
-func queryFunc(cmd *cobra.Command, args []string) func(**term.Terminal) error {
+func queryFunc(cmd *cobra.Command, args []string) terminalSwapper {
 	return func(tm **term.Terminal) error {
 		var query string
-		if len(args) == 0 || args[0] == `-` {
+		if l := len(args); l == 0 || args[0] == `-` {
+			fi, err := os.Stdin.Stat()
+			if err != nil {
+				return errors.New(err)
+			}
+			if fi.Mode()&os.ModeNamedPipe != os.ModeNamedPipe {
+				return errors.New(`stdin is not a pipe`)
+			}
 			b, err := io.ReadAll(os.Stdin)
 			if err != nil {
 				return errors.New(err)
 			}
 			query = strings.TrimSuffix(string(b), "\n")
-		} else {
+		} else if l == 1 {
 			query = args[0]
+		} else {
+			query = strings.Join(args, ` `)
 		}
 		if len(query) == 0 {
 			return errors.New(`empty query`)
 		}
 
-		tm2, err := termimg.Terminal()
+		wm.SetImpl(wmimpl.Impl())
+		var ptyName string
+		if len(queryTTY) > 0 {
+			ptyName = queryTTY
+		} else {
+			ptyName = internal.DefaultTTYDevice()
+		}
+		opts := []term.Option{
+			termimg.DefaultConfig,
+			term.SetPTYName(ptyName),
+			term.ManualComposition, // TODO for tmux parent tty
+		}
+		var err error
+		tm2, err := term.NewTerminal(opts...)
 		if err != nil {
 			return err
 		}

@@ -569,8 +569,7 @@ func (t *Terminal) Draw(img image.Image, bounds image.Rectangle) error {
 // With no passed 0 side length values, the largest subarea is returned.
 // With one passed 0 side length value, the other side length will be fixed.
 // With two passed 0 side length values, pixels in source and destination area at the same position correspond to each other.
-func (t *Terminal) CellScale(ptSrcPx, ptDstCl image.Point) (image.Point, error) {
-	var ret image.Point
+func (t *Terminal) CellScale(ptSrcPx, ptDstCl image.Point) (ptSrcCl image.Point, _ error) {
 	if t == nil {
 		return image.Point{}, errors.New(consts.ErrNilReceiver)
 	}
@@ -583,29 +582,29 @@ func (t *Terminal) CellScale(ptSrcPx, ptDstCl image.Point) (image.Point, error) 
 	}
 	if ptDstCl.X == 0 {
 		if ptDstCl.Y == 0 {
-			ret = image.Point{
+			ptSrcCl = image.Point{
 				X: roundInf(float64(ptSrcPx.X) / cpw),
 				Y: roundInf(float64(ptSrcPx.Y) / cph),
 			}
 		} else {
-			ret.Y = ptDstCl.Y
-			ret.X = roundInf((float64(ptSrcPx.X) * float64(cph) * float64(ptDstCl.Y)) / (float64(ptSrcPx.Y) * float64(cpw)))
+			ptSrcCl.Y = ptDstCl.Y
+			ptSrcCl.X = roundInf((float64(ptSrcPx.X) * float64(cph) * float64(ptDstCl.Y)) / (float64(ptSrcPx.Y) * float64(cpw)))
 		}
 	} else {
-		ret.X = ptDstCl.X
+		ptSrcCl.X = ptDstCl.X
 		yScaled := roundInf((float64(ptSrcPx.Y) * float64(cpw) * float64(ptDstCl.X)) / (float64(ptSrcPx.X) * float64(cph)))
 		if ptDstCl.Y == 0 {
-			ret.Y = yScaled
+			ptSrcCl.Y = yScaled
 		} else {
 			if yScaled <= ptDstCl.Y {
-				ret.Y = yScaled
+				ptSrcCl.Y = yScaled
 			} else {
-				ret.Y = ptDstCl.Y
-				ret.X = roundInf((float64(ptSrcPx.X) * float64(cph) * float64(ptDstCl.Y)) / (float64(ptSrcPx.Y) * float64(cpw)))
+				ptSrcCl.Y = ptDstCl.Y
+				ptSrcCl.X = roundInf((float64(ptSrcPx.X) * float64(cph) * float64(ptDstCl.Y)) / (float64(ptSrcPx.Y) * float64(cpw)))
 			}
 		}
 	}
-	return ret, nil
+	return ptSrcCl, nil
 }
 
 // round away from zero (toward infinity)

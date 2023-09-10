@@ -8,13 +8,13 @@ import (
 
 var ErrUnsupported = errors.ErrUnsupported
 
-func As(err error, target any) bool { return errors.As(err, target) }
+func As(err error, target any) bool { return errorsGo.As(err, target) }
 
-func Is(err, target error) bool { return errors.Is(err, target) }
+func Is(err, target error) bool { return errorsGo.Is(err, target) }
 
 func Join(errs ...error) error {
 	// not implemented by github.com/go-errors/errors
-	if err := errors.Join(errs...); err != nil {
+	if err := errorsGo.Join(errs...); err != nil {
 		return New(err)
 	} else {
 		return nil
@@ -33,7 +33,7 @@ func New(obj any) *Error {
 	return errorsGo.Wrap(obj, 1)
 }
 
-func Unwrap(err error) error { return errors.Unwrap(err) }
+func Unwrap(err error) error { return errorsGo.Unwrap(err) }
 
 // remaining "github.com/go-errors/errors" symbols
 

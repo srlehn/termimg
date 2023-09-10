@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"runtime/debug"
 
 	"github.com/spf13/cobra"
@@ -15,9 +16,11 @@ import (
 )
 
 var rootCmd = &cobra.Command{
-	Short:        "timg display terminal graphics",
-	Long:         "timg display terminal graphics",
-	SilenceUsage: true,
+	Use:              filepath.Base(os.Args[0]),
+	Short:            "timg display terminal graphics",
+	Long:             "timg display terminal graphics",
+	SilenceUsage:     true,
+	TraverseChildren: true,
 	Run: func(cmd *cobra.Command, args []string) {
 		_ = cmd.Help()
 		os.Exit(1)
@@ -26,7 +29,9 @@ var rootCmd = &cobra.Command{
 
 func init() {
 	cobra.EnablePrefixMatching = true
-	rootCmd.PersistentFlags().BoolVar(&debugFlag, `debug`, false, `debug errors`)
+	// local flags
+	rootCmd.Flags().BoolVarP(&debugFlag, `debug`, `d`, false, `debug errors`)
+	rootCmd.Flags().BoolVarP(&silentFlag, `silent`, `s`, false, `silence errors`)
 }
 
 func main() {
@@ -35,9 +40,14 @@ func main() {
 	}
 }
 
-var debugFlag bool
+var (
+	debugFlag  bool
+	silentFlag bool
+)
 
-func run(fn func(tm **term.Terminal) error) {
+type terminalSwapper func(tm **term.Terminal) error
+
+func run(fn terminalSwapper) {
 	var err error
 	if fn == nil {
 		err = errors.New(consts.ErrNilParam)
@@ -48,17 +58,18 @@ func run(fn func(tm **term.Terminal) error) {
 		// catch panics to ascertain the terminal is reset
 		if r := recover(); r != nil {
 			exitCode = 1
-			if stackFramer, ok := r.(interface{ ErrorStack() string }); ok {
-				fmt.Fprintln(os.Stderr, "\n"+stackFramer.ErrorStack())
-			} else {
-				debug.PrintStack()
+			if !silentFlag {
+				if stackFramer, ok := r.(interface{ ErrorStack() string }); ok {
+					fmt.Fprintln(os.Stderr, "\n"+stackFramer.ErrorStack())
+				} else {
+					debug.PrintStack()
+				}
 			}
 		}
 		if err := tm.Close(); err != nil {
 			// fallback
 			sttyAbs, err := exc.LookSystemDirs(`stty`)
 			if err == nil {
-				// _ = exec.Command(sttyAbs, `echo`).Run()
 				_ = exec.Command(sttyAbs, `sane`).Run()
 			}
 		}
@@ -67,10 +78,12 @@ func run(fn func(tm **term.Terminal) error) {
 	err = fn(&tm)
 	if err != nil {
 		exitCode = 1
-		if stackFramer, ok := err.(interface{ ErrorStack() string }); debugFlag && ok {
-			fmt.Fprintln(os.Stderr, "\n"+stackFramer.ErrorStack())
-		} else {
-			fmt.Fprintln(os.Stderr, "\n"+err.Error())
+		if !silentFlag {
+			if stackFramer, ok := err.(interface{ ErrorStack() string }); debugFlag && ok {
+				fmt.Fprintln(os.Stderr, "\n"+stackFramer.ErrorStack())
+			} else {
+				fmt.Fprintln(os.Stderr, "\n"+err.Error())
+			}
 		}
 	}
 }

@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/srlehn/termimg/internal/consts"
+	"github.com/srlehn/termimg/internal/environ"
 	"github.com/srlehn/termimg/internal/errors"
 	"github.com/srlehn/termimg/term"
 )
@@ -17,9 +18,11 @@ func init() { term.RegisterDrawer(&DrawerGeneric{}) }
 
 type DrawerGeneric struct{}
 
-func (d *DrawerGeneric) Name() string                              { return consts.DrawerGenericName }
-func (d *DrawerGeneric) New() term.Drawer                          { return &DrawerGeneric{} }
-func (d *DrawerGeneric) IsApplicable(term.DrawerCheckerInput) bool { return true }
+func (d *DrawerGeneric) Name() string     { return consts.DrawerGenericName }
+func (d *DrawerGeneric) New() term.Drawer { return &DrawerGeneric{} }
+func (d *DrawerGeneric) IsApplicable(term.DrawerCheckerInput) (bool, environ.Proprietor) {
+	return true, nil
+}
 
 /*
 TODO fails on urxvt

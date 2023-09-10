@@ -8,6 +8,7 @@ import (
 
 	"github.com/srlehn/termimg/internal/consts"
 	"github.com/srlehn/termimg/internal/encoder/encpng"
+	"github.com/srlehn/termimg/internal/environ"
 	"github.com/srlehn/termimg/internal/errors"
 	"github.com/srlehn/termimg/mux"
 	"github.com/srlehn/termimg/term"
@@ -22,8 +23,8 @@ type drawerURXVT struct{}
 func (d *drawerURXVT) Name() string     { return `urxvt` }
 func (d *drawerURXVT) New() term.Drawer { return &drawerURXVT{} }
 
-func (d *drawerURXVT) IsApplicable(inp term.DrawerCheckerInput) bool {
-	return inp != nil && inp.Name() == `urxvt`
+func (d *drawerURXVT) IsApplicable(inp term.DrawerCheckerInput) (bool, environ.Proprietor) {
+	return inp != nil && inp.Name() == `urxvt`, nil
 }
 
 // TODO write ' ' over area (image is in a layer below text)
