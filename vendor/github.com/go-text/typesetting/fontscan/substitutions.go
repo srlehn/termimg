@@ -1,7 +1,6 @@
 package fontscan
 
 import (
-	"container/list"
 	"strings"
 
 	"github.com/go-text/typesetting/language"
@@ -14,8 +13,6 @@ import (
 // to a user provided family
 // each of them may happen one (or more) alternative family to look for
 
-
-// familySubstitution maps family name to possible alias
 // it is generated from fontconfig substitution rules
 // the order matters, since the rules apply sequentially to the current
 // state of the family list
@@ -33,79 +30,66 @@ func init() {
 // we want to easily insert at the start,
 // the end and "around" an element
 type familyList struct {
-	*list.List
+	items []string
 }
 
-func newFamilyList(families []string) familyList {
-	var out list.List
-	for _, s := range families {
-		out.PushBack(s)
-	}
-	return familyList{List: &out}
+func newFamilyList(families []string) *familyList {
+	fl := &familyList{}
+	// we'll guess that we end up with about ~140 items
+	fl.items = make([]string, 0, 140)
+	fl.items = append(fl.items, families...)
+	return fl
 }
 
-// returns the node equal to `family` or nil, if not found
-func (fl familyList) elementEquals(family string) *list.Element {
-	for l := fl.List.Front(); l != nil; l = l.Next() {
-		if l.Value.(string) == family {
-			return l
+// returns the node equal to `family` or -1, if not found
+func (fl *familyList) elementEquals(family string) int {
+	for i, v := range fl.items {
+		if v == family {
+			return i
 		}
 	}
-	return nil
+	return -1
 }
 
-// returns the first node containing `family` or nil, if not found
-func (fl familyList) elementContains(family string) *list.Element {
-	for l := fl.List.Front(); l != nil; l = l.Next() {
-		if strings.Contains(l.Value.(string), family) {
-			return l
+// returns the first node containing `family` or -1, if not found
+func (fl *familyList) elementContains(family string) int {
+	for i, v := range fl.items {
+		if strings.Contains(v, family) {
+			return i
 		}
 	}
-	return nil
+	return -1
 }
 
 // return the crible corresponding to the order
-func (fl familyList) compileTo(dst familyCrible) {
-	i := 0
-	for l := fl.List.Front(); l != nil; l, i = l.Next(), i+1 {
-		family := l.Value.(string)
+func (fl *familyList) compileTo(dst familyCrible) {
+	for i, family := range fl.items {
 		if _, has := dst[family]; !has { // for duplicated entries, keep the first (best) score
 			dst[family] = i
 		}
 	}
 }
 
-func (fl familyList) insertStart(families []string) {
-	L := len(families)
-	for i := range families {
-		fl.List.PushFront(families[L-1-i])
-	}
+func (fl *familyList) insertStart(families []string) {
+	fl.items = insertAt(fl.items, 0, families)
 }
 
-func (fl familyList) insertEnd(families []string) {
-	for _, s := range families {
-		fl.List.PushBack(s)
-	}
+func (fl *familyList) insertEnd(families []string) {
+	fl.items = insertAt(fl.items, len(fl.items), families)
 }
 
 // insertAfter inserts families right after element
-func (fl familyList) insertAfter(element *list.Element, families []string) {
-	for _, s := range families {
-		element = fl.List.InsertAfter(s, element)
-	}
+func (fl *familyList) insertAfter(element int, families []string) {
+	fl.items = insertAt(fl.items, element+1, families)
 }
 
 // insertBefore inserts families right before element
-func (fl familyList) insertBefore(element *list.Element, families []string) {
-	L := len(families)
-	for i := range families {
-		element = fl.List.InsertBefore(families[L-1-i], element)
-	}
+func (fl *familyList) insertBefore(element int, families []string) {
+	fl.items = insertAt(fl.items, element, families)
 }
 
-func (fl familyList) replace(element *list.Element, families []string) {
-	fl.insertAfter(element, families)
-	fl.List.Remove(element)
+func (fl *familyList) replace(element int, families []string) {
+	fl.items = replaceAt(fl.items, element, element+1, families)
 }
 
 // ----- substitutions ------
@@ -123,11 +107,9 @@ const (
 )
 
 type substitutionTest interface {
-	// returns a non nil element if the substitution should
-	// be applied
-	// for opAppendLast and opPrependFirst an arbitrary non nil element
-	// could be returned
-	test(list familyList) *list.Element
+	// returns >= 0 if the substitution should be applied
+	// for opAppendLast and opPrependFirst an arbitrary value could be returned
+	test(list *familyList) int
 
 	// return a copy where families have been normalize
 	// to their no blank no case version
@@ -137,7 +119,7 @@ type substitutionTest interface {
 // a family in the list must equal 'mf'
 type familyEquals string
 
-func (mf familyEquals) test(list familyList) *list.Element {
+func (mf familyEquals) test(list *familyList) int {
 	return list.elementEquals(string(mf))
 }
 
@@ -148,7 +130,7 @@ func (mf familyEquals) normalize() substitutionTest {
 // a family in the list must contain 'mf'
 type familyContains string
 
-func (mf familyContains) test(list familyList) *list.Element {
+func (mf familyContains) test(list *familyList) int {
 	return list.elementContains(string(mf))
 }
 
@@ -159,14 +141,14 @@ func (mf familyContains) normalize() substitutionTest {
 // the family list has no "serif", "sans-serif" or "monospace" generic fallback
 type noGenericFamily struct{}
 
-func (noGenericFamily) test(list familyList) *list.Element {
-	for l := list.List.Front(); l != nil; l = l.Next() {
-		switch l.Value.(string) {
+func (noGenericFamily) test(list *familyList) int {
+	for _, v := range list.items {
+		switch v {
 		case "serif", "sans-serif", "monospace":
-			return nil
+			return -1
 		}
 	}
-	return list.List.Front()
+	return 0
 }
 
 func (noGenericFamily) normalize() substitutionTest {
@@ -181,8 +163,8 @@ type langAndFamilyEqual struct {
 }
 
 // TODO: for now, these tests language base tests are ignored
-func (langAndFamilyEqual) test(list familyList) *list.Element {
-	return nil
+func (langAndFamilyEqual) test(list *familyList) int {
+	return -1
 }
 
 func (t langAndFamilyEqual) normalize() substitutionTest {
@@ -198,8 +180,8 @@ type langContainsAndFamilyEquals struct {
 }
 
 // TODO: for now, these tests language base tests are ignored
-func (langContainsAndFamilyEquals) test(list familyList) *list.Element {
-	return nil
+func (langContainsAndFamilyEquals) test(list *familyList) int {
+	return -1
 }
 
 func (t langContainsAndFamilyEquals) normalize() substitutionTest {
@@ -215,8 +197,8 @@ type langEqualsAndNoFamily struct {
 }
 
 // TODO: for now, these tests language base tests are ignored
-func (langEqualsAndNoFamily) test(list familyList) *list.Element {
-	return nil
+func (langEqualsAndNoFamily) test(list *familyList) int {
+	return -1
 }
 
 func (t langEqualsAndNoFamily) normalize() substitutionTest {
@@ -230,9 +212,9 @@ type substitution struct {
 	op                 substitutionOp   // how to insert the families
 }
 
-func (fl familyList) execute(subs substitution) {
+func (fl *familyList) execute(subs substitution) {
 	element := subs.test.test(fl)
-	if element == nil {
+	if element < 0 {
 		return
 	}
 
@@ -250,4 +232,62 @@ func (fl familyList) execute(subs substitution) {
 	default:
 		panic("exhaustive switch")
 	}
+}
+
+// ----- []string manipulation -----
+
+func insertAt(s []string, i int, v []string) []string {
+	if len(v) == 0 {
+		return s
+	}
+	if len(s) == i {
+		return append(s, v...)
+	}
+	if len(s)+len(v) > cap(s) {
+		// create a new slice with sufficient capacity
+		r := append(s[:i], make([]string, len(s)+len(v)-i)...)
+		// copy the inserted values
+		copy(r[i:], v)
+		// copy rest of the items from source
+		copy(r[i+len(v):], s[i:])
+		return r
+	}
+
+	// resize the slice
+	s = s[:len(s)+len(v)]
+	// move items to make space for v
+	copy(s[i+len(v):], s[i:])
+	// copy v
+	copy(s[i:], v)
+	return s
+}
+
+func replaceAt(s []string, i, j int, v []string) []string {
+	// just cutting
+	if len(v) == 0 {
+		return append(s[:i], s[j:]...)
+	}
+	// cutting the original til the end
+	if len(s) == j {
+		return append(s[:i], v...)
+	}
+	// calculate the final length
+	tot := len(s) + len(v) - (j - i)
+	if tot > cap(s) {
+		// create a new slice with sufficient capacity
+		r := append(s[:i], make([]string, tot-i)...)
+		// copy the inserted values
+		copy(r[i:], v)
+		// add the tail from the source
+		copy(r[i+len(v):], s[j:])
+		return r
+	}
+
+	n := len(s)
+	s = s[:tot]
+	// move items to make space for v
+	copy(s[i+len(v):], s[j:n])
+	// copy v
+	copy(s[i:], v)
+	return s
 }

@@ -11,6 +11,7 @@ struct Block
     vec4 transform;
     vec4 uvTransformR1;
     vec4 uvTransformR2;
+    float opacity;
 };
 
 uniform Block _block;
@@ -18,6 +19,7 @@ uniform Block _block;
 attribute vec2 pos;
 varying vec2 vUV;
 attribute vec2 uv;
+varying float opacity;
 
 vec3 transform3x2(m3x2 t, vec3 v)
 {
@@ -33,5 +35,6 @@ void main()
     m3x2 param_2 = m3x2(_block.uvTransformR1.xyz, _block.uvTransformR2.xyz);
     vec3 param_3 = vec3(uv, 1.0);
     vUV = transform3x2(param_2, param_3).xy;
+    opacity = _block.opacity;
 }
 

@@ -325,6 +325,11 @@ func windowProc(hwnd syscall.Handle, msg uint32, wParam, lParam uintptr) uintptr
 		// The system destroys the HWND for us.
 		w.hwnd = 0
 		windows.PostQuitMessage(0)
+	case windows.WM_NCCALCSIZE:
+		if !w.config.Decorated {
+			// No client areas; we draw decorations ourselves.
+			return 0
+		}
 	case windows.WM_PAINT:
 		w.draw(true)
 	case windows.WM_SIZE:
@@ -446,23 +451,18 @@ func (w *window) hitTest(x, y int) uintptr {
 	if w.config.Mode == Fullscreen {
 		return windows.HTCLIENT
 	}
-	p := f32.Pt(float32(x), float32(y))
-	if a, ok := w.w.ActionAt(p); ok && a == system.ActionMove {
-		return windows.HTCAPTION
-	}
 	if w.config.Mode != Windowed {
 		// Only windowed mode should allow resizing.
 		return windows.HTCLIENT
 	}
+	// Check for resize handle before system actions; otherwise it can be impossible to
+	// resize a custom-decorations window when the system move area is flush with the
+	// edge of the window.
 	top := y <= w.borderSize.Y
 	bottom := y >= w.config.Size.Y-w.borderSize.Y
 	left := x <= w.borderSize.X
 	right := x >= w.config.Size.X-w.borderSize.X
 	switch {
-	default:
-		fallthrough
-	case !top && !bottom && !left && !right:
-		return windows.HTCLIENT
 	case top && left:
 		return windows.HTTOPLEFT
 	case top && right:
@@ -480,6 +480,11 @@ func (w *window) hitTest(x, y int) uintptr {
 	case right:
 		return windows.HTRIGHT
 	}
+	p := f32.Pt(float32(x), float32(y))
+	if a, ok := w.w.ActionAt(p); ok && a == system.ActionMove {
+		return windows.HTCAPTION
+	}
+	return windows.HTCLIENT
 }
 
 func (w *window) pointerButton(btn pointer.Buttons, press bool, lParam uintptr, kmods key.Modifiers) {
@@ -669,9 +674,6 @@ func (w *window) Configure(options []Option) {
 	swpStyle := uintptr(windows.SWP_NOZORDER | windows.SWP_FRAMECHANGED)
 	winStyle := uintptr(windows.WS_OVERLAPPEDWINDOW)
 	style &^= winStyle
-	if !w.config.Decorated {
-		winStyle = 0
-	}
 	switch w.config.Mode {
 	case Minimized:
 		style |= winStyle
@@ -695,9 +697,12 @@ func (w *window) Configure(options []Option) {
 		// Set desired window size.
 		wr.Right = wr.Left + width
 		wr.Bottom = wr.Top + height
-		// Convert from client size to window size.
+		// Compute client size and position. Note that the client size is
+		// equal to the window size when we are in control of decorations.
 		r := wr
-		windows.AdjustWindowRectEx(&r, uint32(style), 0, dwExStyle)
+		if w.config.Decorated {
+			windows.AdjustWindowRectEx(&r, uint32(style), 0, dwExStyle)
+		}
 		// Calculate difference between client and full window sizes.
 		w.deltas.width = r.Right - wr.Right + wr.Left - r.Left
 		w.deltas.height = r.Bottom - wr.Bottom + wr.Top - r.Top
@@ -706,6 +711,10 @@ func (w *window) Configure(options []Option) {
 		y = wr.Top
 		width = r.Right - r.Left
 		height = r.Bottom - r.Top
+		if !w.config.Decorated {
+			// Enable drop shadows when we draw decorations.
+			windows.DwmExtendFrameIntoClientArea(w.hwnd, windows.Margins{-1, -1, -1, -1})
+		}
 
 	case Fullscreen:
 		mi := windows.GetMonitorInfo(w.hwnd)
