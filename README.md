@@ -17,16 +17,51 @@ implemented drawing methods: sixel, iTerm2, kitty, Terminology, DomTerm, urxvt, 
 
 <blockquote><details open><summary><h3><span style="color:mediumseagreen">timg</span> CLI Tool</h3></summary>
 
+![demo.gif](_demos/demo.gif)
+
 installation:
 ```sh
 go install github.com/srlehn/termimg/cmd/timg@master
 ```
-The cell coordinates are passed in this format: `<x>,<y>,<w>x<h>` where x is the column, y the row, w the width and h the height.
+usage:
+```
+$ timg
+timg display terminal graphics
+
+Usage:
+  timg [flags]
+  timg [command]
+
+Available Commands:
+  completion  Generate the autocompletion script for the specified shell
+  help        Help about any command
+  list        list images
+  properties  list terminal properties
+  query       query terminal
+  resolution  print terminal resolution
+  runterm     open image in new terminal and screenshot
+  scale       fit pixel area into a cell area while maintaining scale
+  show        display image
+
+Flags:
+  -d, --debug    debug errors
+  -h, --help     help for timg
+  -s, --silent   silence errors
+
+Use "timg [command] --help" for more information about a command.
+```
+
+The `list` command displays thumbnails of previewable files for a given directory similar to "lsix":
+```sh
+timg list ~/Pictures
+```
 
 The `show` command draws the image in the current terminal:
 ```sh
 timg show -p 10,10,15x15 picture.png
 ```
+Cell coordinates are optional for the show command, they are passed in this format: `<x>,<y>,<w>x<h>` where x is the column, y the row, w the width and h the height.
+
 If an error occurs the `--debug/-d` flag shows where in the code it happens.
 
 The `runterm` command starts the terminal specified with the `-t` flag. If no drawer is enforced by the optional `-d` flag, the best fitting one is used. This command is probably only useful for testing.
