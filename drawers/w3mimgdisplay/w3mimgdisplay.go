@@ -98,7 +98,7 @@ func (d *drawerW3MImgDisplay) Draw(img image.Image, bounds image.Rectangle, tm *
 	}
 
 	var w3mImgDisplayString string
-	w3mImgDisplayObject, err := timg.GetPosObject(bounds, d, tm)
+	w3mImgDisplayObject, err := timg.PosObject(bounds, d, tm)
 	if err == nil {
 		s, ok := w3mImgDisplayObject.(string)
 		if ok {

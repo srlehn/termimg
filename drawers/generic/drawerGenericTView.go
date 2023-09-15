@@ -38,7 +38,7 @@ func (d *DrawerGeneric) Draw(img image.Image, bounds image.Rectangle, tm *term.T
 		return errors.New(consts.ErrNilImage)
 	}
 
-	blochCharString, err := d.getInbandString(timg, bounds, tm)
+	blochCharString, err := d.inbandString(timg, bounds, tm)
 	if err != nil {
 		return err
 	}
@@ -46,11 +46,11 @@ func (d *DrawerGeneric) Draw(img image.Image, bounds image.Rectangle, tm *term.T
 	return nil
 }
 
-func (d *DrawerGeneric) getInbandString(timg *term.Image, bounds image.Rectangle, tm *term.Terminal) (string, error) {
+func (d *DrawerGeneric) inbandString(timg *term.Image, bounds image.Rectangle, tm *term.Terminal) (string, error) {
 	if timg == nil {
 		return ``, errors.New(consts.ErrNilImage)
 	}
-	blochCharString, err := timg.GetInband(bounds, d, tm)
+	blochCharString, err := timg.Inband(bounds, d, tm)
 	if err == nil {
 		return blochCharString, nil
 	}
@@ -119,10 +119,10 @@ type imgBlock struct {
 	pixels []pixel
 }
 
-// GetColors returns the number of colors that will be used while drawing the
+// Colors returns the number of colors that will be used while drawing the
 // image. This is one of the values listed in [Image.SetColors], except 0 which
 // will be replaced by the actual number of colors used.
-func (i *imgBlock) GetColors() int {
+func (i *imgBlock) Colors() int {
 	switch {
 	case i.colors == 0:
 		return availableColors
@@ -279,7 +279,7 @@ func (i *imgBlock) stamp(resized [][3]float64) {
 	// For each 8x8 pixel block, we find the best block element to represent it,
 	// given the available colors.
 	i.pixels = make([]pixel, i.lastWidth*i.lastHeight)
-	colors := i.GetColors()
+	colors := i.Colors()
 	for row := 0; row < i.lastHeight; row++ {
 		for col := 0; col < i.lastWidth; col++ {
 			// Calculate an error for each potential block element + color. Keep

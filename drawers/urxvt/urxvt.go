@@ -54,7 +54,7 @@ func (d *drawerURXVT) Draw(img image.Image, bounds image.Rectangle, tm *term.Ter
 		return err
 	}
 
-	urxvtString, err := d.getInbandString(timg, bounds, tm)
+	urxvtString, err := d.inbandString(timg, bounds, tm)
 	if err != nil {
 		return err
 	}
@@ -63,11 +63,11 @@ func (d *drawerURXVT) Draw(img image.Image, bounds image.Rectangle, tm *term.Ter
 	return nil
 }
 
-func (d *drawerURXVT) getInbandString(timg *term.Image, bounds image.Rectangle, tm *term.Terminal) (string, error) {
+func (d *drawerURXVT) inbandString(timg *term.Image, bounds image.Rectangle, tm *term.Terminal) (string, error) {
 	if timg == nil {
 		return ``, errors.New(consts.ErrNilImage)
 	}
-	urxvtString, err := timg.GetInband(bounds, d, tm)
+	urxvtString, err := timg.Inband(bounds, d, tm)
 	if err == nil {
 		return urxvtString, nil
 	}

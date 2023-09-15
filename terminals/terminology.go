@@ -127,12 +127,12 @@ func queryTerminalAndCellSizeTerminology(qu term.Querier, tty term.TTY) (tpw, tp
 	return uint(termWidth), uint(termHeight), uint(fontWidth), uint(fontHeigth), err
 }
 
-// GetCursorQuery
-func (s *surveyorTerminology) GetCursorQuery(qu term.Querier, tty term.TTY) (widthCells, heightCells uint, err error) {
+// CursorQuery
+func (s *surveyorTerminology) CursorQuery(qu term.Querier, tty term.TTY) (widthCells, heightCells uint, err error) {
 	if s == nil {
 		return 0, 0, errors.New(consts.ErrNilReceiver)
 	}
-	return s.surveyorDefault.GetCursorQuery(qu, tty)
+	return s.surveyorDefault.CursorQuery(qu, tty)
 }
 
 // SetCursorQuery

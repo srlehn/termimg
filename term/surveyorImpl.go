@@ -226,8 +226,8 @@ func (s *SurveyorDefault) SizeInPixelsWindow(w wm.Window) (widthPixels, heightPi
 	return uint(ww), uint(wh), nil
 }
 
-// GetCursorQuery
-func (s *SurveyorDefault) GetCursorQuery(qu Querier, tty TTY) (widthCells, heightCells uint, err error) {
+// CursorQuery
+func (s *SurveyorDefault) CursorQuery(qu Querier, tty TTY) (widthCells, heightCells uint, err error) {
 	return getCursorQuery(qu, tty)
 }
 

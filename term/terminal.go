@@ -638,7 +638,7 @@ func (t *Terminal) Scroll(lineCnt int) error {
 	}
 	switch {
 	case lineCnt == 0:
-		_, y, err := t.GetCursor()
+		_, y, err := t.Cursor()
 		if err != nil {
 			return err
 		}
@@ -703,14 +703,14 @@ func (t *Terminal) SizeInPixels() (width, height uint, err error) {
 	return t.surveyor.SizeInPixels(t.tty, t.querier, t.window, t.proprietor)
 }
 
-func (t *Terminal) GetCursor() (xPosCells, yPosCells uint, err error) {
+func (t *Terminal) Cursor() (xPosCells, yPosCells uint, err error) {
 	if t == nil {
 		return 0, 0, errors.New(consts.ErrNilReceiver)
 	}
 	if t.surveyor == nil {
 		return 0, 0, errors.New(`nil surveyor`)
 	}
-	return t.surveyor.GetCursor(t.tty, t.querier, t.window, t.proprietor)
+	return t.surveyor.Cursor(t.tty, t.querier, t.window, t.proprietor)
 }
 
 func (t *Terminal) SetCursor(xPosCells, yPosCells uint) (err error) {

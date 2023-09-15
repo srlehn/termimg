@@ -50,7 +50,7 @@ func (d *drawerTerminology) Draw(img image.Image, bounds image.Rectangle, tm *te
 		return err
 	}
 
-	terminologyString, err := d.getInbandString(timg, bounds, tm)
+	terminologyString, err := d.inbandString(timg, bounds, tm)
 	if err != nil {
 		return err
 	}
@@ -59,11 +59,11 @@ func (d *drawerTerminology) Draw(img image.Image, bounds image.Rectangle, tm *te
 	return nil
 }
 
-func (d *drawerTerminology) getInbandString(timg *term.Image, bounds image.Rectangle, term *term.Terminal) (string, error) {
+func (d *drawerTerminology) inbandString(timg *term.Image, bounds image.Rectangle, term *term.Terminal) (string, error) {
 	if timg == nil {
 		return ``, errors.New(consts.ErrNilImage)
 	}
-	terminologyString, err := timg.GetInband(bounds, d, term)
+	terminologyString, err := timg.Inband(bounds, d, term)
 	if err == nil {
 		return terminologyString, nil
 	}

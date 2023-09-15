@@ -95,7 +95,7 @@ func listFunc(cmd *cobra.Command, args []string) terminalSwapper {
 			return err
 		}
 		var rowCursor uint
-		_, rowCursor, errRowCursor := tm2.GetCursor() // TODO log error
+		_, rowCursor, errRowCursor := tm2.Cursor() // TODO log error
 		if errRowCursor != nil {
 			rowCursor = 0
 		}

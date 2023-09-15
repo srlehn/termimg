@@ -180,8 +180,8 @@ type inBandString struct {
 	cropped               string
 }
 
-// GetInband ...
-func (i *Image) GetInband(placementCells image.Rectangle, d Drawer, t *Terminal) (string, error) {
+// Inband ...
+func (i *Image) Inband(placementCells image.Rectangle, d Drawer, t *Terminal) (string, error) {
 	if i == nil {
 		return ``, errors.New(consts.ErrNilReceiver)
 	}
@@ -278,8 +278,8 @@ type posObject struct {
 	cropped               any
 }
 
-// GetPosObject ...
-func (i *Image) GetPosObject(placementCells image.Rectangle, d Drawer, t *Terminal) (any, error) {
+// PosObject ...
+func (i *Image) PosObject(placementCells image.Rectangle, d Drawer, t *Terminal) (any, error) {
 	if i == nil {
 		return ``, errors.New(consts.ErrNilReceiver)
 	}
@@ -368,8 +368,8 @@ func (i *Image) SetPosObject(placementCells image.Rectangle, obj any, d Drawer, 
 	return nil
 }
 
-// GetDrawerObject ...
-func (i *Image) GetDrawerObject(d Drawer) (any, error) {
+// DrawerObject ...
+func (i *Image) DrawerObject(d Drawer) (any, error) {
 	if i == nil || d == nil {
 		return nil, errors.New(`nil receiver or parameter`)
 	}

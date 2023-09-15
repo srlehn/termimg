@@ -72,7 +72,7 @@ func (c *connX11) Conn() any {
 
 // Windows ...
 func (c *connX11) Windows() ([]wm.Window, error) {
-	ws, err := c.getWindows()
+	ws, err := c.windows()
 	if err != nil {
 		return nil, err
 	}
@@ -105,7 +105,7 @@ func (c *connX11) Resources() (environ.Proprietor, error) {
 	return pr, nil
 }
 
-func (c *connX11) getWindows() ([]*windowX11, error) {
+func (c *connX11) windows() ([]*windowX11, error) {
 	var windows []*windowX11
 
 	// Get a list of all client ids.
@@ -122,12 +122,12 @@ func (c *connX11) getWindows() ([]*windowX11, error) {
 
 	// Iterate through each client, find its name and find its size.
 	for _, window := range clientIDs {
-		class, instance, _ := c.getWindowClass(window)
+		class, instance, _ := c.windowClass(window)
 		windows = append(
 			windows,
 			&windowX11{
 				id:       uint64(window),
-				name:     util.IgnoreError(c.getWindowName(window)),
+				name:     util.IgnoreError(c.windowName(window)),
 				class:    class,
 				instance: instance,
 			},
@@ -159,7 +159,7 @@ func (c *connX11) getWindows() ([]*windowX11, error) {
 		}
 		if w.pid == 0 {
 			// fallback to unreliable client set _NET_WM_PID
-			netWMPID, err := c.getWindowPIDNetWMPID(xproto.Window(w.id))
+			netWMPID, err := c.windowPIDNetWMPID(xproto.Window(w.id))
 			if err == nil {
 				w.pid = netWMPID
 			}
@@ -171,8 +171,8 @@ func (c *connX11) getWindows() ([]*windowX11, error) {
 	return windowsRet, nil
 }
 
-// getWindowName ...
-func (c *connX11) getWindowName(w xproto.Window) (string, error) {
+// windowName ...
+func (c *connX11) windowName(w xproto.Window) (string, error) {
 	name, errE := ewmh.WmNameGet(c.XUtil, w)
 	if errE == nil {
 		return name, nil
@@ -188,8 +188,8 @@ func (c *connX11) getWindowName(w xproto.Window) (string, error) {
 	return ``, errors.New(errors.Join(errE, errI))
 }
 
-// getWindowClass ...
-func (c *connX11) getWindowClass(w xproto.Window) (class, instance string, _ error) {
+// windowClass ...
+func (c *connX11) windowClass(w xproto.Window) (class, instance string, _ error) {
 	cl, err := icccm.WmClassGet(c.XUtil, w)
 	if err != nil {
 		return ``, ``, errors.New(err)
@@ -200,22 +200,22 @@ func (c *connX11) getWindowClass(w xproto.Window) (class, instance string, _ err
 	return cl.Class, cl.Instance, nil
 }
 
-var _ = (*connX11).getWindowPID
+var _ = (*connX11).windowPID
 
-// getWindowPID ...
-func (c *connX11) getWindowPID(w xproto.Window) (uint64, error) {
-	pid, errQCI := c.getWindowPIDQueryClientIDs(w)
+// windowPID ...
+func (c *connX11) windowPID(w xproto.Window) (uint64, error) {
+	pid, errQCI := c.windowPIDQueryClientIDs(w)
 	if errQCI == nil {
 		return pid, nil
 	}
-	pid, errNWP := c.getWindowPIDNetWMPID(w)
+	pid, errNWP := c.windowPIDNetWMPID(w)
 	if errNWP == nil {
 		return pid, nil
 	}
 	return 0, errors.New(errors.Join(errQCI, errNWP))
 }
 
-func (c *connX11) getWindowPIDQueryClientIDs(w xproto.Window) (uint64, error) {
+func (c *connX11) windowPIDQueryClientIDs(w xproto.Window) (uint64, error) {
 	err := res.Init(c.XUtil.Conn())
 	if err != nil {
 		return 0, errors.New(err)
@@ -244,7 +244,7 @@ func (c *connX11) getWindowPIDQueryClientIDs(w xproto.Window) (uint64, error) {
 	}
 	return pid, nil
 }
-func (c *connX11) getWindowPIDNetWMPID(w xproto.Window) (uint64, error) {
+func (c *connX11) windowPIDNetWMPID(w xproto.Window) (uint64, error) {
 	if c == nil {
 		return 0, errors.New(`nil conn`)
 	}
@@ -331,7 +331,7 @@ func (w *windowX11) WindowFind() error {
 		}
 	}
 	connXU := w.conn.XUtil
-	windows, err := w.conn.getWindows()
+	windows, err := w.conn.windows()
 	if err != nil {
 		return err
 	}

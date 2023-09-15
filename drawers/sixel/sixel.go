@@ -89,7 +89,7 @@ func (d *drawerSixel) Draw(img image.Image, bounds image.Rectangle, tm *term.Ter
 		return err
 	}
 
-	sixelString, err := d.getInbandString(timg, bounds, tm)
+	sixelString, err := d.inbandString(timg, bounds, tm)
 	if err != nil {
 		return err
 	}
@@ -99,11 +99,11 @@ func (d *drawerSixel) Draw(img image.Image, bounds image.Rectangle, tm *term.Ter
 	return nil
 }
 
-func (d *drawerSixel) getInbandString(timg *term.Image, bounds image.Rectangle, term *term.Terminal) (string, error) {
+func (d *drawerSixel) inbandString(timg *term.Image, bounds image.Rectangle, term *term.Terminal) (string, error) {
 	if timg == nil {
 		return ``, errors.New(consts.ErrNilImage)
 	}
-	sixelString, err := timg.GetInband(bounds, d, term)
+	sixelString, err := timg.Inband(bounds, d, term)
 	if err == nil {
 		return sixelString, nil
 	}

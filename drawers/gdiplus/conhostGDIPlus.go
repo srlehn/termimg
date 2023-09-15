@@ -95,7 +95,7 @@ func (d *drawerGDI) Draw(img image.Image, bounds image.Rectangle, tm *term.Termi
 		close   func() error
 	)
 
-	sp, err := timg.GetDrawerObject(d)
+	sp, err := timg.DrawerObject(d)
 	if err != nil {
 		return err
 	}

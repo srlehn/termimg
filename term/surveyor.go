@@ -14,7 +14,7 @@ type SurveyorLight interface {
 	CellSize(TTY, Querier, wm.Window, environ.Proprietor) (width, height float64, err error)
 	SizeInCells(TTY, Querier, wm.Window, environ.Proprietor) (width, height uint, err error)
 	SizeInPixels(TTY, Querier, wm.Window, environ.Proprietor) (width, height uint, err error)
-	GetCursor(TTY, Querier, wm.Window, environ.Proprietor) (xPosCells, yPosCells uint, err error)
+	Cursor(TTY, Querier, wm.Window, environ.Proprietor) (xPosCells, yPosCells uint, err error)
 	SetCursor(xPosCells, yPosCells uint, tty TTY, qu Querier, w wm.Window, pr environ.Proprietor) (err error)
 }
 
@@ -24,7 +24,7 @@ type Surveyor interface {
 	CellSize() (width, height float64, err error)
 	SizeInCells() (width, height uint, err error)
 	SizeInPixels() (width, height uint, err error)
-	GetCursor() (xPosCells, yPosCells uint, err error)
+	Cursor() (xPosCells, yPosCells uint, err error)
 	SetCursor(xPosCells, yPosCells uint) (err error)
 	CellScale(ptSrcPx, ptDstCl image.Point) (ptSrcCl image.Point, _ error)
 }
@@ -38,8 +38,8 @@ type Surveyor interface {
 //   - SizeInPixelsQuery(qu Querier, tty TTY) (widthPixels, heightPixels uint, err error)
 //   - SizeInPixelsWindow(w wm.Window) (widthPixels, heightPixels uint, err error)
 //   - SizeInCellsAndPixels(tty TTY) (widthCells, heightCells, widthPixels, heightPixels uint, err error)
-//   - GetCursor(tty TTY) (xPosCells, yPosCells uint, err error)
-//   - GetCursorQuery(qu Querier, tty TTY) (widthCells, heightCells uint, err error)
+//   - Cursor(tty TTY) (xPosCells, yPosCells uint, err error)
+//   - CursorQuery(qu Querier, tty TTY) (widthCells, heightCells uint, err error)
 //   - SetCursor(xPosCells, yPosCells uint, tty TTY) (err error)
 //   - SetCursorQuery(xPosCells, yPosCells uint, qu Querier, tty TTY) (err error)
 type PartialSurveyor interface {
@@ -108,10 +108,10 @@ func getSurveyor(s PartialSurveyor, p environ.Proprietor) SurveyorLight {
 		srv.SizeInCellsAndPixelsFuncs = append(srv.SizeInCellsAndPixelsFuncs, sizeInCellsAndPixelsFunc)
 	}
 	if positionerGet, ok := s.(interface {
-		GetCursor(tty TTY) (xPosCells, yPosCells uint, err error)
+		Cursor(tty TTY) (xPosCells, yPosCells uint, err error)
 	}); ok {
 		posGetFunc := func(tty TTY, _ Querier) (widthCells uint, heightCells uint, err error) {
-			return positionerGet.GetCursor(tty)
+			return positionerGet.Cursor(tty)
 		}
 		srv.posGetFuncs = append(srv.posGetFuncs, posGetFunc)
 	}
@@ -149,10 +149,10 @@ func getSurveyor(s PartialSurveyor, p environ.Proprietor) SurveyorLight {
 			srv.SizeInPixelsFuncs = append(srv.SizeInPixelsFuncs, sizerInPixelsQueryFunc)
 		}
 		if positionerGetQuery, ok := s.(interface {
-			GetCursorQuery(qu Querier, tty TTY) (widthCells, heightCells uint, err error)
+			CursorQuery(qu Querier, tty TTY) (widthCells, heightCells uint, err error)
 		}); ok {
 			posGetFunc := func(tty TTY, qu Querier) (widthCells uint, heightCells uint, err error) {
-				return positionerGetQuery.GetCursorQuery(qu, tty)
+				return positionerGetQuery.CursorQuery(qu, tty)
 			}
 			srv.posGetFuncs = append(srv.posGetFuncs, posGetFunc)
 		}
@@ -467,7 +467,7 @@ func (s *surveyor) SizeInPixels(tty TTY, qu Querier, w wm.Window, pr environ.Pro
 	}
 	return 0, 0, errRet
 }
-func (s *surveyor) GetCursor(tty TTY, qu Querier, _ wm.Window, _ environ.Proprietor) (xPosCells, yPosCells uint, err error) {
+func (s *surveyor) Cursor(tty TTY, qu Querier, _ wm.Window, _ environ.Proprietor) (xPosCells, yPosCells uint, err error) {
 	if s == nil {
 		return 0, 0, errors.New(consts.ErrNilReceiver)
 	}
@@ -486,10 +486,10 @@ func (s *surveyor) GetCursor(tty TTY, qu Querier, _ wm.Window, _ environ.Proprie
 	}
 	errRet := errors.Join(errs...)
 	if errRet == nil {
-		errRet = errors.New("Surveyor.GetCursor failed")
+		errRet = errors.New("Surveyor.Cursor failed")
 
 	} else {
-		errRet = errors.Errorf("%s: %w", "Surveyor.GetCursor failed", errRet)
+		errRet = errors.Errorf("%s: %w", "Surveyor.Cursor failed", errRet)
 	}
 	return 0, 0, errRet
 }

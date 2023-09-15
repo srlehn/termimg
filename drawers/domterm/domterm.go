@@ -40,7 +40,7 @@ func (d *drawerDomTerm) Draw(img image.Image, bounds image.Rectangle, tm *term.T
 		return errors.New(consts.ErrNilImage)
 	}
 
-	domTermString, err := d.getInbandString(timg, bounds, tm)
+	domTermString, err := d.inbandString(timg, bounds, tm)
 	if err != nil {
 		return err
 	}
@@ -48,11 +48,11 @@ func (d *drawerDomTerm) Draw(img image.Image, bounds image.Rectangle, tm *term.T
 	return nil
 }
 
-func (d *drawerDomTerm) getInbandString(timg *term.Image, bounds image.Rectangle, tm *term.Terminal) (string, error) {
+func (d *drawerDomTerm) inbandString(timg *term.Image, bounds image.Rectangle, tm *term.Terminal) (string, error) {
 	if timg == nil {
 		return ``, errors.New(consts.ErrNilImage)
 	}
-	domTermString, err := timg.GetInband(bounds, d, tm)
+	domTermString, err := timg.Inband(bounds, d, tm)
 	if err == nil {
 		return domTermString, nil
 	}
