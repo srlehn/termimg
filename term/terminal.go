@@ -18,6 +18,7 @@ import (
 	"github.com/srlehn/termimg/internal/environ"
 	"github.com/srlehn/termimg/internal/errors"
 	"github.com/srlehn/termimg/internal/propkeys"
+	"github.com/srlehn/termimg/internal/queries"
 	"github.com/srlehn/termimg/internal/wminternal"
 	"github.com/srlehn/termimg/mux"
 	"github.com/srlehn/termimg/wm"
@@ -613,6 +614,56 @@ func roundInf(f float64) int {
 		return int(math.Ceil(f))
 	}
 	return int(math.Floor(f))
+}
+
+// If lineCnt == 0 scroll until cursor is out of view.
+func (t *Terminal) Scroll(lineCnt int) error {
+	if t == nil {
+		return errors.New(consts.ErrNilParam)
+	}
+	_, tch, err := t.SizeInCells()
+	if err != nil {
+		return err
+	}
+	if tch == 0 {
+		return errors.New(`received null terminal size in cells`)
+	}
+	var avoidCS1IndexSuffix bool = true
+	{
+		prop, ok := t.Property(propkeys.TerminalPrefix + t.Name() + propkeys.TerminalAvoidCS1IndexSuffix)
+		avoidCS1IndexSuffix = ok && prop == `true`
+		if avoidCS1IndexSuffix && lineCnt < 0 {
+			return errors.New(`C1 RI (Reverse Index) not supported`)
+		}
+	}
+	switch {
+	case lineCnt == 0:
+		_, y, err := t.GetCursor()
+		if err != nil {
+			return err
+		}
+		lineCnt = int(y)
+		fallthrough
+	case lineCnt > 0:
+		if err := t.SetCursor(0, tch); err != nil {
+			return err
+		}
+		if avoidCS1IndexSuffix {
+			t.Printf(`%s`, strings.Repeat("\n", lineCnt))
+		} else {
+			t.Printf(`%s`, strings.Repeat(queries.IND, lineCnt)) // C1 Index - moves down same column
+			// tm2.Printf(queries.CSI+`%dB`, lineCnt) // CUD - Cursor Down
+			// tm2.Printf(queries.CSI+`%dT`, lineCnt) // SD - Scroll Down
+		}
+	case lineCnt < 0:
+		if err := t.SetCursor(0, 0); err != nil {
+			return err
+		}
+		t.Printf(`%s`, strings.Repeat(queries.RI, -lineCnt)) // C1 Index - moves up same column
+		// tm2.Printf(queries.CSI+`%dA`, lineCnt) // CUU - Cursor Up
+		// tm2.Printf(queries.CSI+`%dS`, lineCnt) // SU - Scroll Up
+	}
+	return nil
 }
 
 func (t *Terminal) CellSize() (width, height float64, err error) {

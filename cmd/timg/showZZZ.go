@@ -147,7 +147,7 @@ func showFunc(cmd *cobra.Command, args []string) terminalSwapper {
 		if len(showTTY) == 0 {
 			env = append(env, os.Environ()...) // TODO rm when PS1 from inner shell included
 		}
-		x, y, w, h, err := splitDimArg(showPosition, tm2, env, timg)
+		x, y, w, h, autoX, autoY, err := splitDimArg(showPosition, tm2, env, timg)
 		if err != nil {
 			return err
 		}
@@ -161,6 +161,10 @@ func showFunc(cmd *cobra.Command, args []string) terminalSwapper {
 			}
 		} else {
 			dr = tm2.Drawers()[0]
+		}
+		if autoX && autoY {
+			_ = tm2.Scroll(0)       // TODO log error
+			_ = tm2.SetCursor(0, 0) // TODO log error
 		}
 		coordWidth := 2
 		gridBorderWidth := 3

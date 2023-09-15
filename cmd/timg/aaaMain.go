@@ -75,8 +75,7 @@ func run(fn terminalSwapper) {
 		}
 		os.Exit(exitCode)
 	}()
-	err = fn(&tm)
-	if err != nil {
+	if err = fn(&tm); err != nil {
 		exitCode = 1
 		if !silentFlag {
 			if stackFramer, ok := err.(interface{ ErrorStack() string }); debugFlag && ok {

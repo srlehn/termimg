@@ -18,9 +18,11 @@ const (
 	// https://sw.kovidgoyal.net/kitty/graphics-protocol/#querying-support-and-available-transmission-mediums
 	KittyTest = APC + `Ga=q,i=1,t=d;Cg==` + ST
 	// DECSCNM - https://vt100.net/docs/vt510-rm/DECSCNM.html
-	Foreground   = OSC + `10;?` + ST
-	Background   = OSC + `11;?` + ST
-	ReverseVideo = CSI + `?5$p`
+	TerminologySize       = "\033}qs" + TerminologyTerminator // https://github.com/borisfaure/terminology#extended-escapes-for-terminology-only
+	TerminologyTerminator = "\000"
+	Foreground            = OSC + `10;?` + ST
+	Background            = OSC + `11;?` + ST
+	ReverseVideo          = CSI + `?5$p`
 )
 
 const (
@@ -37,6 +39,10 @@ const (
 	ESC = "\x1B" // Escape
 
 	// Some type Fe (C1 set element) ANSI escape sequences (not an exhaustive list)
+	// Moves the cursor down one line in the same column. If the cursor is at the bottom margin, the page scrolls up.
+	IND = ESC + `D`  //  // Index - Moves the cursor down one line in the same column. If the cursor is at the bottom margin, the page scrolls up.
+	RI  = ESC + `M`  //  // Reverse Index - Moves the cursor up one line in the same column. If the cursor is at the top margin, the page scrolls down.
+	NEL = ESC + `E`  //  // Next Line - Moves the cursor to the first position on the next line. If the cursor is at the bottom margin, the page scrolls up.
 	SS2 = ESC + "N"  // "\x8E" // Single Shift Two
 	SS3 = ESC + "O"  // "\x8F" // Single Shift Three
 	DCS = ESC + "P"  // "\x90" // Device Control String - Terminated by ST

@@ -75,6 +75,7 @@ const (
 
 	// Terminal type properties
 	TerminalPrefix               = `terminal_`
+	TerminalAvoidCS1IndexSuffix  = `_avoidCS1Index`
 	AppleTermPrefix              = TerminalPrefix + `apple_`
 	AppleTermVersion             = AppleTermPrefix + `version` // CFBundleVersion of Terminal.app
 	ContourPrefix                = TerminalPrefix + `contour_`

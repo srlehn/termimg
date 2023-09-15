@@ -183,16 +183,7 @@ func listFunc(cmd *cobra.Command, args []string) terminalSwapper {
 				}
 				bounds = image.Rectangle{Min: offset, Max: offset.Add(szTile)}
 				if bounds.Max.Y >= int(tch) {
-					if err := tm2.SetCursor(0, tch); err != nil {
-						return err
-					}
-					switch tm2.Name() { // TODO scroll query
-					case `terminology`:
-						tm2.Printf(`%s`, strings.Repeat("\n", szTile.Y+1))
-					default:
-						// tm2.Printf("\033[%dB", szTile.Y+1)
-						tm2.Printf(`%s`, strings.Repeat("\033D", szTile.Y+1)) // scroll query
-					}
+					tm2.Scroll(szTile.Y + 1)
 					shifts++
 					offset.Y = (imgCtr/maxTilesX-shifts)*(szTile.Y+1) + int(rowCursor)
 					bounds = image.Rectangle{Min: offset, Max: offset.Add(szTile)}
@@ -268,7 +259,7 @@ func listFunc(cmd *cobra.Command, args []string) terminalSwapper {
 
 		}
 
-		_ = tm2.SetCursor(0, uint(bounds.Max.Y))
+		_ = tm2.SetCursor(0, uint(bounds.Max.Y+1))
 		pauseVolatile(tm2, dr)
 
 		if errRowCursor != nil {

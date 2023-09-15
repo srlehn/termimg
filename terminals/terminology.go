@@ -55,6 +55,7 @@ func (t *termCheckerTerminology) CheckIsQuery(qu term.Querier, tty term.TTY, pr 
 		return false, p
 	}
 	p.SetProperty(propkeys.CheckTermQueryIsPrefix+termNameTerminology, consts.CheckTermPassed)
+	p.SetProperty(propkeys.TerminalPrefix+termNameTerminology+propkeys.TerminalAvoidCS1IndexSuffix, `true`)
 	return true, p
 }
 
@@ -90,8 +91,7 @@ func queryTerminalAndCellSizeTerminology(qu term.Querier, tty term.TTY) (tpw, tp
 	if qu == nil || tty == nil {
 		return 0, 0, 0, 0, errors.New(consts.ErrNilParam)
 	}
-	qsTerminologySize := "\033}qs\000"
-	qs := qsTerminologySize + queries.DA1
+	qs := queries.TerminologySize + queries.DA1
 	var p term.ParserFunc = func(r rune) bool { return r == 'c' }
 	repl, err := qu.Query(qs, tty, p)
 	if err != nil {

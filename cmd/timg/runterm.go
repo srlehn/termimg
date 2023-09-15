@@ -52,7 +52,7 @@ func runTermFunc(cmd *cobra.Command, args []string) terminalSwapper {
 			return errors.New(err)
 		}
 
-		x, y, w, h, err := splitDimArg(runTermPosition, nil, nil, term.NewImageBytes(imgFileBytes)) // TODO pass term.Terminal
+		x, y, w, h, _, _, err := splitDimArg(runTermPosition, nil, nil, term.NewImageBytes(imgFileBytes)) // TODO pass term.Terminal
 		if err != nil {
 			return errors.New(errRunTermUsage)
 		}
