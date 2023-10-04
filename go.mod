@@ -12,7 +12,7 @@ require (
 	github.com/fogleman/gg v1.3.0
 	github.com/gdamore/tcell/v2 v2.6.0
 	github.com/gizak/termui/v3 v3.1.0
-	github.com/go-errors/errors v1.5.0
+	github.com/go-errors/errors v1.5.1
 	github.com/golang/freetype v0.0.0-20170609003504-e2365dfdc4a0
 	github.com/gonutz/w32/v2 v2.10.0
 	github.com/iancoleman/strcase v0.3.0
@@ -36,9 +36,9 @@ require (
 )
 
 require (
-	gioui.org v0.3.0 // indirect
+	gioui.org v0.3.1 // indirect
 	gioui.org/cpu v0.0.0-20220412190645-f1e9e8c3b1f7 // indirect
-	gioui.org/shader v1.0.7 // indirect
+	gioui.org/shader v1.0.8 // indirect
 	github.com/BurntSushi/freetype-go v0.0.0-20160129220410-b763ddbfe298 // indirect
 	github.com/BurntSushi/graphics-go v0.0.0-20160129215708-b43f31a4a966 // indirect
 	github.com/dsoprea/go-exif/v3 v3.0.1 // indirect

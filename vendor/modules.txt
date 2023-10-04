@@ -1,4 +1,4 @@
-# gioui.org v0.3.0
+# gioui.org v0.3.1
 ## explicit; go 1.19
 gioui.org/app
 gioui.org/app/internal/log
@@ -48,7 +48,7 @@ gioui.org/widget/material
 # gioui.org/cpu v0.0.0-20220412190645-f1e9e8c3b1f7
 ## explicit; go 1.17
 gioui.org/cpu
-# gioui.org/shader v1.0.7
+# gioui.org/shader v1.0.8
 ## explicit; go 1.16
 gioui.org/shader
 gioui.org/shader/gio
@@ -163,7 +163,7 @@ github.com/gdamore/tcell/v2/views
 github.com/gizak/termui/v3
 github.com/gizak/termui/v3/drawille
 github.com/gizak/termui/v3/widgets
-# github.com/go-errors/errors v1.5.0
+# github.com/go-errors/errors v1.5.1
 ## explicit; go 1.14
 github.com/go-errors/errors
 # github.com/go-ole/go-ole v1.3.0
