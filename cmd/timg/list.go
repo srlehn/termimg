@@ -107,7 +107,7 @@ func listFunc(cmd *cobra.Command, args []string) terminalSwapper {
 		tileBaseSize := 128 // 128 is the "small" xdg thumbnail size
 		tileWidth := tileBaseSize
 		tileHeight := tileBaseSize + textHeight
-		szTile, err := tm2.CellScale(image.Point{X: 128, Y: tileHeight}, image.Point{X: 0, Y: 0})
+		szTile, err := tm2.CellScale(image.Point{X: tileWidth, Y: tileHeight}, image.Point{X: 0, Y: 0})
 		if err != nil {
 			return err
 		}

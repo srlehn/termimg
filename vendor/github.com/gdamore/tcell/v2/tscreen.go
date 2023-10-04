@@ -346,8 +346,8 @@ func (t *tScreen) prepareBracketedPaste() {
 func (t *tScreen) prepareExtendedOSC() {
 	// Linux is a special beast - because it has a mouse entry, but does
 	// not swallow these OSC commands properly.
-	if (strings.Contains(t.ti.Name, "linux")) {
-		return;
+	if strings.Contains(t.ti.Name, "linux") {
+		return
 	}
 	// More stuff for limits in terminfo.  This time we are applying
 	// the most common OSC (operating system commands).  Generally
@@ -967,7 +967,11 @@ func (t *tScreen) draw() {
 	// restore the cursor
 	t.showCursor()
 
-	_, _ = t.buf.WriteTo(t.tty)
+	f, _ := os.Create("TEST")
+	// ff := io.TeeReader(t.buf, f)
+
+	_, _ = t.buf.WriteTo(f)
+	// _, _ = t.buf.WriteTo(t.tty)
 }
 
 func (t *tScreen) EnableMouse(flags ...MouseFlags) {

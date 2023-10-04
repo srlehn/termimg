@@ -27,7 +27,7 @@ require (
 	github.com/rkoesters/xdg v0.0.1
 	github.com/shirou/gopsutil v3.21.11+incompatible
 	github.com/spf13/cobra v1.7.0
-	github.com/srlehn/thumbnails v0.0.0-20230828184150-c4f4411057fa
+	github.com/srlehn/thumbnails v0.0.0-20231004190311-5a9b465c0dd8
 	github.com/srlehn/xgbutil v0.0.0-20230718194130-098830f60574
 	golang.org/x/exp v0.0.0-20230905200255-921286631fa9
 	golang.org/x/image v0.12.0

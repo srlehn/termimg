@@ -152,6 +152,8 @@ func hashFilename(filename string, portable bool) (md5hash, thumbnailFileURL str
 		// needs checking!
 		case (r >= 'a' && r <= 'z') || (r >= '@' && r <= 'Z') || (r >= '&' && r <= ':') || r == '!' || r == '$' || r == '=' || r == '_' || r == '~':
 			fileURL += string(r)
+		case r == ' ':
+			fileURL += `%20` // url.QueryEscape would escape ' ' as '+'
 		default:
 			fileURL += url.QueryEscape(string(r))
 		}

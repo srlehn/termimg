@@ -189,22 +189,32 @@ func showFunc(cmd *cobra.Command, args []string) terminalSwapper {
 	}
 }
 
-func pauseVolatile(tm *term.Terminal, dr term.Drawer) {
+func isVolatileDrawer(tm *term.Terminal, dr term.Drawer) bool {
 	if tm == nil {
-		return
+		return false
 	}
 	if dr == nil {
 		dr = tm.Drawers()[0]
 	}
-	if isVolatileStr, isVolatile := tm.Property(propkeys.DrawerPrefix + dr.Name() + propkeys.DrawerVolatileSuffix); isVolatile && isVolatileStr == `true` {
-		fi, err := os.Stdout.Stat()
-		if err == nil && fi.Mode()&os.ModeNamedPipe != os.ModeNamedPipe {
-			tm.WriteString(`press any key`)
-			_, _ = os.Stdin.Read(make([]byte, 1)) // TODO read only 1 char
-		} else {
-			// TODO log error
-			time.Sleep(2 * time.Second)
+	isVolatileStr, isVolatile := tm.Property(propkeys.DrawerPrefix + dr.Name() + propkeys.DrawerVolatileSuffix)
+	if !isVolatile || isVolatileStr != `true` {
+		return false
+	}
+	return true
+}
+
+func pauseVolatile(tm *term.Terminal, dr term.Drawer) {
+	if isVolatileDrawer(tm, dr) {
+		if ptyName, okPTYName := tm.Property(propkeys.PTYName); okPTYName && internal.IsDefaultTTY(ptyName) {
+			fi, err := os.Stdout.Stat()
+			if err == nil && fi.Mode()&os.ModeNamedPipe != os.ModeNamedPipe {
+				tm.WriteString(`press any key`)
+				_, _ = os.Stdin.Read(make([]byte, 1)) // TODO read only 1 char
+				return
+			}
 		}
+		// TODO log error
+		time.Sleep(2 * time.Second)
 	}
 }
 

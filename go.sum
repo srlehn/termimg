@@ -166,6 +166,8 @@ github.com/spf13/pflag v1.0.5/go.mod h1:McXfInJRrz4CZXVZOBLb0bTZqETkiAhM9Iw0y3An
 github.com/spf13/viper v1.3.2/go.mod h1:ZiWeW+zYFKm7srdB9IoDzzZXaJaI5eL9QjNiN/DMA2s=
 github.com/srlehn/thumbnails v0.0.0-20230828184150-c4f4411057fa h1:NUjRnAEKWELBAx5gwu305/xg6IWXwKHe1Z+Q/bqYL8g=
 github.com/srlehn/thumbnails v0.0.0-20230828184150-c4f4411057fa/go.mod h1:33mJ3qxkGWjQJ+9ywESGXkiiUIXpbWipVg5h1nH6TqA=
+github.com/srlehn/thumbnails v0.0.0-20231004190311-5a9b465c0dd8 h1:H77J8mDcy9EUY61Wlnm9kRc4WuZigJE2dElcWuJV9r8=
+github.com/srlehn/thumbnails v0.0.0-20231004190311-5a9b465c0dd8/go.mod h1:33mJ3qxkGWjQJ+9ywESGXkiiUIXpbWipVg5h1nH6TqA=
 github.com/srlehn/xgbutil v0.0.0-20230718194130-098830f60574 h1:gWqnXmI90Wy9nYvzorObH+i1EEM9uIqNVqLOyUlNszc=
 github.com/srlehn/xgbutil v0.0.0-20230718194130-098830f60574/go.mod h1:0zpT8kys1/szdlahaM5/SrCTbOylt09Y60C38AISIEU=
 github.com/stretchr/testify v1.2.2/go.mod h1:a8OnRcib4nhh0OaRAV+Yts87kKdq0PP7pXfy6kDkUVs=
