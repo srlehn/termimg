@@ -10,7 +10,7 @@ require (
 	github.com/disintegration/imaging v1.6.2
 	github.com/esimov/caire v1.4.7-0.20230331122901-fc01f8e08e9e
 	github.com/fogleman/gg v1.3.0
-	github.com/gdamore/tcell/v2 v2.6.0
+	github.com/gdamore/tcell/v2 v2.6.1-0.20230827060410-08c7757cd1c9
 	github.com/gizak/termui/v3 v3.1.0
 	github.com/go-errors/errors v1.5.1
 	github.com/golang/freetype v0.0.0-20170609003504-e2365dfdc4a0
@@ -31,7 +31,7 @@ require (
 	github.com/srlehn/xgbutil v0.0.0-20230718194130-098830f60574
 	golang.org/x/exp v0.0.0-20230905200255-921286631fa9
 	golang.org/x/image v0.12.0
-	golang.org/x/sys v0.12.0
+	golang.org/x/sys v0.13.0
 	mvdan.cc/sh v2.6.4+incompatible
 )
 

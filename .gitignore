@@ -1,5 +1,6 @@
 /testdata/
 /termui
+/tcell
 /timg
 /cmd/timg/experiments.go
 /screenshot*.png
@@ -9,6 +10,8 @@
 *.exe
 /go.work
 /go.work.sum
-/*.png
-/*.jpg
-/*.jpeg
+/*.[pP][nN][gG]
+/*.[jJ][pP][gG]
+/*.[jJ][pP][eE][gG]
+/*.[bB][mM][pP]
+/*.[gG][iI][fF]

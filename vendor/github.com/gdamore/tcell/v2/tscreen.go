@@ -153,6 +153,8 @@ type tScreen struct {
 	enterUrl     string
 	exitUrl      string
 	setWinSize   string
+	enableFocus  string
+	disableFocus string
 	cursorStyles map[CursorStyle]string
 	cursorStyle  CursorStyle
 	saved        *term.State
@@ -161,6 +163,7 @@ type tScreen struct {
 	wg           sync.WaitGroup
 	mouseFlags   MouseFlags
 	pasteEnabled bool
+	focusEnabled bool
 
 	sync.Mutex
 }
@@ -365,6 +368,17 @@ func (t *tScreen) prepareExtendedOSC() {
 		t.setWinSize = t.ti.SetWindowSize
 	} else if t.ti.Mouse != "" {
 		t.setWinSize = "\x1b[8;%p1%p2%d;%dt"
+	}
+
+	if t.ti.EnableFocusReporting != "" {
+		t.enableFocus = t.ti.EnableFocusReporting
+	} else if t.ti.Mouse != "" {
+		t.enableFocus = "\x1b[?1004h"
+	}
+	if t.ti.DisableFocusReporting != "" {
+		t.disableFocus = t.ti.DisableFocusReporting
+	} else if t.ti.Mouse != "" {
+		t.disableFocus = "\x1b[?1004l"
 	}
 }
 
@@ -967,11 +981,7 @@ func (t *tScreen) draw() {
 	// restore the cursor
 	t.showCursor()
 
-	f, _ := os.Create("TEST")
-	// ff := io.TeeReader(t.buf, f)
-
-	_, _ = t.buf.WriteTo(f)
-	// _, _ = t.buf.WriteTo(t.tty)
+	_, _ = t.buf.WriteTo(t.tty)
 }
 
 func (t *tScreen) EnableMouse(flags ...MouseFlags) {
@@ -1047,6 +1057,32 @@ func (t *tScreen) enablePasting(on bool) {
 	}
 }
 
+func (t *tScreen) EnableFocus() {
+	t.Lock()
+	t.focusEnabled = true
+	t.enableFocusReporting()
+	t.Unlock()
+}
+
+func (t *tScreen) DisableFocus() {
+	t.Lock()
+	t.focusEnabled = false
+	t.disableFocusReporting()
+	t.Unlock()
+}
+
+func (t *tScreen) enableFocusReporting() {
+	if t.enableFocus != "" {
+		t.TPuts(t.enableFocus)
+	}
+}
+
+func (t *tScreen) disableFocusReporting() {
+	if t.disableFocus != "" {
+		t.TPuts(t.disableFocus)
+	}
+}
+
 func (t *tScreen) Size() (int, int) {
 	t.Lock()
 	w, h := t.w, t.h
@@ -1055,19 +1091,22 @@ func (t *tScreen) Size() (int, int) {
 }
 
 func (t *tScreen) resize() {
-	if w, h, e := t.tty.WindowSize(); e == nil {
-		if w != t.w || h != t.h {
-			t.cx = -1
-			t.cy = -1
-
-			t.cells.Resize(w, h)
-			t.cells.Invalidate()
-			t.h = h
-			t.w = w
-			ev := NewEventResize(w, h)
-			_ = t.PostEvent(ev)
-		}
+	ws, err := t.tty.WindowSize()
+	if err != nil {
+		return
 	}
+	if ws.Width == t.w && ws.Height == t.h {
+		return
+	}
+	t.cx = -1
+	t.cy = -1
+
+	t.cells.Resize(ws.Width, ws.Height)
+	t.cells.Invalidate()
+	t.h = ws.Height
+	t.w = ws.Width
+	ev := &EventResize{t: time.Now(), ws: ws}
+	_ = t.PostEvent(ev)
 }
 
 func (t *tScreen) Colors() int {
@@ -1275,6 +1314,7 @@ func (t *tScreen) parseSgrMouse(buf *bytes.Buffer, evs *[]Event) (bool, bool) {
 	dig := false
 	neg := false
 	motion := false
+	scroll := false
 	i := 0
 	val := 0
 
@@ -1349,6 +1389,7 @@ func (t *tScreen) parseSgrMouse(buf *bytes.Buffer, evs *[]Event) (bool, bool) {
 			y = val - 1
 
 			motion = (btn & 32) != 0
+			scroll = (btn & 0x42) == 0x40
 			btn &^= 32
 			if b[i] == 'm' {
 				// mouse release, clear all buttons
@@ -1367,7 +1408,7 @@ func (t *tScreen) parseSgrMouse(buf *bytes.Buffer, evs *[]Event) (bool, bool) {
 					btn |= 3
 					btn &^= 0x40
 				}
-			} else {
+			} else if !scroll {
 				t.buttondn = true
 			}
 			// consume the event bytes
@@ -1381,6 +1422,35 @@ func (t *tScreen) parseSgrMouse(buf *bytes.Buffer, evs *[]Event) (bool, bool) {
 	}
 
 	// incomplete & inconclusive at this point
+	return true, false
+}
+
+func (t *tScreen) parseFocus(buf *bytes.Buffer, evs *[]Event) (bool, bool) {
+	state := 0
+	b := buf.Bytes()
+	for i := range b {
+		switch state {
+		case 0:
+			if b[i] != '\x1b' {
+				return false, false
+			}
+			state = 1
+		case 1:
+			if b[i] != '[' {
+				return false, false
+			}
+			state = 2
+		case 2:
+			if b[i] != 'I' && b[i] != 'O' {
+				return false, false
+			}
+			*evs = append(*evs, NewEventFocus(b[i] == 'I'))
+			_, _ = buf.ReadByte()
+			_, _ = buf.ReadByte()
+			_, _ = buf.ReadByte()
+			return true, true
+		}
+	}
 	return true, false
 }
 
@@ -1555,6 +1625,12 @@ func (t *tScreen) collectEventsFromInput(buf *bytes.Buffer, expire bool) []Event
 		}
 
 		if part, comp := t.parseFunctionKey(buf, &res); comp {
+			continue
+		} else if part {
+			partials++
+		}
+
+		if part, comp := t.parseFocus(buf, &res); comp {
 			continue
 		} else if part {
 			partials++
@@ -1779,6 +1855,26 @@ func (t *tScreen) Resume() error {
 	return t.engage()
 }
 
+
+func (t *tScreen) LockRegion(x, y, width, height int, lock bool) {
+	t.Lock()
+	defer t.Unlock()
+	for j := y; j < (y + height); j += 1 {
+		for i := x; i < (x + width); i += 1 {
+			switch lock {
+			case true:
+				t.cells.LockCell(i, j)
+			case false:
+				t.cells.UnlockCell(i, j)
+			}
+		}
+	}
+}
+
+func (t *tScreen) Tty() (Tty, bool) {
+	return t.tty, true
+}
+
 // engage is used to place the terminal in raw mode and establish screen size, etc.
 // Think of this is as tcell "engaging" the clutch, as it's going to be driving the
 // terminal interface.
@@ -1801,13 +1897,16 @@ func (t *tScreen) engage() error {
 		return err
 	}
 	t.running = true
-	if w, h, err := t.tty.WindowSize(); err == nil && w != 0 && h != 0 {
-		t.cells.Resize(w, h)
+	if ws, err := t.tty.WindowSize(); err == nil && ws.Width != 0 && ws.Height != 0 {
+		t.cells.Resize(ws.Width, ws.Height)
 	}
 	stopQ := make(chan struct{})
 	t.stopQ = stopQ
 	t.enableMouse(t.mouseFlags)
 	t.enablePasting(t.pasteEnabled)
+	if t.focusEnabled {
+		t.enableFocusReporting()
+	}
 
 	ti := t.ti
 	t.TPuts(ti.EnterCA)
@@ -1857,6 +1956,7 @@ func (t *tScreen) disengage() {
 	t.TPuts(ti.ExitKeypad)
 	t.enableMouse(0)
 	t.enablePasting(false)
+	t.disableFocusReporting()
 
 	_ = t.tty.Stop()
 }

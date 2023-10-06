@@ -9,7 +9,7 @@ endif
 build: timg
 
 .PHONY: all
-all: timg termui
+all: timg termui tcell
 
 
 timg: ${SRC}
@@ -19,9 +19,21 @@ timg: ${SRC}
 timg-caire: ${SRC}
 	@env GOWORK=off CGO_ENABLED=1 go build -tags 'caire' -trimpath -ldflags '-w -s' -o timg${EXT} ./cmd/timg
 
+.PHONY: timg-tiny
+timg-tiny: ${SRC}
+	@env GOWORK=off CGO_ENABLED=0 garble -tiny build -mod=vendor -trimpath -ldflags '-w -s' -o timg${EXT} ./cmd/timg || \
+	env GOWORK=off CGO_ENABLED=0 go build -mod=vendor -trimpath -ldflags '-w -s' -o timg${EXT} ./cmd/timg
+	@sstrip timg${EXT} || :
+	@upx --ultra-brute --overlay=strip --strip-relocs=0 timg${EXT}
+
+
 # termui: *.go cmd/termui_test/main.go
 termui: ${SRC}
 	@env GOWORK=off CGO_ENABLED=0 go build -mod=vendor -trimpath -ldflags '-w -s' -o termui${EXT} cmd/termui_test/main.go
+
+# tcell: *.go cmd/tcell_test/main.go
+tcell: ${SRC}
+	@env GOWORK=off CGO_ENABLED=0 go build -mod=vendor -trimpath -ldflags '-w -s' -o tcell${EXT} cmd/tcell_test/main.go
 
 
 .PHONY: dev
@@ -37,7 +49,7 @@ dev-caire: ${SRC}
 
 .PHONY: clean
 clean:
-	@rm -f -- timg timg.exe termui termui.exe
+	@rm -f -- timg timg.exe termui termui.exe tcell tcell.exe
 
 
 # line count
@@ -74,3 +86,7 @@ install-scc:
 .PHONY: install-tokei
 install-tokei:
 	@cargo install tokei
+
+.PHONY: install-garble
+install-garble:
+	@go install mvdan.cc/garble@latest

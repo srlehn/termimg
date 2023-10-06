@@ -19,6 +19,7 @@ package tcell
 
 import (
 	"errors"
+	"github.com/gdamore/tcell/v2/terminfo"
 	"strings"
 	"sync"
 	"syscall/js"
@@ -114,29 +115,29 @@ func (t *wScreen) SetCell(x, y int, style Style, ch ...rune) {
 // via CSS.
 
 var palette = map[Color]int32{
-	ColorBlack: 0x000000,
-	ColorMaroon: 0xcd0000,
-	ColorGreen: 0x00cd00,
-	ColorOlive: 0xcdcd00,
-	ColorNavy: 0x0000ee,
-	ColorPurple: 0xcd00cd,
-	ColorTeal: 0x00cdcd,
-	ColorSilver: 0xe5e5e5,
-	ColorGray: 0x7f7f7f,
-	ColorRed: 0xff0000,
-	ColorLime: 0x00ff00,
-	ColorYellow: 0xffff00,
-	ColorBlue: 0x5c5cff,
+	ColorBlack:   0x000000,
+	ColorMaroon:  0xcd0000,
+	ColorGreen:   0x00cd00,
+	ColorOlive:   0xcdcd00,
+	ColorNavy:    0x0000ee,
+	ColorPurple:  0xcd00cd,
+	ColorTeal:    0x00cdcd,
+	ColorSilver:  0xe5e5e5,
+	ColorGray:    0x7f7f7f,
+	ColorRed:     0xff0000,
+	ColorLime:    0x00ff00,
+	ColorYellow:  0xffff00,
+	ColorBlue:    0x5c5cff,
 	ColorFuchsia: 0xff00ff,
-	ColorAqua: 0x00ffff,
-	ColorWhite: 0xffffff,
+	ColorAqua:    0x00ffff,
+	ColorWhite:   0xffffff,
 }
 
 func paletteColor(c Color) int32 {
-	if (c.IsRGB()) {
-		return int32(c & 0xffffff);
+	if c.IsRGB() {
+		return int32(c & 0xffffff)
 	}
-	if (c >= ColorBlack && c <= ColorWhite) {
+	if c >= ColorBlack && c <= ColorWhite {
 		return palette[c]
 	}
 	return c.Hex()
@@ -154,11 +155,11 @@ func (t *wScreen) drawCell(x, y int) int {
 	}
 
 	fg, bg := paletteColor(style.fg), paletteColor(style.bg)
-	if (fg == -1) {
-		fg = 0xe5e5e5;
+	if fg == -1 {
+		fg = 0xe5e5e5
 	}
-	if (bg == -1) {
-		bg = 0x000000;
+	if bg == -1 {
+		bg = 0x000000
 	}
 
 	var combcarr []interface{} = make([]interface{}, len(combc))
@@ -273,6 +274,18 @@ func (t *wScreen) enablePasting(on bool) {
 	} else {
 		js.Global().Set("onPaste", js.FuncOf(t.unset))
 	}
+}
+
+func (t *wScreen) EnableFocus() {
+	t.Lock()
+	js.Global().Set("onFocus", js.FuncOf(t.onFocus))
+	t.Unlock()
+}
+
+func (t *wScreen) DisableFocus() {
+	t.Lock()
+	js.Global().Set("onFocus", js.FuncOf(t.unset))
+	t.Unlock()
 }
 
 func (t *wScreen) Size() (int, int) {
@@ -438,6 +451,11 @@ func (t *wScreen) onPaste(this js.Value, args []js.Value) interface{} {
 	return nil
 }
 
+func (t *wScreen) onFocus(this js.Value, args []js.Value) interface{} {
+	t.PostEventWait(NewEventFocus(args[0].Bool()))
+	return nil
+}
+
 // unset is a dummy function for js when we want nothing to
 // happen when javascript calls a function (for example, when
 // mouse input is disabled, when onMouseEvent() is called from
@@ -542,6 +560,25 @@ func (t *wScreen) Resume() error {
 func (t *wScreen) Beep() error {
 	js.Global().Call("beep")
 	return nil
+}
+
+func (t *wScreen) LockRegion(x, y, width, height int, lock bool) {
+	t.Lock()
+	defer t.Unlock()
+	for j := y; j < (y + height); j += 1 {
+		for i := x; i < (x + width); i += 1 {
+			switch lock {
+			case true:
+				t.cells.LockCell(i, j)
+			case false:
+				t.cells.UnlockCell(i, j)
+			}
+		}
+	}
+}
+
+func (t *wScreen) Tty() (Tty, bool) {
+	return nil, false
 }
 
 // WebKeyNames maps string names reported from HTML
@@ -675,4 +712,8 @@ var curStyleClasses = map[CursorStyle]string{
 	CursorStyleSteadyUnderline:   "cursor-steady-underline",
 	CursorStyleBlinkingBar:       "cursor-blinking-bar",
 	CursorStyleSteadyBar:         "cursor-steady-bar",
+}
+
+func LookupTerminfo(name string) (ti *terminfo.Terminfo, e error) {
+	return nil, errors.New("LookupTermInfo not supported")
 }
