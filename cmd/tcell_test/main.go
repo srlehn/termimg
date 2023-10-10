@@ -7,11 +7,14 @@ import (
 	"log"
 
 	"github.com/gdamore/tcell/v2"
+
 	"github.com/srlehn/termimg"
+	_ "github.com/srlehn/termimg/drawers/all"
 	"github.com/srlehn/termimg/internal"
 	"github.com/srlehn/termimg/query/qdefault"
 	"github.com/srlehn/termimg/resize/rdefault"
 	"github.com/srlehn/termimg/term"
+	_ "github.com/srlehn/termimg/terminals"
 	"github.com/srlehn/termimg/tty/gotty"
 	"github.com/srlehn/termimg/tui/tcellimg"
 	"github.com/srlehn/termimg/wm"
@@ -62,6 +65,14 @@ func m() error {
 	x, y := 10, 10
 	w, h := 25, 10
 	bounds := image.Rect(x, y, x+w, y+h)
+
+	// mark the area
+	scr.SetContent(x-1, y-1, '#', nil, tcell.StyleDefault)
+	scr.SetContent(x+w, y-1, '#', nil, tcell.StyleDefault)
+	scr.SetContent(x-1, y+h, '#', nil, tcell.StyleDefault)
+	scr.SetContent(x+w, y+h, '#', nil, tcell.StyleDefault)
+	scr.Sync()
+
 	img, err := tcellimg.NewImage(termimg.NewImageBytes(imgBytes), bounds, tm, scr)
 	if err != nil {
 		return err

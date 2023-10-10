@@ -6,11 +6,9 @@ import (
 	"github.com/gdamore/tcell/v2"
 	"github.com/gdamore/tcell/v2/views"
 
-	_ "github.com/srlehn/termimg/drawers/all"
 	"github.com/srlehn/termimg/internal/consts"
 	"github.com/srlehn/termimg/internal/errors"
 	"github.com/srlehn/termimg/term"
-	_ "github.com/srlehn/termimg/terminals"
 )
 
 // TODO handle events
