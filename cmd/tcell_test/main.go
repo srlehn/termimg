@@ -42,6 +42,7 @@ func m() error {
 	if err != nil {
 		return errors.New(err)
 	}
+	defer logFile.Close()
 	wm.SetImpl(wmimpl.Impl())
 	qu := qdefault.NewQuerier()
 	opts := []term.Option{
