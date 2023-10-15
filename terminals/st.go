@@ -20,7 +20,7 @@ var _ term.TermChecker = (*termCheckerSt)(nil)
 
 type termCheckerSt struct{ term.TermChecker }
 
-func (t *termCheckerSt) CheckExclude(pr environ.Proprietor) (mightBe bool, p environ.Proprietor) {
+func (t *termCheckerSt) CheckExclude(pr environ.Properties) (mightBe bool, p environ.Properties) {
 	p = environ.NewProprietor()
 	if t == nil || pr == nil {
 		p.SetProperty(propkeys.CheckTermEnvExclPrefix+termNameSt, consts.CheckTermFailed)

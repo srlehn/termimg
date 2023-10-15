@@ -17,7 +17,7 @@ import (
 	"github.com/srlehn/termimg/mux"
 )
 
-func GetEnv(ptyName string) (envInner environ.Proprietor, passages mux.Muxers, e error) {
+func GetEnv(ptyName string) (envInner environ.Properties, passages mux.Muxers, e error) {
 	// Steps:
 	// 1.) find process providing tty
 	// 2.) walk process tree until terminal, note muxers, etc

@@ -8,7 +8,7 @@ import (
 	"github.com/srlehn/termimg/wm"
 )
 
-func createWindow(env environ.Proprietor, name, class, instance string, isWindow wm.IsWindowFunc) wm.Window {
+func createWindow(env environ.Properties, name, class, instance string, isWindow wm.IsWindowFunc) wm.Window {
 	var xdgSessionType string
 	if env != nil {
 		xdgSessionType, _ = env.LookupEnv(`XDG_SESSION_TYPE`)

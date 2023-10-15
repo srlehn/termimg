@@ -30,7 +30,7 @@ type drawerKitty struct {
 func (d *drawerKitty) Name() string     { return `kitty` }
 func (d *drawerKitty) New() term.Drawer { return &drawerKitty{} }
 
-func (d *drawerKitty) IsApplicable(inp term.DrawerCheckerInput) (bool, environ.Proprietor) {
+func (d *drawerKitty) IsApplicable(inp term.DrawerCheckerInput) (bool, environ.Properties) {
 	if inp == nil {
 		return false, nil
 	}

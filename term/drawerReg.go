@@ -12,7 +12,7 @@ func DrawersFor(inp DrawerCheckerInput) ([]Drawer, error) {
 	return drs, err
 }
 
-func drawersFor(inp DrawerCheckerInput) ([]Drawer, environ.Proprietor, error) {
+func drawersFor(inp DrawerCheckerInput) ([]Drawer, environ.Properties, error) {
 	if inp == nil {
 		return nil, nil, errors.New(consts.ErrNilParam)
 	}

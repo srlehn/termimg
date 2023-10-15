@@ -22,7 +22,7 @@ var _ term.TermChecker = (*termCheckerMlterm)(nil)
 
 type termCheckerMlterm struct{ term.TermChecker }
 
-func (t *termCheckerMlterm) CheckExclude(pr environ.Proprietor) (mightBe bool, p environ.Proprietor) {
+func (t *termCheckerMlterm) CheckExclude(pr environ.Properties) (mightBe bool, p environ.Properties) {
 	p = environ.NewProprietor()
 	if t == nil || pr == nil {
 		p.SetProperty(propkeys.CheckTermEnvExclPrefix+termNameMlterm, consts.CheckTermFailed)
@@ -43,7 +43,7 @@ func (t *termCheckerMlterm) CheckExclude(pr environ.Proprietor) (mightBe bool, p
 	p.SetProperty(propkeys.MltermVersion, envM)
 	return true, p
 }
-func (t *termCheckerMlterm) CheckIsWindow(w wm.Window) (is bool, p environ.Proprietor) {
+func (t *termCheckerMlterm) CheckIsWindow(w wm.Window) (is bool, p environ.Properties) {
 	p = environ.NewProprietor()
 	if t == nil || w == nil {
 		p.SetProperty(propkeys.CheckTermWindowIsPrefix+termNameMlterm, consts.CheckTermFailed)
@@ -60,7 +60,7 @@ func (t *termCheckerMlterm) CheckIsWindow(w wm.Window) (is bool, p environ.Propr
 	}
 	return isWindow, p
 }
-func (t *termCheckerMlterm) Args(pr environ.Proprietor) []string {
+func (t *termCheckerMlterm) Args(pr environ.Properties) []string {
 	args := []string{
 		`--sbmod=none`, // disable scrollbar
 	}

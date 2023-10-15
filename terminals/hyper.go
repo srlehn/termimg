@@ -3,7 +3,6 @@ package terminals
 import (
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/srlehn/termimg/internal/consts"
 	"github.com/srlehn/termimg/internal/environ"
@@ -26,7 +25,7 @@ var _ term.TermChecker = (*termCheckerHyper)(nil)
 
 type termCheckerHyper struct{ term.TermChecker }
 
-func (t *termCheckerHyper) CheckExclude(pr environ.Proprietor) (mightBe bool, p environ.Proprietor) {
+func (t *termCheckerHyper) CheckExclude(pr environ.Properties) (mightBe bool, p environ.Properties) {
 	p = environ.NewProprietor()
 	if t == nil || pr == nil {
 		p.SetProperty(propkeys.CheckTermEnvExclPrefix+termNameHyper, consts.CheckTermFailed)
@@ -70,7 +69,7 @@ end:
 	return true, p
 }
 
-func (t *termCheckerHyper) Surveyor(pr environ.Proprietor) term.PartialSurveyor {
+func (t *termCheckerHyper) Surveyor(pr environ.Properties) term.PartialSurveyor {
 	// BUG in v4.0.0-canary.4: CSI 14t reports wrong pixel size
 	return &surveyorHyperWrong14t{}
 }
@@ -95,6 +94,7 @@ func (s *surveyorHyperWrong14t) CellSizeQuery(qu term.Querier, tty term.TTY) (wi
 	// likely also wrong
 	return 0, 0, errors.New(consts.ErrNotImplemented)
 
-	time.Sleep(125 * time.Millisecond) // slow terminal
-	return s.survXTerm.CellSizeQuery(qu, tty)
+	// TODO
+	// time.Sleep(125 * time.Millisecond) // slow terminal
+	// return s.survXTerm.CellSizeQuery(qu, tty)
 }

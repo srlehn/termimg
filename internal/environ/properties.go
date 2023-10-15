@@ -10,7 +10,7 @@ import (
 	"github.com/srlehn/termimg/internal/util"
 )
 
-type Proprietor interface {
+type Properties interface {
 	Enver
 	PropertyExporter
 	Property(key string) (string, bool)
@@ -25,21 +25,21 @@ type Enver interface {
 }
 
 type PropertyExporter interface {
-	Properties() map[string]string
+	ExportProperties() map[string]string
 }
 
-var _ Proprietor = (*proprietorGeneric)(nil)
+var _ Properties = (*proprietorGeneric)(nil)
 
 type proprietorGeneric struct {
 	sync.Locker
 	properties map[string]string
 }
 
-func NewProprietor() Proprietor {
+func NewProprietor() Properties {
 	return &proprietorGeneric{Locker: &sync.Mutex{}, properties: make(map[string]string)}
 }
 
-func CloneProprietor(pr PropertyExporter) Proprietor {
+func CloneProprietor(pr PropertyExporter) Properties {
 	if pr == nil {
 		return nil
 	}
@@ -80,7 +80,7 @@ func (p *proprietorGeneric) SetProperty(key, value string) {
 	p.properties[key] = value
 }
 
-func (p *proprietorGeneric) Properties() map[string]string {
+func (p *proprietorGeneric) ExportProperties() map[string]string {
 	if p == nil {
 		*p = proprietorGeneric{Locker: &sync.Mutex{}, properties: make(map[string]string)}
 	}
@@ -134,7 +134,7 @@ func (p *proprietorGeneric) Merge(pr PropertyExporter) {
 	if p.properties == nil {
 		p.properties = make(map[string]string)
 	}
-	m := pr.Properties()
+	m := pr.ExportProperties()
 	if m == nil {
 		return
 	}

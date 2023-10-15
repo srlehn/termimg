@@ -36,7 +36,7 @@ type drawerW3MImgDisplay struct{}
 func (d *drawerW3MImgDisplay) Name() string     { return `w3mimgdisplay` }
 func (d *drawerW3MImgDisplay) New() term.Drawer { return &drawerW3MImgDisplay{} }
 
-func (d *drawerW3MImgDisplay) IsApplicable(inp term.DrawerCheckerInput) (bool, environ.Proprietor) {
+func (d *drawerW3MImgDisplay) IsApplicable(inp term.DrawerCheckerInput) (bool, environ.Properties) {
 	if inp == nil {
 		return false, nil
 	}

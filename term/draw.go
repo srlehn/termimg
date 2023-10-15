@@ -23,7 +23,7 @@ func AllDrawers() []Drawer {
 type Drawer interface {
 	Name() string
 	New() Drawer
-	IsApplicable(DrawerCheckerInput) (bool, environ.Proprietor)
+	IsApplicable(DrawerCheckerInput) (bool, environ.Properties)
 	Draw(img image.Image, bounds image.Rectangle, term *Terminal) error
 }
 

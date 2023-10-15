@@ -25,7 +25,7 @@ type drawerBraille struct{}
 func (d *drawerBraille) Name() string     { return `generic2` }
 func (d *drawerBraille) New() term.Drawer { return &drawerBraille{} }
 
-func (d *drawerBraille) IsApplicable(inp term.DrawerCheckerInput) (bool, environ.Proprietor) {
+func (d *drawerBraille) IsApplicable(inp term.DrawerCheckerInput) (bool, environ.Properties) {
 	return true, nil
 }
 

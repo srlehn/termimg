@@ -22,7 +22,7 @@ var _ term.TermChecker = (*termCheckerWezTerm)(nil)
 
 type termCheckerWezTerm struct{ term.TermChecker }
 
-func (t *termCheckerWezTerm) CheckExclude(ci environ.Proprietor) (mightBe bool, p environ.Proprietor) {
+func (t *termCheckerWezTerm) CheckExclude(ci environ.Properties) (mightBe bool, p environ.Properties) {
 	p = environ.NewProprietor()
 	if t == nil || ci == nil {
 		p.SetProperty(propkeys.CheckTermEnvExclPrefix+termNameWezTerm, consts.CheckTermFailed)
@@ -57,7 +57,7 @@ func (t *termCheckerWezTerm) CheckExclude(ci environ.Proprietor) (mightBe bool, 
 	p.SetProperty(propkeys.CheckTermEnvExclPrefix+termNameWezTerm, consts.CheckTermPassed)
 	return true, p
 }
-func (t *termCheckerWezTerm) CheckIsWindow(w wm.Window) (is bool, p environ.Proprietor) {
+func (t *termCheckerWezTerm) CheckIsWindow(w wm.Window) (is bool, p environ.Properties) {
 	p = environ.NewProprietor()
 	if t == nil || w == nil {
 		p.SetProperty(propkeys.CheckTermWindowIsPrefix+termNameWezTerm, consts.CheckTermFailed)
@@ -73,4 +73,4 @@ func (t *termCheckerWezTerm) CheckIsWindow(w wm.Window) (is bool, p environ.Prop
 	}
 	return isWindow, p
 }
-func (t *termCheckerWezTerm) Args(pr environ.Proprietor) []string { return []string{`--skip-config`} }
+func (t *termCheckerWezTerm) Args(pr environ.Properties) []string { return []string{`--skip-config`} }

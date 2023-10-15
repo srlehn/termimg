@@ -34,7 +34,7 @@ type connX11 struct {
 	*xgbutil.XUtil
 }
 
-func newConn(env environ.Proprietor) (*connX11, error) {
+func newConn(env environ.Properties) (*connX11, error) {
 	var displayVar string
 	if env != nil {
 		displayVar, _ = env.LookupEnv(`DISPLAY`)
@@ -93,7 +93,7 @@ func (c *connX11) DisplayImage(img image.Image, windowName string) {
 	xevent.Main(c.XUtil)
 }
 
-func (c *connX11) Resources() (environ.Proprietor, error) {
+func (c *connX11) Resources() (environ.Properties, error) {
 	xRes, err := x11.XResources(c.XUtil)
 	if err != nil {
 		return nil, err
@@ -515,7 +515,7 @@ func (w *windowX11) Close() error {
 	return nil
 }
 
-func createWindowX11(env environ.Proprietor, name, class, instance string, isWindow wm.IsWindowFunc) wm.Window {
+func createWindowX11(env environ.Properties, name, class, instance string, isWindow wm.IsWindowFunc) wm.Window {
 	var windowID, pidTerm uint64
 	if env != nil {
 		pidTermStr, okPIDTerm := env.Property(propkeys.TerminalPID)

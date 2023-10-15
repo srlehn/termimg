@@ -21,7 +21,7 @@ var _ term.TermChecker = (*termCheckerTabby)(nil)
 
 type termCheckerTabby struct{ term.TermChecker }
 
-func (t *termCheckerTabby) CheckExclude(pr environ.Proprietor) (mightBe bool, p environ.Proprietor) {
+func (t *termCheckerTabby) CheckExclude(pr environ.Properties) (mightBe bool, p environ.Properties) {
 	p = environ.NewProprietor()
 	if t == nil || pr == nil {
 		p.SetProperty(propkeys.CheckTermEnvExclPrefix+termNameTabby, consts.CheckTermFailed)

@@ -9,6 +9,6 @@ import (
 	"github.com/srlehn/termimg/wm"
 )
 
-func createWindowWayland(env environ.Proprietor, name, class, instance string, isWindow wm.IsWindowFunc) wm.Window {
+func createWindowWayland(env environ.Properties, name, class, instance string, isWindow wm.IsWindowFunc) wm.Window {
 	return nil // TODO implement wayland window
 }

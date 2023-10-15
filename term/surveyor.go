@@ -2,6 +2,7 @@ package term
 
 import (
 	"image"
+	"sync"
 
 	"github.com/srlehn/termimg/internal/consts"
 	"github.com/srlehn/termimg/internal/environ"
@@ -10,12 +11,20 @@ import (
 	"github.com/srlehn/termimg/wm"
 )
 
+type Resolution struct {
+	TermInCellsW, TermInCellsH uint
+	TermInPxlsW, TermInPxlsH   uint
+	CellInPxlsW, CellInPxlsH   float64
+}
+
 type SurveyorLight interface {
-	CellSize(TTY, Querier, wm.Window, environ.Proprietor) (width, height float64, err error)
-	SizeInCells(TTY, Querier, wm.Window, environ.Proprietor) (width, height uint, err error)
-	SizeInPixels(TTY, Querier, wm.Window, environ.Proprietor) (width, height uint, err error)
-	Cursor(TTY, Querier, wm.Window, environ.Proprietor) (xPosCells, yPosCells uint, err error)
-	SetCursor(xPosCells, yPosCells uint, tty TTY, qu Querier, w wm.Window, pr environ.Proprietor) (err error)
+	CellSize(TTY, Querier, wm.Window, environ.Properties) (width, height float64, err error)
+	SizeInCells(TTY, Querier, wm.Window, environ.Properties) (width, height uint, err error)
+	SizeInPixels(TTY, Querier, wm.Window, environ.Properties) (width, height uint, err error)
+	Cursor(TTY, Querier, wm.Window, environ.Properties) (xPosCells, yPosCells uint, err error)
+	SetCursor(xPosCells, yPosCells uint, tty TTY, qu Querier, w wm.Window, pr environ.Properties) (err error)
+	WatchResizeEventsStart(TTY, Querier, wm.Window, environ.Properties) (_ <-chan Resolution, closeFunc func() error, _ error)
+	WatchResizeEventsStop() error
 }
 
 // Surveyor is implemented by Terminal
@@ -42,6 +51,8 @@ type Surveyor interface {
 //   - CursorQuery(qu Querier, tty TTY) (widthCells, heightCells uint, err error)
 //   - SetCursor(xPosCells, yPosCells uint, tty TTY) (err error)
 //   - SetCursorQuery(xPosCells, yPosCells uint, qu Querier, tty TTY) (err error)
+//   - ResizeEvents(tty TTY) (<-chan Resolution, error)
+//   - ResizeEventsWindow(w wm.Window) (<-chan Resolution, error)
 type PartialSurveyor interface {
 	// TODO doc
 	// TODO wm.Window func
@@ -55,15 +66,17 @@ type surveyor struct {
 	s                         PartialSurveyor
 	avoidQuery                bool
 	isRemote                  bool
-	cellSizeFuncs             []func(TTY, Querier, wm.Window) (width, height float64, err error)
-	SizeInCellsFuncs          []func(TTY, Querier, wm.Window) (widthCells, heightCells uint, err error)
-	SizeInPixelsFuncs         []func(TTY, Querier, wm.Window) (widthPixels, heightPixels uint, err error)
-	SizeInCellsAndPixelsFuncs []func(TTY, Querier, wm.Window) (widthCells, heightCells, widthPixels, heightPixels uint, err error)
-	posGetFuncs               []func(TTY, Querier) (xPosCells, yPosCells uint, err error)
-	posSetFuncs               []func(xPosCells, yPosCells uint, tty TTY, qu Querier) (err error)
+	cellSizeFuncs             []func(TTY, Querier, wm.Window) (width, height float64, _ error)
+	SizeInCellsFuncs          []func(TTY, Querier, wm.Window) (widthCells, heightCells uint, _ error)
+	SizeInPixelsFuncs         []func(TTY, Querier, wm.Window) (widthPixels, heightPixels uint, _ error)
+	SizeInCellsAndPixelsFuncs []func(TTY, Querier, wm.Window) (widthCells, heightCells, widthPixels, heightPixels uint, _ error)
+	posGetFuncs               []func(TTY, Querier) (xPosCells, yPosCells uint, _ error)
+	posSetFuncs               []func(xPosCells, yPosCells uint, tty TTY, qu Querier) error
+	resizeEventFuncs          []func(TTY, wm.Window) (_ <-chan Resolution, closeFunc func() error, _ error)
+	watchWINCHStopFunc        func() error
 }
 
-func getSurveyor(s PartialSurveyor, p environ.Proprietor) SurveyorLight {
+func getSurveyor(s PartialSurveyor, p environ.Properties) SurveyorLight {
 	if s == nil || p == nil {
 		return nil
 	}
@@ -174,11 +187,27 @@ func getSurveyor(s PartialSurveyor, p environ.Proprietor) SurveyorLight {
 		}
 		srv.SizeInPixelsFuncs = append(srv.SizeInPixelsFuncs, sizerInPixelsWindowFunc)
 	}
+	if wincher, ok := s.(interface {
+		ResizeEvents(tty TTY) (_ <-chan Resolution, closeFunc func() error, _ error)
+	}); ok {
+		resizeEventFunc := func(tty TTY, _ wm.Window) (_ <-chan Resolution, closeFunc func() error, _ error) {
+			return wincher.ResizeEvents(tty)
+		}
+		srv.resizeEventFuncs = append(srv.resizeEventFuncs, resizeEventFunc)
+	}
+	if wincherWindow, ok := s.(interface {
+		ResizeEventsWindow(w wm.Window) (_ <-chan Resolution, closeFunc func() error, _ error)
+	}); ok {
+		resizeEventWindowFunc := func(_ TTY, w wm.Window) (_ <-chan Resolution, closeFunc func() error, _ error) {
+			return wincherWindow.ResizeEventsWindow(w)
+		}
+		srv.resizeEventFuncs = append(srv.resizeEventFuncs, resizeEventWindowFunc)
+	}
 
 	return srv
 }
 
-func (s *surveyor) CellSize(tty TTY, qu Querier, w wm.Window, pr environ.Proprietor) (width, height float64, err error) {
+func (s *surveyor) CellSize(tty TTY, qu Querier, w wm.Window, pr environ.Properties) (width, height float64, err error) {
 	if s == nil {
 		return 0, 0, errors.New(consts.ErrNilReceiver)
 	}
@@ -285,7 +314,7 @@ func (s *surveyor) CellSize(tty TTY, qu Querier, w wm.Window, pr environ.Proprie
 	}
 	return 0, 0, errRet
 }
-func (s *surveyor) SizeInCells(tty TTY, qu Querier, w wm.Window, pr environ.Proprietor) (width, height uint, err error) {
+func (s *surveyor) SizeInCells(tty TTY, qu Querier, w wm.Window, pr environ.Properties) (width, height uint, err error) {
 	if s == nil {
 		return 0, 0, errors.New(consts.ErrNilReceiver)
 	}
@@ -370,7 +399,7 @@ func (s *surveyor) SizeInCells(tty TTY, qu Querier, w wm.Window, pr environ.Prop
 	}
 	return 0, 0, errRet
 }
-func (s *surveyor) SizeInPixels(tty TTY, qu Querier, w wm.Window, pr environ.Proprietor) (width, height uint, err error) {
+func (s *surveyor) SizeInPixels(tty TTY, qu Querier, w wm.Window, pr environ.Properties) (width, height uint, err error) {
 	if s == nil {
 		return 0, 0, errors.New(consts.ErrNilReceiver)
 	}
@@ -467,7 +496,7 @@ func (s *surveyor) SizeInPixels(tty TTY, qu Querier, w wm.Window, pr environ.Pro
 	}
 	return 0, 0, errRet
 }
-func (s *surveyor) Cursor(tty TTY, qu Querier, _ wm.Window, _ environ.Proprietor) (xPosCells, yPosCells uint, err error) {
+func (s *surveyor) Cursor(tty TTY, qu Querier, _ wm.Window, _ environ.Properties) (xPosCells, yPosCells uint, err error) {
 	if s == nil {
 		return 0, 0, errors.New(consts.ErrNilReceiver)
 	}
@@ -493,7 +522,7 @@ func (s *surveyor) Cursor(tty TTY, qu Querier, _ wm.Window, _ environ.Proprietor
 	}
 	return 0, 0, errRet
 }
-func (s *surveyor) SetCursor(xPosCells, yPosCells uint, tty TTY, qu Querier, w wm.Window, pr environ.Proprietor) (err error) {
+func (s *surveyor) SetCursor(xPosCells, yPosCells uint, tty TTY, qu Querier, w wm.Window, pr environ.Properties) (err error) {
 	if s == nil {
 		return errors.New(consts.ErrNilReceiver)
 	}
@@ -518,4 +547,77 @@ func (s *surveyor) SetCursor(xPosCells, yPosCells uint, tty TTY, qu Querier, w w
 		errRet = errors.Errorf("%s: %w", "Surveyor.SetCursor failed", errRet)
 	}
 	return errRet
+}
+func (s *surveyor) WatchResizeEventsStart(tty TTY, qu Querier, w wm.Window, pr environ.Properties) (_ <-chan Resolution, closeFunc func() error, _ error) {
+	var resChans []<-chan Resolution
+	var closeFuncs []func() error
+	var errs []error
+	if wincher, ok := tty.(interface {
+		ResizeEvents() (_ <-chan Resolution, closeFunc func() error, _ error)
+	}); ok {
+		winch, closeFunc, err := wincher.ResizeEvents()
+		if err == nil {
+			if winch != nil {
+				resChans = append(resChans, winch)
+			}
+			if closeFunc != nil {
+				closeFuncs = append(closeFuncs, closeFunc)
+			}
+		} else {
+			errs = append(errs, err)
+		}
+	}
+	for _, winchFunc := range s.resizeEventFuncs {
+		winch, closeFunc, err := winchFunc(tty, w)
+		if err == nil {
+			if winch != nil {
+				resChans = append(resChans, winch)
+			}
+			if closeFunc != nil {
+				closeFuncs = append(closeFuncs, closeFunc)
+			}
+		} else {
+			errs = append(errs, err)
+		}
+	}
+	var comb chan Resolution
+	if len(resChans) > 0 {
+		comb = make(chan Resolution)
+		for _, winch := range resChans {
+			go func(winch <-chan Resolution) {
+				for {
+					if winch == nil {
+						break
+					}
+					res, ok := <-winch
+					if !ok {
+						break
+					}
+					comb <- res
+				}
+			}(winch)
+		}
+	}
+	closeOnce := sync.Once{}
+	closeFunc = func() error {
+		var errRet error
+		closeOnce.Do(func() {
+			var errs []error
+			for _, closeFunc := range closeFuncs {
+				errs = append(errs, closeFunc())
+			}
+			close(comb)
+			errRet = errors.Join(errs...)
+		})
+		return errRet
+	}
+	s.watchWINCHStopFunc = closeFunc
+	errRet := errors.Join(errs...)
+	return comb, closeFunc, errRet
+}
+func (s *surveyor) WatchResizeEventsStop() error {
+	if s == nil || s.watchWINCHStopFunc == nil {
+		return nil
+	}
+	return s.watchWINCHStopFunc()
 }

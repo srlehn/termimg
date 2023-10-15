@@ -3,12 +3,14 @@ package term
 import (
 	"fmt"
 	"image"
+	"log/slog"
 	"math"
 	"os"
 	"runtime"
 	"sort"
 	"strings"
 	"sync"
+	"time"
 	"unsafe"
 
 	"golang.org/x/exp/maps"
@@ -19,6 +21,7 @@ import (
 	"github.com/srlehn/termimg/internal/errors"
 	"github.com/srlehn/termimg/internal/propkeys"
 	"github.com/srlehn/termimg/internal/queries"
+	"github.com/srlehn/termimg/internal/util"
 	"github.com/srlehn/termimg/internal/wminternal"
 	"github.com/srlehn/termimg/mux"
 	"github.com/srlehn/termimg/wm"
@@ -52,14 +55,14 @@ type Terminal interface {
 var _ interface {
 	internal.Closer
 	Surveyor
-	environ.Proprietor
+	environ.Properties
 	TTY
 } = (*Terminal)(nil)
 
 type (
 	tty        = TTY
 	querier    = Querier
-	proprietor = environ.Proprietor
+	proprietor = environ.Properties
 	arger      = internal.Arger
 	closer     = internal.Closer
 )
@@ -83,7 +86,18 @@ type Terminal struct {
 	partialSurveyor, partialSurveyorDefault PartialSurveyor
 	windowProvider, windowProviderDefault   wm.WindowProvider
 
-	// TODO add logger
+	// resolution
+	resTermInCellsX, resTermInCellsY uint
+	resTermInPxlsX, resTermInPxlsY   uint
+	resCellInPxlsX, resCellInPxlsY   float64
+	// last window change
+	timeLastWINCH time.Time
+	// window change directly prior to last resolution query
+	timeResTermInCells time.Time
+	timeResTermInPxls  time.Time
+	timeResCellInPxls  time.Time
+
+	logger *slog.Logger
 }
 
 // NewTerminal tries to recognize the terminal that manages the device ptyName.
@@ -169,7 +183,7 @@ func getTTYAndQuerier(tm *Terminal, tc *termCheckerCore) (TTY, Querier, error) {
 	} else {
 		if tc != nil {
 			if ttyProv, okTTYProv := tc.parent.(interface {
-				TTY(pytName string, ci environ.Proprietor) (TTY, error)
+				TTY(pytName string, ci environ.Properties) (TTY, error)
 			}); okTTYProv {
 				tty, err := ttyProv.TTY(tm.ptyName(), tm.proprietor)
 				if err != nil {
@@ -208,7 +222,7 @@ func getTTYAndQuerier(tm *Terminal, tc *termCheckerCore) (TTY, Querier, error) {
 	} else {
 		if tc != nil {
 			if querier, okQuerier := tc.parent.(interface {
-				Querier(environ.Proprietor) Querier
+				Querier(environ.Properties) Querier
 			}); okQuerier {
 				quTemp = querier.Querier(tm.proprietor)
 			}
@@ -223,7 +237,7 @@ func getTTYAndQuerier(tm *Terminal, tc *termCheckerCore) (TTY, Querier, error) {
 	return ttyTemp, quTemp, nil
 }
 
-func findTermChecker(env environ.Proprietor, tty TTY, qu Querier) (tc TermChecker, _ environ.Proprietor, e error) {
+func findTermChecker(env environ.Properties, tty TTY, qu Querier) (tc TermChecker, _ environ.Properties, e error) {
 	var ttyTemp TTY
 	if tty == nil || qu == nil {
 		return RegisteredTermChecker(consts.TermGenericName), nil, errors.New(consts.ErrNilParam)
@@ -316,7 +330,7 @@ func findTermChecker(env environ.Proprietor, tty TTY, qu Querier) (tc TermChecke
 			if !is {
 				exclSolePassed := !exclEnvSkipped
 				if exclSolePassed {
-					prI.Properties()
+					prI.ExportProperties()
 					passedIs, okPassedIs := prI.Property(propkeys.CheckTermQueryIsPrefix + tchkName)
 					exclSolePassed = okPassedIs && passedIs == consts.CheckTermDummy
 				}
@@ -608,6 +622,79 @@ func (t *Terminal) CellScale(ptSrcPx, ptDstCl image.Point) (ptSrcCl image.Point,
 	return ptSrcCl, nil
 }
 
+func (t *Terminal) watchWINCHStart() error {
+	if t == nil || t.surveyor == nil {
+		return errors.New(consts.ErrNilReceiver)
+	}
+	winch, closeFunc, err := t.surveyor.WatchResizeEventsStart(t.tty, t.querier, t.window, t.proprietor)
+	if util.IsErrAndLog(err, t, (*Terminal).logInfo) {
+		return err
+	}
+	t.closer.OnClose(closeFunc)
+	go func() {
+		for {
+			if winch == nil {
+				return
+			}
+			res, ok := <-winch
+			if !ok {
+				return
+			}
+			tmNow := time.Now()
+			t.timeLastWINCH = tmNow
+			if res.TermInCellsW > 0 && res.TermInCellsH > 0 {
+				t.resTermInCellsX = res.TermInCellsW
+				t.resTermInCellsY = res.TermInCellsH
+				t.timeResTermInCells = tmNow
+			}
+			if res.TermInPxlsW > 0 && res.TermInPxlsH > 0 {
+				t.resTermInPxlsX = res.TermInPxlsW
+				t.resTermInPxlsY = res.TermInPxlsH
+				t.timeResTermInPxls = tmNow
+			}
+			if t.resCellInPxlsX >= 1 && t.resCellInPxlsY >= 1 {
+				t.resCellInPxlsX = res.CellInPxlsW
+				t.resCellInPxlsY = res.CellInPxlsH
+				t.timeResCellInPxls = tmNow
+			}
+			// TODO perhaps calculate cell resolution if missing based on terminal resolution (cells & pixels)
+		}
+	}()
+	return nil
+}
+func (t *Terminal) watchWINCHStop() error {
+	if t == nil || t.surveyor == nil {
+		return errors.New(consts.ErrNilReceiver)
+	}
+	return t.surveyor.WatchResizeEventsStop()
+}
+
+// TODO perhaps add context
+func (t *Terminal) logDebug(msg string, args ...any) {
+	if t == nil || t.logger == nil {
+		return
+	}
+	t.logger.Debug(msg, args...)
+}
+func (t *Terminal) logInfo(msg string, args ...any) {
+	if t == nil || t.logger == nil {
+		return
+	}
+	t.logger.Info(msg, args...)
+}
+func (t *Terminal) logWarn(msg string, args ...any) {
+	if t == nil || t.logger == nil {
+		return
+	}
+	t.logger.Warn(msg, args...)
+}
+func (t *Terminal) logError(msg string, args ...any) {
+	if t == nil || t.logger == nil {
+		return
+	}
+	t.logger.Error(msg, args...)
+}
+
 // round away from zero (toward infinity)
 func roundInf(f float64) int {
 	if f > 0 {
@@ -666,16 +753,23 @@ func (t *Terminal) Scroll(lineCnt int) error {
 	return nil
 }
 
-func (t *Terminal) CellSize() (width, height float64, err error) {
+func (t *Terminal) CellSize() (width, height float64, _ error) {
 	if t == nil {
 		return 0, 0, errors.New(consts.ErrNilReceiver)
 	}
 	if t.surveyor == nil {
 		return 0, 0, errors.New(`nil surveyor`)
 	}
-	cpw, cph, err := t.surveyor.CellSize(t.tty, t.querier, t.window, t.proprietor)
-	if err != nil {
-		return 0, 0, err
+	var cpw, cph float64
+	var err error
+	// TODO add prop key for disabling cache
+	if !t.timeResCellInPxls.IsZero() && t.timeResCellInPxls.Equal(t.timeLastWINCH) {
+		cpw, cph = t.resCellInPxlsX, t.resCellInPxlsY
+	} else {
+		cpw, cph, err = t.surveyor.CellSize(t.tty, t.querier, t.window, t.proprietor)
+		if err != nil {
+			return 0, 0, err
+		}
 	}
 	if cpw < 1 || cph < 1 {
 		return 0, 0, errors.New(`CellSize failed`)
@@ -690,6 +784,10 @@ func (t *Terminal) SizeInCells() (width, height uint, err error) {
 	if t.surveyor == nil {
 		return 0, 0, errors.New(`nil surveyor`)
 	}
+	// TODO add prop key for disabling cache
+	if !t.timeResTermInCells.IsZero() && t.timeResTermInCells.Equal(t.timeLastWINCH) {
+		return t.resTermInCellsX, t.resTermInCellsY, nil
+	}
 	return t.surveyor.SizeInCells(t.tty, t.querier, t.window, t.proprietor)
 }
 
@@ -699,6 +797,10 @@ func (t *Terminal) SizeInPixels() (width, height uint, err error) {
 	}
 	if t.surveyor == nil {
 		return 0, 0, errors.New(`nil surveyor`)
+	}
+	// TODO add prop key for disabling cache
+	if !t.timeResTermInPxls.IsZero() && t.timeResTermInPxls.Equal(t.timeLastWINCH) {
+		return t.resTermInPxlsX, t.resTermInPxlsY, nil
 	}
 	return t.surveyor.SizeInPixels(t.tty, t.querier, t.window, t.proprietor)
 }

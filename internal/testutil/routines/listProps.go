@@ -22,7 +22,7 @@ func ListTermChecks() error {
 	defer tm.Close()
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 1, ' ', 0)
 	fmt.Fprintln(w, tm.Name(), tm.Drawers()[0].Name())
-	for k, v := range tm.Properties() {
+	for k, v := range tm.ExportProperties() {
 		if !strings.HasPrefix(k, propkeys.CheckPrefix) {
 			continue
 		}
@@ -112,7 +112,7 @@ func ListTermProps(tm *term.Terminal, listTerm, listDrawers, listQueries, listEn
 		if !singleType {
 			prefix = "env "
 		}
-		for _, k := range util.MapsKeysSorted(tm.Properties()) {
+		for _, k := range util.MapsKeysSorted(tm.ExportProperties()) {
 			envName, found := strings.CutPrefix(k, propkeys.EnvPrefix)
 			if !found {
 				continue
@@ -155,7 +155,7 @@ func ListTermProps(tm *term.Terminal, listTerm, listDrawers, listQueries, listEn
 					prefix = "x resource "
 				}
 				if len(windowClass) > 0 {
-					props := tm.Properties()
+					props := tm.ExportProperties()
 					keys := make([]string, len(props))
 					for k := range props {
 						if rest, found := strings.CutPrefix(k, propkeys.XResourcesPrefix+windowClass); found &&

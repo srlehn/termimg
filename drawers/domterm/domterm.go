@@ -24,7 +24,7 @@ type drawerDomTerm struct{}
 func (d *drawerDomTerm) Name() string     { return `domterm` }
 func (d *drawerDomTerm) New() term.Drawer { return &drawerDomTerm{} }
 
-func (d *drawerDomTerm) IsApplicable(inp term.DrawerCheckerInput) (bool, environ.Proprietor) {
+func (d *drawerDomTerm) IsApplicable(inp term.DrawerCheckerInput) (bool, environ.Properties) {
 	return inp != nil && inp.Name() == `domterm`, nil
 }
 

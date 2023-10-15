@@ -1,0 +1,12 @@
+{
+    "MD033": {
+        "allowed_elements": [
+            "h2",
+            "h3",
+            "span",
+            "summary",
+            "blockquote",
+            "details"
+        ]
+    }
+}

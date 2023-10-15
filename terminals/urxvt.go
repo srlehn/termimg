@@ -31,7 +31,7 @@ type termCheckerURXVT struct {
 	canQueryCellSize776 bool
 }
 
-func (t *termCheckerURXVT) CheckExclude(pr environ.Proprietor) (mightBe bool, p environ.Proprietor) {
+func (t *termCheckerURXVT) CheckExclude(pr environ.Properties) (mightBe bool, p environ.Properties) {
 	p = environ.NewProprietor()
 	if t == nil || pr == nil {
 		p.SetProperty(propkeys.CheckTermEnvExclPrefix+termNameURXVT, consts.CheckTermFailed)
@@ -54,7 +54,7 @@ func (t *termCheckerURXVT) CheckExclude(pr environ.Proprietor) (mightBe bool, p 
 	}
 	return mayBeURXVT, p
 }
-func (t *termCheckerURXVT) CheckIsQuery(qu term.Querier, tty term.TTY, pr environ.Proprietor) (is bool, p environ.Proprietor) {
+func (t *termCheckerURXVT) CheckIsQuery(qu term.Querier, tty term.TTY, pr environ.Properties) (is bool, p environ.Properties) {
 	// https://terminalguide.namepad.de/seq/osc-702/
 	// $ printf '\033]702;?\033\'
 	// # "\033]702;rxvt-unicode;urxvt;9;2\033"
@@ -115,7 +115,7 @@ func (t *termCheckerURXVT) CheckIsQuery(qu term.Querier, tty term.TTY, pr enviro
 	p.SetProperty(propkeys.CheckTermQueryIsPrefix+termNameURXVT, consts.CheckTermPassed)
 	return true, p
 }
-func (t *termCheckerURXVT) CheckIsWindow(w wm.Window) (is bool, p environ.Proprietor) {
+func (t *termCheckerURXVT) CheckIsWindow(w wm.Window) (is bool, p environ.Properties) {
 	p = environ.NewProprietor()
 	if t == nil || w == nil {
 		p.SetProperty(propkeys.CheckTermWindowIsPrefix+termNameURXVT, consts.CheckTermFailed)
@@ -137,7 +137,7 @@ func (t *termCheckerURXVT) CheckIsWindow(w wm.Window) (is bool, p environ.Propri
 // func (t *TermURXVT) X11WindowName() string  { return `urxvt` }
 // func (t *TermURXVT) X11WindowClass() string { return `URxvt` }
 
-func (t *termCheckerURXVT) Surveyor(pr environ.Proprietor) term.PartialSurveyor {
+func (t *termCheckerURXVT) Surveyor(pr environ.Properties) term.PartialSurveyor {
 	if t == nil || !t.canQueryCellSize776 {
 		return nil
 	}

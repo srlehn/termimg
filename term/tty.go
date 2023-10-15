@@ -5,6 +5,8 @@ import (
 )
 
 // TTY ...
+// optional methods:
+//   - ResizeEvents() (_ <-chan Resolution, closeFunc func() error, _ error)
 type TTY interface {
 	TTYDevName() string
 	// TODO -> io.ReadWriteCloser

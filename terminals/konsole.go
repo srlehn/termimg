@@ -24,7 +24,7 @@ var _ term.TermChecker = (*termCheckerKonsole)(nil)
 
 type termCheckerKonsole struct{ term.TermChecker }
 
-func (t *termCheckerKonsole) CheckIsQuery(qu term.Querier, tty term.TTY, pr environ.Proprietor) (is bool, p environ.Proprietor) {
+func (t *termCheckerKonsole) CheckIsQuery(qu term.Querier, tty term.TTY, pr environ.Properties) (is bool, p environ.Properties) {
 	p = environ.NewProprietor()
 	if t == nil || pr == nil {
 		p.SetProperty(propkeys.CheckTermQueryIsPrefix+termNameKonsole, consts.CheckTermFailed)

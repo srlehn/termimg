@@ -21,7 +21,7 @@ var _ term.TermChecker = (*termCheckerYaft)(nil)
 
 type termCheckerYaft struct{ term.TermChecker }
 
-func (t *termCheckerYaft) CheckExclude(pr environ.Proprietor) (mightBe bool, p environ.Proprietor) {
+func (t *termCheckerYaft) CheckExclude(pr environ.Properties) (mightBe bool, p environ.Properties) {
 	p = environ.NewProprietor()
 	if t == nil || pr == nil {
 		p.SetProperty(propkeys.CheckTermEnvExclPrefix+termNameYaft, consts.CheckTermFailed)

@@ -23,7 +23,7 @@ type drawerURXVT struct{}
 func (d *drawerURXVT) Name() string     { return `urxvt` }
 func (d *drawerURXVT) New() term.Drawer { return &drawerURXVT{} }
 
-func (d *drawerURXVT) IsApplicable(inp term.DrawerCheckerInput) (bool, environ.Proprietor) {
+func (d *drawerURXVT) IsApplicable(inp term.DrawerCheckerInput) (bool, environ.Properties) {
 	return inp != nil && inp.Name() == `urxvt`, nil
 }
 

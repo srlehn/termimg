@@ -20,7 +20,7 @@ type DrawerGeneric struct{}
 
 func (d *DrawerGeneric) Name() string     { return consts.DrawerGenericName }
 func (d *DrawerGeneric) New() term.Drawer { return &DrawerGeneric{} }
-func (d *DrawerGeneric) IsApplicable(term.DrawerCheckerInput) (bool, environ.Proprietor) {
+func (d *DrawerGeneric) IsApplicable(term.DrawerCheckerInput) (bool, environ.Properties) {
 	return true, nil
 }
 

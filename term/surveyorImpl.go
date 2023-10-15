@@ -104,7 +104,6 @@ func sizeInPixelsQuery(qu Querier, tty TTY) (widthPixels, heightPixels uint, e e
 	return x, y, nil
 }
 
-// getCursorQuery
 func getCursorQuery(qu Querier, tty TTY) (widthCells, heightCells uint, err error) {
 	// query terminal position in cells
 	// answer ?: ESC[<heightCells>;<heightCells>R // TODO
@@ -113,12 +112,6 @@ func getCursorQuery(qu Querier, tty TTY) (widthCells, heightCells uint, err erro
 	/*if needsWrap {
 		qs = mux.Wrap(qs)
 	}*/
-
-	/*
-	   example answers:
-	   mlterm: !|000000\x1b\\\x1b[30;1R
-	   terminator (vte): !|7E565445\x1b\\\x1b[48;1R"
-	*/
 
 	repl, err := qu.Query(qs, tty, parser.StopOnR)
 	if err != nil {
@@ -150,7 +143,6 @@ func getCursorQuery(qu Querier, tty TTY) (widthCells, heightCells uint, err erro
 	return x, y, nil
 }
 
-// setCursorQuery
 func setCursorQuery(widthCells, heightCells uint, qu Querier, tty TTY) (err error) {
 	// set terminal position in cells
 	// empty answer

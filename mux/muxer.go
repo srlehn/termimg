@@ -33,7 +33,7 @@ type Muxer struct {
 	name       string
 	procServer *process.Process
 	procClient *process.Process
-	env        environ.Proprietor
+	env        environ.Properties
 	ttyInner   string
 	isRemote   bool
 }
@@ -99,7 +99,7 @@ func (m Muxers) IsRemote() bool {
 
 // TODO: func (m Muxers) (Un)Wrapper() io.ReadWriter
 
-func Wrap(s string, pr environ.Proprietor) string {
+func Wrap(s string, pr environ.Properties) string {
 	if pr == nil {
 		return s
 	}
@@ -119,7 +119,7 @@ func Wrap(s string, pr environ.Proprietor) string {
 	return s
 }
 
-func FindTerminalProcess(pid int32) (procTerm *process.Process, ttyInner string, envInner environ.Proprietor, passages Muxers, e error) {
+func FindTerminalProcess(pid int32) (procTerm *process.Process, ttyInner string, envInner environ.Properties, passages Muxers, e error) {
 	// TODO handle errors
 	// TODO make this testable...
 	proc, err := process.NewProcess(pid)
@@ -310,7 +310,7 @@ func getClientProc(procTerm, procInner *process.Process, termTypeLast string) (p
 		exe, _ = strings.CutSuffix(exe, `.exe`)
 	}
 	var preservedVars []string
-	var env environ.Proprietor
+	var env environ.Properties
 	if parent, err := procInner.Parent(); err == nil && parent.Pid == procTerm.Pid {
 		envTerm, err := procTerm.Environ()
 		if err != nil && !os.IsPermission(err) {

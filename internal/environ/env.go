@@ -6,7 +6,7 @@ import (
 	"github.com/srlehn/termimg/internal/propkeys"
 )
 
-func EnvToProprietor(env []string) Proprietor {
+func EnvToProprietor(env []string) Properties {
 	pr := NewProprietor()
 	for _, v := range env {
 		if len(v) == 0 {
@@ -21,7 +21,7 @@ func EnvToProprietor(env []string) Proprietor {
 	return pr
 }
 
-func CleanEnv(envParent, envInner []string) (env Proprietor) {
+func CleanEnv(envParent, envInner []string) (env Properties) {
 	commonVars := map[string]struct{}{
 		`OLDPWD`:                      {},
 		`PWD`:                         {},
@@ -56,7 +56,7 @@ func CleanEnv(envParent, envInner []string) (env Proprietor) {
 	ep := EnvToProprietor(envParent)
 	ei := EnvToProprietor(envInner)
 	envCleaned := NewProprietor()
-	for k, v := range ei.Properties() {
+	for k, v := range ei.ExportProperties() {
 		k, isEnvEntry := strings.CutPrefix(k, propkeys.EnvPrefix)
 		if !isEnvEntry {
 			continue

@@ -27,7 +27,7 @@ var _ term.TermChecker = (*termCheckerXTerm)(nil)
 
 type termCheckerXTerm struct{ term.TermChecker }
 
-func (t *termCheckerXTerm) CheckExclude(pr environ.Proprietor) (mightBe bool, p environ.Proprietor) {
+func (t *termCheckerXTerm) CheckExclude(pr environ.Properties) (mightBe bool, p environ.Properties) {
 	p = environ.NewProprietor()
 	if t == nil || pr == nil {
 		p.SetProperty(propkeys.CheckTermEnvExclPrefix+termNameXTerm, consts.CheckTermFailed)
@@ -44,7 +44,7 @@ func (t *termCheckerXTerm) CheckExclude(pr environ.Proprietor) (mightBe bool, p 
 	p.SetProperty(propkeys.CheckTermEnvExclPrefix+termNameXTerm, consts.CheckTermFailed)
 	return false, p
 }
-func (t *termCheckerXTerm) CheckIsQuery(qu term.Querier, tty term.TTY, pr environ.Proprietor) (is bool, p environ.Proprietor) {
+func (t *termCheckerXTerm) CheckIsQuery(qu term.Querier, tty term.TTY, pr environ.Properties) (is bool, p environ.Properties) {
 	p = environ.NewProprietor()
 	if t == nil || pr == nil {
 		p.SetProperty(propkeys.CheckTermQueryIsPrefix+termNameXTerm, consts.CheckTermFailed)
@@ -97,7 +97,7 @@ func (t *termCheckerXTerm) CheckIsQuery(qu term.Querier, tty term.TTY, pr enviro
 	p.SetProperty(propkeys.CheckTermQueryIsPrefix+termNameXTerm, consts.CheckTermPassed)
 	return true, p
 }
-func (t *termCheckerXTerm) CheckIsWindow(w wm.Window) (is bool, p environ.Proprietor) {
+func (t *termCheckerXTerm) CheckIsWindow(w wm.Window) (is bool, p environ.Properties) {
 	p = environ.NewProprietor()
 	if t == nil || w == nil {
 		p.SetProperty(propkeys.CheckTermWindowIsPrefix+termNameXTerm, consts.CheckTermFailed)
@@ -115,13 +115,13 @@ func (t *termCheckerXTerm) CheckIsWindow(w wm.Window) (is bool, p environ.Propri
 	return isWindow, p
 }
 
-func (t *termCheckerXTerm) Args(pr environ.Proprietor) []string {
+func (t *termCheckerXTerm) Args(pr environ.Properties) []string {
 	return []string{
 		`-fbx`, // enforce direct drawing (not font glyphs) of VT100 line-drawing characters
 	}
 }
 
-func (t *termCheckerXTerm) Surveyor(pr environ.Proprietor) term.PartialSurveyor {
+func (t *termCheckerXTerm) Surveyor(pr environ.Properties) term.PartialSurveyor {
 	// TODO when is term.SurveyorDefault enough and when is surveyorXTerm required?
 	// return &term.SurveyorDefault{}
 	if t == nil || pr == nil {

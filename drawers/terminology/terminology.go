@@ -22,7 +22,7 @@ type drawerTerminology struct{}
 func (d *drawerTerminology) Name() string     { return `terminology` }
 func (d *drawerTerminology) New() term.Drawer { return &drawerTerminology{} }
 
-func (d *drawerTerminology) IsApplicable(inp term.DrawerCheckerInput) (bool, environ.Proprietor) {
+func (d *drawerTerminology) IsApplicable(inp term.DrawerCheckerInput) (bool, environ.Properties) {
 	return inp != nil && inp.Name() == `terminology`, nil
 }
 

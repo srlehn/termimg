@@ -191,7 +191,7 @@ read:
 }
 
 // CachedQuery ...
-func (q *querierDefault) CachedQuery(qs string, tty term.TTY, p term.Parser, pr environ.Proprietor) (string, error) {
+func (q *querierDefault) CachedQuery(qs string, tty term.TTY, p term.Parser, pr environ.Properties) (string, error) {
 	if q == nil {
 		return ``, errors.New(consts.ErrNilReceiver)
 	}

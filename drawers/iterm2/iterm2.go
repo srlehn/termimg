@@ -26,7 +26,7 @@ type drawerITerm2 struct{}
 func (d *drawerITerm2) Name() string     { return `iterm2` }
 func (d *drawerITerm2) New() term.Drawer { return &drawerITerm2{} }
 
-func (d *drawerITerm2) IsApplicable(inp term.DrawerCheckerInput) (bool, environ.Proprietor) {
+func (d *drawerITerm2) IsApplicable(inp term.DrawerCheckerInput) (bool, environ.Properties) {
 	if inp == nil {
 		return false, nil
 	}

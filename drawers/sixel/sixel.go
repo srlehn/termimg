@@ -29,7 +29,7 @@ type drawerSixel struct{}
 func (d *drawerSixel) Name() string     { return `sixel` }
 func (d *drawerSixel) New() term.Drawer { return &drawerSixel{} }
 
-func (d *drawerSixel) IsApplicable(inp term.DrawerCheckerInput) (bool, environ.Proprietor) {
+func (d *drawerSixel) IsApplicable(inp term.DrawerCheckerInput) (bool, environ.Properties) {
 	// example query: "\033[0c"
 	// possible answer from the terminal (here xterm): "\033[[?63;1;2;4;6;9;15;22c", vte(?): ...62,9;c
 	// the "4" signals that the terminal is capable of sixel

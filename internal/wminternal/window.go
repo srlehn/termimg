@@ -41,10 +41,10 @@ func DummyImpl() wm.Implementation { return &dummyImplementation{} }
 
 func (i *dummyImplementation) Name() string { return `dummy` }
 
-func (i *dummyImplementation) Conn(env environ.Proprietor) (wm.Connection, error) {
+func (i *dummyImplementation) Conn(env environ.Properties) (wm.Connection, error) {
 	return nil, errors.New(consts.ErrNotImplemented)
 }
 
-func (i *dummyImplementation) CreateWindow(env environ.Proprietor, name, class, instance string, isWindow wm.IsWindowFunc) wm.Window {
+func (i *dummyImplementation) CreateWindow(env environ.Properties, name, class, instance string, isWindow wm.IsWindowFunc) wm.Window {
 	return NewWindowDummy()
 }

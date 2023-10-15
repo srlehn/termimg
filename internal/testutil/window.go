@@ -7,7 +7,7 @@ import (
 	"github.com/srlehn/termimg/wm"
 )
 
-func ListWindows(env environ.Proprietor) error {
+func ListWindows(env environ.Properties) error {
 	// TODO -> testutil
 	fmt.Println("name\tclass\tinstance")
 	fmt.Println() // make the linter shut up by separating terminal LF

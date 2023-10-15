@@ -21,7 +21,7 @@ var _ term.TermChecker = (*termCheckerMintty)(nil)
 
 type termCheckerMintty struct{ term.TermChecker }
 
-func (t *termCheckerMintty) CheckExclude(pr environ.Proprietor) (mightBe bool, p environ.Proprietor) {
+func (t *termCheckerMintty) CheckExclude(pr environ.Properties) (mightBe bool, p environ.Properties) {
 	p = environ.NewProprietor()
 	if t == nil || pr == nil {
 		p.SetProperty(propkeys.CheckTermEnvExclPrefix+termNameMintty, consts.CheckTermFailed)
@@ -56,7 +56,7 @@ func (t *termCheckerMintty) CheckExclude(pr environ.Proprietor) (mightBe bool, p
 	return false, p
 }
 
-func (t *termCheckerMintty) CheckIsQuery(qu term.Querier, tty term.TTY, pr environ.Proprietor) (is bool, p environ.Proprietor) {
+func (t *termCheckerMintty) CheckIsQuery(qu term.Querier, tty term.TTY, pr environ.Properties) (is bool, p environ.Properties) {
 	p = environ.NewProprietor()
 	if t == nil || pr == nil {
 		p.SetProperty(propkeys.CheckTermQueryIsPrefix+termNameMintty, consts.CheckTermFailed)

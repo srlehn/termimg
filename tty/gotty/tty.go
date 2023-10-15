@@ -8,6 +8,8 @@
 package gotty
 
 import (
+	"sync"
+
 	ttymattn "github.com/mattn/go-tty"
 
 	"github.com/srlehn/termimg/internal"
@@ -18,7 +20,9 @@ import (
 
 type ttyMattN struct {
 	*ttymattn.TTY
-	fileName string
+	fileName       string
+	winch          chan term.Resolution
+	watchWINCHOnce sync.Once
 }
 
 var _ term.TTY = (*ttyMattN)(nil)
@@ -77,4 +81,46 @@ func (t *ttyMattN) Close() error {
 	}
 	defer func() { t.TTY = nil }()
 	return t.TTY.Close()
+}
+
+// ResizeEvents ...
+func (t *ttyMattN) ResizeEvents() (_ <-chan term.Resolution, closeFunc func() error, _ error) {
+	if t == nil || t.TTY == nil {
+		return nil, nil, errors.New(consts.ErrNilReceiver)
+	}
+	if t.winch != nil {
+		return t.winch, nil, nil
+	}
+	var errRet error
+	t.watchWINCHOnce.Do(func() {
+		winchMattN := t.TTY.SIGWINCH()
+		if winchMattN == nil {
+			errRet = errors.New(`unable to receive resize events`)
+			return
+		}
+		t.winch = make(chan term.Resolution)
+		closeOnce := sync.Once{}
+		closeFunc = func() error {
+			closeOnce.Do(func() { close(t.winch) })
+			return nil
+		}
+		go func() {
+			defer closeFunc()
+			for {
+				winchEv, ok := <-winchMattN
+				if !ok {
+					break
+				}
+				// don't block
+				select {
+				case t.winch <- term.Resolution{TermInCellsW: uint(winchEv.W), TermInCellsH: uint(winchEv.H)}:
+				default:
+				}
+			}
+		}()
+	})
+	if errRet == nil && t.winch == nil {
+		errRet = errors.New(`unable to receive resize events`)
+	}
+	return t.winch, closeFunc, errRet
 }

@@ -4,12 +4,13 @@ import (
 	"image"
 
 	"github.com/srlehn/termimg/internal/environ"
+	"github.com/srlehn/termimg/internal/errors"
 )
 
 type Implementation interface {
 	Name() string
-	Conn(env environ.Proprietor) (Connection, error)
-	CreateWindow(env environ.Proprietor, name, class, instance string, isWindow IsWindowFunc) Window
+	Conn(env environ.Properties) (Connection, error)
+	CreateWindow(env environ.Properties, name, class, instance string, isWindow IsWindowFunc) Window
 }
 
 type Connection interface {
@@ -17,7 +18,7 @@ type Connection interface {
 	Conn() any
 	Windows() ([]Window, error)
 	DisplayImage(img image.Image, windowName string)
-	Resources() (environ.Proprietor, error)
+	Resources() (environ.Properties, error)
 }
 
 type Window interface {
@@ -37,14 +38,14 @@ type Window interface {
 // type HWND uintptr
 // type HDC uintptr
 
-type IsWindowFunc = func(Window) (is bool, p environ.Proprietor)
+type IsWindowFunc = func(Window) (is bool, p environ.Properties)
 
 // WindowProvider...
 //
 // env contains infos about the window:
 // env.LookupEnv(): "WINDOWID"
 // env.Property(): propkeys.TerminalPID ("general_termPID")
-type WindowProvider = func(isWindow IsWindowFunc, env environ.Proprietor) Window
+type WindowProvider = func(isWindow IsWindowFunc, env environ.Properties) Window
 
 var implem Implementation
 
@@ -54,12 +55,23 @@ func SetImpl(impl Implementation) {
 	}
 }
 
-func NewWindow(isWindow IsWindowFunc, env environ.Proprietor) Window {
+func NewWindow(isWindow IsWindowFunc, env environ.Properties) Window {
+	if implem == nil {
+		return nil
+	}
 	return implem.CreateWindow(env, ``, ``, ``, isWindow)
 }
 
 func CreateWindow(name, class, instance string) Window {
-	return implem.CreateWindow(nil, ``, ``, ``, nil)
+	if implem == nil {
+		return nil
+	}
+	return implem.CreateWindow(nil, name, class, instance, nil)
 }
 
-func NewConn(env environ.Proprietor) (Connection, error) { return implem.Conn(env) }
+func NewConn(env environ.Properties) (Connection, error) {
+	if implem == nil {
+		return nil, errors.New(`no wm.Implementation set`)
+	}
+	return implem.Conn(env)
+}

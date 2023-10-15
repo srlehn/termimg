@@ -1,6 +1,8 @@
 package term
 
 import (
+	"log/slog"
+
 	"github.com/srlehn/termimg/env/advanced"
 	"github.com/srlehn/termimg/internal"
 	"github.com/srlehn/termimg/internal/environ"
@@ -104,7 +106,7 @@ func SetWindowProvider(wProv wm.WindowProvider, enforce bool) Option {
 func SetResizer(rsz Resizer) Option {
 	return OptFunc(func(t *Terminal) error { t.resizer = rsz; return nil })
 }
-func SetProprietor(pr environ.Proprietor, merge bool) Option {
+func SetProprietor(pr environ.Properties, merge bool) Option {
 	return OptFunc(func(t *Terminal) error {
 		if merge && t.proprietor != nil {
 			t.proprietor.Merge(pr)
@@ -143,6 +145,20 @@ func SetDrawers(drs []Drawer) Option {
 }
 func SetWindow(w wm.Window) Option {
 	return OptFunc(func(t *Terminal) error { t.window = w; return nil })
+}
+func SetSLogger(h slog.Handler, enable bool) Option {
+	return OptFunc(func(t *Terminal) error {
+		if enable {
+			if h == nil {
+				t.logger = slog.Default()
+			} else {
+				t.logger = slog.New(h)
+			}
+		} else {
+			t.logger = nil
+		}
+		return nil
+	})
 }
 
 var (

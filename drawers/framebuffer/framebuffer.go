@@ -21,7 +21,7 @@ type drawerFramebuffer struct{}
 func (d *drawerFramebuffer) Name() string     { return `framebuffer` }
 func (d *drawerFramebuffer) New() term.Drawer { return &drawerFramebuffer{} }
 
-func (d *drawerFramebuffer) IsApplicable(inp term.DrawerCheckerInput) (bool, environ.Proprietor) {
+func (d *drawerFramebuffer) IsApplicable(inp term.DrawerCheckerInput) (bool, environ.Properties) {
 	if inp == nil {
 		return false, nil
 	}

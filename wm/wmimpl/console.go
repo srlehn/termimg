@@ -15,7 +15,7 @@ import (
 	"github.com/srlehn/termimg/wm/framebuffer"
 )
 
-func createWindowConsole(env environ.Proprietor, name, class, instance string, isWindow wm.IsWindowFunc) wm.Window {
+func createWindowConsole(env environ.Properties, name, class, instance string, isWindow wm.IsWindowFunc) wm.Window {
 	var termTTY string
 	if env != nil {
 		termTTY, _ = env.Property(propkeys.TerminalTTY)
