@@ -87,9 +87,9 @@ type Terminal struct {
 	windowProvider, windowProviderDefault   wm.WindowProvider
 
 	// resolution
-	resTermInCellsX, resTermInCellsY uint
-	resTermInPxlsX, resTermInPxlsY   uint
-	resCellInPxlsX, resCellInPxlsY   float64
+	resTermInCellsW, resTermInCellsH uint
+	resTermInPxlsW, resTermInPxlsH   uint
+	resCellInPxlsW, resCellInPxlsH   float64
 	// last window change
 	timeLastWINCH time.Time
 	// window change directly prior to last resolution query
@@ -643,18 +643,18 @@ func (t *Terminal) watchWINCHStart() error {
 			tmNow := time.Now()
 			t.timeLastWINCH = tmNow
 			if res.TermInCellsW > 0 && res.TermInCellsH > 0 {
-				t.resTermInCellsX = res.TermInCellsW
-				t.resTermInCellsY = res.TermInCellsH
+				t.resTermInCellsW = res.TermInCellsW
+				t.resTermInCellsH = res.TermInCellsH
 				t.timeResTermInCells = tmNow
 			}
 			if res.TermInPxlsW > 0 && res.TermInPxlsH > 0 {
-				t.resTermInPxlsX = res.TermInPxlsW
-				t.resTermInPxlsY = res.TermInPxlsH
+				t.resTermInPxlsW = res.TermInPxlsW
+				t.resTermInPxlsH = res.TermInPxlsH
 				t.timeResTermInPxls = tmNow
 			}
-			if t.resCellInPxlsX >= 1 && t.resCellInPxlsY >= 1 {
-				t.resCellInPxlsX = res.CellInPxlsW
-				t.resCellInPxlsY = res.CellInPxlsH
+			if t.resCellInPxlsW >= 1 && t.resCellInPxlsH >= 1 {
+				t.resCellInPxlsW = res.CellInPxlsW
+				t.resCellInPxlsH = res.CellInPxlsH
 				t.timeResCellInPxls = tmNow
 			}
 			// TODO perhaps calculate cell resolution if missing based on terminal resolution (cells & pixels)
@@ -764,7 +764,7 @@ func (t *Terminal) CellSize() (width, height float64, _ error) {
 	var err error
 	// TODO add prop key for disabling cache
 	if !t.timeResCellInPxls.IsZero() && t.timeResCellInPxls.Equal(t.timeLastWINCH) {
-		cpw, cph = t.resCellInPxlsX, t.resCellInPxlsY
+		cpw, cph = t.resCellInPxlsW, t.resCellInPxlsH
 	} else {
 		cpw, cph, err = t.surveyor.CellSize(t.tty, t.querier, t.window, t.proprietor)
 		if err != nil {
@@ -773,6 +773,11 @@ func (t *Terminal) CellSize() (width, height float64, _ error) {
 	}
 	if cpw < 1 || cph < 1 {
 		return 0, 0, errors.New(`CellSize failed`)
+	}
+	if !t.timeLastWINCH.IsZero() {
+		t.resCellInPxlsW = cpw
+		t.resCellInPxlsH = cph
+		t.timeResCellInPxls = t.timeLastWINCH
 	}
 	return cpw, cph, nil
 }
@@ -786,9 +791,15 @@ func (t *Terminal) SizeInCells() (width, height uint, err error) {
 	}
 	// TODO add prop key for disabling cache
 	if !t.timeResTermInCells.IsZero() && t.timeResTermInCells.Equal(t.timeLastWINCH) {
-		return t.resTermInCellsX, t.resTermInCellsY, nil
+		return t.resTermInCellsW, t.resTermInCellsH, nil
 	}
-	return t.surveyor.SizeInCells(t.tty, t.querier, t.window, t.proprietor)
+	w, h, err := t.surveyor.SizeInCells(t.tty, t.querier, t.window, t.proprietor)
+	if !t.timeLastWINCH.IsZero() && err == nil && w > 0 && h > 0 {
+		t.resTermInCellsW = w
+		t.resTermInCellsH = h
+		t.timeResTermInCells = t.timeLastWINCH
+	}
+	return w, h, err
 }
 
 func (t *Terminal) SizeInPixels() (width, height uint, err error) {
@@ -800,9 +811,15 @@ func (t *Terminal) SizeInPixels() (width, height uint, err error) {
 	}
 	// TODO add prop key for disabling cache
 	if !t.timeResTermInPxls.IsZero() && t.timeResTermInPxls.Equal(t.timeLastWINCH) {
-		return t.resTermInPxlsX, t.resTermInPxlsY, nil
+		return t.resTermInPxlsW, t.resTermInPxlsH, nil
 	}
-	return t.surveyor.SizeInPixels(t.tty, t.querier, t.window, t.proprietor)
+	w, h, err := t.surveyor.SizeInPixels(t.tty, t.querier, t.window, t.proprietor)
+	if !t.timeLastWINCH.IsZero() && err == nil && w > 0 && h > 0 {
+		t.resTermInPxlsW = w
+		t.resTermInPxlsH = h
+		t.timeResTermInPxls = t.timeLastWINCH
+	}
+	return w, h, err
 }
 
 func (t *Terminal) Cursor() (xPosCells, yPosCells uint, err error) {
