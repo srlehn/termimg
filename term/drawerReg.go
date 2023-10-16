@@ -27,7 +27,7 @@ func drawersFor(inp DrawerCheckerInput) ([]Drawer, environ.Properties, error) {
 			continue
 		}
 		applDrawers = append(applDrawers, dr)
-		prs.Merge(pr)
+		prs.MergeProperties(pr)
 	}
 	if len(applDrawers) == 0 {
 		prs = nil

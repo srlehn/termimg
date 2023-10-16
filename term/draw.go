@@ -4,11 +4,13 @@ import (
 	"image"
 	"image/color"
 	"image/draw"
+	"log/slog"
 	"time"
 
 	"github.com/srlehn/termimg/internal/consts"
 	"github.com/srlehn/termimg/internal/environ"
 	"github.com/srlehn/termimg/internal/errors"
+	"github.com/srlehn/termimg/internal/log"
 	"github.com/srlehn/termimg/internal/util"
 )
 
@@ -64,6 +66,7 @@ func drawWith(img image.Image, bounds image.Rectangle, term *Terminal, dr Drawer
 	defer func() {
 		if r := recover(); r != nil {
 			err = errors.New(r)
+			_ = log.IsErr(term.Logger(), slog.LevelError, err)
 		}
 	}()
 	// TODO check if redraw is necessary
@@ -125,7 +128,7 @@ func (c *Canvas) At(x, y int) color.Color {
 	return c.screenshot.At(x, y)
 }
 func (c *Canvas) storeScreenshot() error {
-	if c != nil || c.terminal == nil {
+	if c == nil || c.terminal == nil {
 		return errors.New(`nil receiver or nil struct field`)
 	}
 	if c.screenshot == nil || time.Since(c.lastScreenshotTaken) > canvasScreenshotRefreshDuration {
@@ -134,7 +137,7 @@ func (c *Canvas) storeScreenshot() error {
 			return errors.New(`nil window`)
 		}
 		img, err := w.Screenshot()
-		if err != nil {
+		if log.IsErr(c.terminal.Logger(), slog.LevelInfo, err) {
 			return err
 		}
 		if img == nil {
@@ -158,7 +161,7 @@ func (c *Canvas) Flush() error {
 	return c.terminal.Draw(c.drawing, c.bounds)
 }
 func (c *Canvas) Video(dur time.Duration) chan<- image.Image {
-	if c != nil {
+	if c == nil {
 		return nil
 	}
 	if c.vid != nil {
@@ -184,10 +187,10 @@ func (c *Canvas) Video(dur time.Duration) chan<- image.Image {
 	return c.vid
 }
 func (c *Canvas) Screenshot() (image.Image, error) {
-	if c != nil {
+	if c == nil || c.terminal == nil {
 		return nil, errors.New(consts.ErrNilReceiver)
 	}
-	if err := c.storeScreenshot(); err != nil {
+	if err := c.storeScreenshot(); log.IsErr(c.terminal.Logger(), slog.LevelInfo, err) {
 		return nil, err
 	}
 	if c.screenshot == nil {

@@ -5,15 +5,12 @@ import (
 	"image"
 	_ "image/png"
 	"log"
-	"log/slog"
-	"os"
 
 	"github.com/gdamore/tcell/v2"
 
 	"github.com/srlehn/termimg"
 	_ "github.com/srlehn/termimg/drawers/all"
 	"github.com/srlehn/termimg/internal"
-	"github.com/srlehn/termimg/internal/errors"
 	"github.com/srlehn/termimg/query/qdefault"
 	"github.com/srlehn/termimg/resize/rdefault"
 	"github.com/srlehn/termimg/term"
@@ -38,11 +35,6 @@ func main() {
 }
 
 func m() error {
-	logFile, err := os.Create(`log.txt`)
-	if err != nil {
-		return errors.New(err)
-	}
-	defer logFile.Close()
 	wm.SetImpl(wmimpl.Impl())
 	qu := qdefault.NewQuerier()
 	opts := []term.Option{
@@ -54,7 +46,7 @@ func m() error {
 		term.SetQuerier(qu, true),
 		term.SetWindowProvider(wm.NewWindow, true),
 		term.SetResizer(&rdefault.Resizer{}),
-		term.SetSLogger(slog.NewTextHandler(logFile, nil), true),
+		term.SetLogFile(`log.txt`, true),
 	}
 	tm, err := term.NewTerminal(opts...)
 	if err != nil {

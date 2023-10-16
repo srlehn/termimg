@@ -19,9 +19,9 @@ import (
 	"github.com/srlehn/termimg/internal/consts"
 	"github.com/srlehn/termimg/internal/environ"
 	"github.com/srlehn/termimg/internal/errors"
+	"github.com/srlehn/termimg/internal/log"
 	"github.com/srlehn/termimg/internal/propkeys"
 	"github.com/srlehn/termimg/internal/queries"
-	"github.com/srlehn/termimg/internal/util"
 	"github.com/srlehn/termimg/internal/wminternal"
 	"github.com/srlehn/termimg/mux"
 	"github.com/srlehn/termimg/wm"
@@ -113,12 +113,13 @@ type Terminal struct {
 // "Enforced" Options have precedence over the TermCheckers suggestion.
 func NewTerminal(opts ...Option) (*Terminal, error) {
 	tm := newDummyTerminal()
-	if err := tm.SetOptions(append(opts, setInternalDefaults, setEnvAndMuxers(true))...); err != nil {
+	opts = append(opts, setInternalDefaults, setEnvAndMuxers(true))
+	if err := tm.SetOptions(opts...); log.IsErr(tm.Logger(), slog.LevelError, err) {
 		return nil, err
 	}
 
 	ttyTmp, quTmp, err := getTTYAndQuerier(tm, nil)
-	if err != nil {
+	if log.IsErr(tm.Logger(), slog.LevelError, err) {
 		return nil, err
 	}
 
@@ -127,24 +128,28 @@ func NewTerminal(opts ...Option) (*Terminal, error) {
 	if !composeManually || composeManuallyStr != `true` {
 		// find terminal checker
 		chk, prChecker, err := findTermChecker(tm.proprietor, ttyTmp, quTmp)
-		if err != nil {
+		if log.IsErr(tm.Logger(), slog.LevelInfo, err) {
 			return nil, err
 		}
-		tm.proprietor.Merge(prChecker)
+		tm.proprietor.MergeProperties(prChecker)
 		checker = chk
 	} else {
 		checker = &termCheckerCore{} // dummy
 	}
 	// terminal specific settings
 	tm, err = checker.NewTerminal(replaceTerminal(tm))
-	if err != nil {
+	if log.IsErr(tm.Logger(), slog.LevelInfo, err) {
 		return nil, err
 	}
 
 	return tm, nil
 }
 func newDummyTerminal() *Terminal {
-	tm := &Terminal{proprietor: environ.NewProprietor(), printMu: &sync.Mutex{}}
+	tm := &Terminal{
+		proprietor: environ.NewProprietor(),
+		printMu:    &sync.Mutex{},
+		closer:     internal.NewCloser(),
+	}
 	tm.SetProperty(propkeys.EnvIsLoaded, `merge`)
 	return tm
 }
@@ -260,7 +265,7 @@ func findTermChecker(env environ.Properties, tty TTY, qu Querier) (tc TermChecke
 		}
 		mightBe, prE := tchk.CheckExclude(env)
 		_ = mightBe
-		pr.Merge(prE)
+		pr.MergeProperties(prE)
 	}
 
 	defer func() {
@@ -283,7 +288,7 @@ func findTermChecker(env environ.Properties, tty TTY, qu Querier) (tc TermChecke
 		e = errors.New(errors.Join(errs...))
 	}()
 	termGenericCheck(tty, qu, pr)
-	env.Merge(pr)
+	env.MergeProperties(pr)
 	if _, avoidANSI := pr.Property(propkeys.AvoidANSI); !avoidANSI {
 		// run final checks
 		for _, tchk := range terminalCheckersAll {
@@ -340,7 +345,7 @@ func findTermChecker(env environ.Properties, tty TTY, qu Querier) (tc TermChecke
 				}
 			}
 			pr.SetProperty(propkeys.CheckTermCompletePrefix+tchkName, consts.CheckTermPassed)
-			pr.Merge(prI)
+			pr.MergeProperties(prI)
 		}
 	} else {
 		for _, tchk := range terminalCheckersAll {
@@ -479,7 +484,7 @@ func (t *Terminal) CreateTemp(pattern string) (*os.File, error) {
 	tempDir := t.tempDir()
 	if len(tempDir) == 0 {
 		dir, err := os.MkdirTemp(``, consts.LibraryName+`.`)
-		if err != nil {
+		if log.IsErr(t.Logger(), slog.LevelInfo, err) {
 			return nil, err
 		}
 		t.SetProperty(propkeys.TempDir, tempDir)
@@ -490,7 +495,7 @@ func (t *Terminal) CreateTemp(pattern string) (*os.File, error) {
 	}
 
 	f, err := os.CreateTemp(tempDir, pattern)
-	if err != nil {
+	if log.IsErr(t.Logger(), slog.LevelInfo, err) {
 		return nil, err
 	}
 	onCloseFunc := func() error { return errors.New(errors.Join(f.Close(), os.Remove(f.Name()))) }
@@ -549,7 +554,7 @@ func (t *Terminal) Printf(format string, a ...any) (int, error) {
 		return 0, errors.New(consts.ErrNilReceiver)
 	}
 	n, err := t.WriteString(t.passages.Wrap(fmt.Sprintf(format, a...)))
-	if err != nil {
+	if log.IsErr(t.Logger(), slog.LevelInfo, err) {
 		return n, errors.New(err)
 	}
 	return n, nil
@@ -589,7 +594,7 @@ func (t *Terminal) CellScale(ptSrcPx, ptDstCl image.Point) (ptSrcCl image.Point,
 		return image.Point{}, errors.New(consts.ErrNilReceiver)
 	}
 	cpw, cph, err := t.CellSize()
-	if err != nil {
+	if log.IsErr(t.Logger(), slog.LevelInfo, err) {
 		return image.Point{}, err
 	}
 	if cpw < 1 || cph < 1 {
@@ -627,7 +632,7 @@ func (t *Terminal) watchWINCHStart() error {
 		return errors.New(consts.ErrNilReceiver)
 	}
 	winch, closeFunc, err := t.surveyor.WatchResizeEventsStart(t.tty, t.querier, t.window, t.proprietor)
-	if util.IsErrAndLog(err, t, (*Terminal).logInfo) {
+	if log.IsErr(t.Logger(), slog.LevelInfo, err) {
 		return err
 	}
 	t.closer.OnClose(closeFunc)
@@ -669,30 +674,36 @@ func (t *Terminal) watchWINCHStop() error {
 	return t.surveyor.WatchResizeEventsStop()
 }
 
-// TODO perhaps add context
+func (t *Terminal) Logger() *slog.Logger {
+	if t == nil {
+		return nil
+	}
+	return t.logger
+}
+
 func (t *Terminal) logDebug(msg string, args ...any) {
-	if t == nil || t.logger == nil {
+	if t == nil {
 		return
 	}
-	t.logger.Debug(msg, args...)
+	log.Log(t.logger, slog.LevelDebug, 3, msg, args...)
 }
 func (t *Terminal) logInfo(msg string, args ...any) {
-	if t == nil || t.logger == nil {
+	if t == nil {
 		return
 	}
-	t.logger.Info(msg, args...)
+	log.Log(t.logger, slog.LevelInfo, 3, msg, args...)
 }
 func (t *Terminal) logWarn(msg string, args ...any) {
-	if t == nil || t.logger == nil {
+	if t == nil {
 		return
 	}
-	t.logger.Warn(msg, args...)
+	log.Log(t.logger, slog.LevelWarn, 3, msg, args...)
 }
 func (t *Terminal) logError(msg string, args ...any) {
-	if t == nil || t.logger == nil {
+	if t == nil {
 		return
 	}
-	t.logger.Error(msg, args...)
+	log.Log(t.logger, slog.LevelError, 3, msg, args...)
 }
 
 // round away from zero (toward infinity)
@@ -709,7 +720,7 @@ func (t *Terminal) Scroll(lineCnt int) error {
 		return errors.New(consts.ErrNilParam)
 	}
 	_, tch, err := t.SizeInCells()
-	if err != nil {
+	if log.IsErr(t.Logger(), slog.LevelInfo, err) {
 		return err
 	}
 	if tch == 0 {
@@ -726,13 +737,13 @@ func (t *Terminal) Scroll(lineCnt int) error {
 	switch {
 	case lineCnt == 0:
 		_, y, err := t.Cursor()
-		if err != nil {
+		if log.IsErr(t.Logger(), slog.LevelInfo, err) {
 			return err
 		}
 		lineCnt = int(y)
 		fallthrough
 	case lineCnt > 0:
-		if err := t.SetCursor(0, tch); err != nil {
+		if err := t.SetCursor(0, tch); log.IsErr(t.Logger(), slog.LevelInfo, err) {
 			return err
 		}
 		if avoidCS1IndexSuffix {
@@ -743,7 +754,7 @@ func (t *Terminal) Scroll(lineCnt int) error {
 			// tm2.Printf(queries.CSI+`%dT`, lineCnt) // SD - Scroll Down
 		}
 	case lineCnt < 0:
-		if err := t.SetCursor(0, 0); err != nil {
+		if err := t.SetCursor(0, 0); log.IsErr(t.Logger(), slog.LevelInfo, err) {
 			return err
 		}
 		t.Printf(`%s`, strings.Repeat(queries.RI, -lineCnt)) // C1 Index - moves up same column
@@ -767,7 +778,7 @@ func (t *Terminal) CellSize() (width, height float64, _ error) {
 		cpw, cph = t.resCellInPxlsW, t.resCellInPxlsH
 	} else {
 		cpw, cph, err = t.surveyor.CellSize(t.tty, t.querier, t.window, t.proprietor)
-		if err != nil {
+		if log.IsErr(t.Logger(), slog.LevelInfo, err) {
 			return 0, 0, err
 		}
 	}
@@ -858,7 +869,7 @@ func (t *Terminal) NewCanvas(bounds image.Rectangle) (*Canvas, error) {
 		return nil, errors.New(consts.ErrNilReceiver)
 	}
 	cpw, cph, err := t.CellSize()
-	if err != nil {
+	if log.IsErr(t.Logger(), slog.LevelInfo, err) {
 		return nil, err
 	}
 	boundsPixels := image.Rectangle{

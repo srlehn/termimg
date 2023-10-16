@@ -15,7 +15,7 @@ type Properties interface {
 	PropertyExporter
 	Property(key string) (string, bool)
 	SetProperty(key, value string)
-	Merge(PropertyExporter)
+	MergeProperties(PropertyExporter)
 	String() string
 }
 
@@ -47,7 +47,7 @@ func CloneProprietor(pr PropertyExporter) Properties {
 	if pr == nil {
 		return nil
 	}
-	p.Merge(pr)
+	p.MergeProperties(pr)
 	return p
 }
 
@@ -119,9 +119,9 @@ func (p *proprietorGeneric) Environ() []string {
 	return env
 }
 
-// Merge combines both Proprietors,
+// MergeProperties combines both Proprietors,
 // possibly overwriting with values from pr.
-func (p *proprietorGeneric) Merge(pr PropertyExporter) {
+func (p *proprietorGeneric) MergeProperties(pr PropertyExporter) {
 	// TODO fix doc comment
 	if p == nil || pr == nil {
 		return

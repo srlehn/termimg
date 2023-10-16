@@ -7,7 +7,7 @@ termimg draws images into terminals.
 
 [![PkgGoDev](https://pkg.go.dev/badge/github.com/srlehn/termimg)](https://pkg.go.dev/github.com/srlehn/termimg@master)
 [![Go Report Card](https://goreportcard.com/badge/srlehn/termimg)](https://goreportcard.com/report/srlehn/termimg)
-![Lines of code](https://img.shields.io/tokei/lines/github/srlehn/termimg)
+![Lines of code](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fapi.codetabs.com%2Fv1%2Floc%2F%3Fgithub%3Dsrlehn%2Ftermimg%26ignored%3Dvendor%2Ctestdata&query=%24%5B%3F(%40.language%3D%3D%22Go%22)%5D.linesOfCode&logo=Go&label=lines%20of%20code&cacheSeconds=3600)
 [![MIT license](https://img.shields.io/badge/License-MIT-blue.svg)](https://lbesson.mit-license.org/)
 
 **VERY EXPERIMENTAL!!**

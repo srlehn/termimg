@@ -3,6 +3,7 @@ package term
 import (
 	"fmt"
 	"image"
+	"log/slog"
 	"os"
 	"runtime"
 	"sort"
@@ -15,6 +16,7 @@ import (
 	"github.com/srlehn/termimg/internal/environ"
 	"github.com/srlehn/termimg/internal/errors"
 	"github.com/srlehn/termimg/internal/linux"
+	"github.com/srlehn/termimg/internal/log"
 	"github.com/srlehn/termimg/internal/propkeys"
 	"github.com/srlehn/termimg/internal/wndws"
 	"github.com/srlehn/termimg/wm"
@@ -83,7 +85,7 @@ func (c *termCheckerCore) Check(qu Querier, tty TTY, inp environ.Properties) (is
 	if !mightBe {
 		return false, nil
 	}
-	pr.Merge(prCE)
+	pr.MergeProperties(prCE)
 
 	_, avoidANSI := pr.Property(propkeys.AvoidANSI)
 	if !avoidANSI {
@@ -91,7 +93,7 @@ func (c *termCheckerCore) Check(qu Querier, tty TTY, inp environ.Properties) (is
 		if !isTerm {
 			return false, nil
 		}
-		pr.Merge(prCI)
+		pr.MergeProperties(prCI)
 	}
 
 	return true, pr
@@ -133,7 +135,8 @@ func (c *termCheckerCore) NewTerminal(opts ...Option) (*Terminal, error) {
 	}
 	tm := newDummyTerminal()
 	overwriteEnv := false // likely already set by caller function (NewTerminal())
-	if err := tm.SetOptions(append(opts, setInternalDefaults, setEnvAndMuxers(overwriteEnv))...); err != nil {
+	opts = append(opts, setInternalDefaults, setEnvAndMuxers(overwriteEnv))
+	if err := tm.SetOptions(opts...); log.IsErr(tm.Logger(), slog.LevelInfo, err) {
 		return nil, err
 	}
 	composeManuallyStr, composeManually := tm.Property(propkeys.ManualComposition)
@@ -141,7 +144,9 @@ func (c *termCheckerCore) NewTerminal(opts ...Option) (*Terminal, error) {
 		// manual composition
 		tm.SetOptions(setTTYAndQuerier(nil))
 		tm.surveyor = getSurveyor(tm.partialSurveyor, tm.proprietor)
-		tm.closer = internal.NewCloser()
+		if tm.closer == nil {
+			tm.closer = internal.NewCloser()
+		}
 		tm.OnClose(func() error {
 			if tm == nil || len(tm.tempDir()) == 0 {
 				return nil
@@ -170,7 +175,7 @@ func (c *termCheckerCore) NewTerminal(opts ...Option) (*Terminal, error) {
 	}); okArger {
 		ar = newArger(arg.Args(tm.proprietor))
 	}
-	if err := tm.SetOptions(setTTYAndQuerier(c)); err != nil {
+	if err := tm.SetOptions(setTTYAndQuerier(c)); log.IsErr(tm.Logger(), slog.LevelInfo, err) {
 		return nil, err
 	}
 	var w wm.Window
@@ -212,7 +217,7 @@ func (c *termCheckerCore) NewTerminal(opts ...Option) (*Terminal, error) {
 		name:       c.parent.Name(),
 	}
 	drawers, drProps, err := drawersFor(drCkInp)
-	if err != nil {
+	if log.IsErr(tm.Logger(), slog.LevelInfo, err) {
 		return nil, err
 	}
 	if len(drawers) == 0 {
@@ -220,7 +225,7 @@ func (c *termCheckerCore) NewTerminal(opts ...Option) (*Terminal, error) {
 		// drawers = []Drawer{&generic.DrawerGeneric{}} // TODO import cycle
 		return nil, errors.New(`no drawers found`) // TODO rm
 	}
-	tm.Merge(drProps)
+	tm.MergeProperties(drProps)
 	var lessFn func(i, j int) bool
 	drawerMap := make(map[string]struct{})
 	if _, isRemote := tm.proprietor.Property(propkeys.IsRemote); isRemote {
@@ -268,7 +273,9 @@ func (c *termCheckerCore) NewTerminal(opts ...Option) (*Terminal, error) {
 	tm.arger = ar
 	tm.window = w
 	tm.drawers = drawers
-	tm.closer = internal.NewCloser()
+	if tm.closer == nil {
+		tm.closer = internal.NewCloser()
+	}
 	tm.SetProperty(propkeys.TerminalName, c.parent.Name())
 	if len(exe) > 0 {
 		tm.SetProperty(propkeys.Executable, exe)

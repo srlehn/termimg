@@ -2,11 +2,13 @@ package term
 
 import (
 	"log/slog"
+	"os"
 
 	"github.com/srlehn/termimg/env/advanced"
 	"github.com/srlehn/termimg/internal"
 	"github.com/srlehn/termimg/internal/environ"
 	"github.com/srlehn/termimg/internal/errors"
+	"github.com/srlehn/termimg/internal/log"
 	"github.com/srlehn/termimg/internal/propkeys"
 	"github.com/srlehn/termimg/wm"
 )
@@ -31,10 +33,10 @@ func (o Options) ApplyOption(t *Terminal) error { return t.SetOptions([]Option(o
 
 func (t *Terminal) SetOptions(opts ...Option) error {
 	if t == nil {
-		t = &Terminal{}
+		t = newDummyTerminal()
 	}
 	for _, opt := range opts {
-		if err := opt.ApplyOption(t); err != nil {
+		if err := opt.ApplyOption(t); log.IsErr(t.Logger(), slog.LevelError, err) {
 			return errors.New(err)
 		}
 	}
@@ -109,7 +111,7 @@ func SetResizer(rsz Resizer) Option {
 func SetProprietor(pr environ.Properties, merge bool) Option {
 	return OptFunc(func(t *Terminal) error {
 		if merge && t.proprietor != nil {
-			t.proprietor.Merge(pr)
+			t.proprietor.MergeProperties(pr)
 		} else {
 			t.proprietor = pr
 		}
@@ -146,7 +148,7 @@ func SetDrawers(drs []Drawer) Option {
 func SetWindow(w wm.Window) Option {
 	return OptFunc(func(t *Terminal) error { t.window = w; return nil })
 }
-func SetSLogger(h slog.Handler, enable bool) Option {
+func SetSLogHandler(h slog.Handler, enable bool) Option {
 	return OptFunc(func(t *Terminal) error {
 		if enable {
 			if h == nil {
@@ -154,6 +156,31 @@ func SetSLogger(h slog.Handler, enable bool) Option {
 			} else {
 				t.logger = slog.New(h)
 			}
+		} else {
+			t.logger = nil
+		}
+		return nil
+	})
+}
+func SetLogFile(filename string, enable bool) Option {
+	return OptFunc(func(t *Terminal) error {
+		if enable {
+			logFile, err := os.OpenFile(filename, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
+			if err != nil {
+				return err
+			}
+			hOpts := &slog.HandlerOptions{
+				AddSource: true,
+			}
+			t.logger = slog.New(slog.NewTextHandler(logFile, hOpts))
+			t.logInfo(`opening log file`)
+			t.OnClose(func() error {
+				if logFile == nil {
+					return nil
+				}
+				t.logInfo(`closing log file`)
+				return logFile.Close()
+			})
 		} else {
 			t.logger = nil
 		}
@@ -199,7 +226,7 @@ var setInternalDefaults Option = OptFunc(func(t *Terminal) error {
 func setTTYAndQuerier(tc *termCheckerCore) Option {
 	return OptFunc(func(t *Terminal) error {
 		tty, qu, err := getTTYAndQuerier(t, tc)
-		if err != nil {
+		if log.IsErr(t.Logger(), slog.LevelInfo, err) {
 			return err
 		}
 		t.tty = tty
@@ -234,9 +261,7 @@ func setEnvAndMuxers(overwrite bool) Option {
 			}
 		}
 		pr, passages, err := advanced.GetEnv(ptyName)
-		if err != nil {
-			// TODO log error
-		}
+		_ = log.IsErr(t.logger, slog.LevelInfo, err)
 		var skipSettingEnvIsLoaded bool
 		if t.proprietor != nil {
 			envIsLoadedStr, _ := t.Property(propkeys.EnvIsLoaded)
@@ -245,7 +270,7 @@ func setEnvAndMuxers(overwrite bool) Option {
 				skipSettingEnvIsLoaded = true
 			case `merge`:
 				// use new Proprietor as receiver to allow implementation choice
-				pr.Merge(t.proprietor)
+				pr.MergeProperties(t.proprietor)
 			}
 		}
 		if !skipSettingEnvIsLoaded {
@@ -264,15 +289,15 @@ func setEnvAndMuxers(overwrite bool) Option {
 		}
 
 		conn, err := wm.NewConn(t.proprietor)
-		if err != nil {
+		if log.IsErr(t.Logger(), slog.LevelInfo, err) {
 			return err
 		}
 		res, err := conn.Resources()
-		if err != nil {
+		if log.IsErr(t.Logger(), slog.LevelInfo, err) {
 			return err
 		}
 		if t.proprietor != nil {
-			t.proprietor.Merge(res)
+			t.proprietor.MergeProperties(res)
 		} else {
 			t.proprietor = res
 		}

@@ -123,20 +123,6 @@ func fileLinePrefix(skip int) string {
 	return strings.TrimPrefix(filename, modulePath+`/`) + `:` + strconv.Itoa(line) + `: `
 }
 
-func IsErrAndLog[T any](err error, t T, log func(t T, msg string, args ...any)) bool {
-	if err != nil {
-		if errs, ok := err.(interface{ Unwrap() []error }); ok {
-			for _, err := range errs.Unwrap() {
-				log(t, err.Error())
-			}
-		} else {
-			log(t, err.Error())
-		}
-		return true
-	}
-	return false
-}
-
 func storePosAndJumpToPosStr(x, y uint) string { return fmt.Sprintf("\033[s\033[%d;%dH", y, x) }
 
 const restorePosStr = "\033[u"

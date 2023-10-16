@@ -340,7 +340,7 @@ func getClientProc(procTerm, procInner *process.Process, termTypeLast string) (p
 		env = environ.NewProprietor()
 	}
 	envTemp := environ.CloneProprietor(env)
-	envTemp.Merge(environ.EnvToProprietor(preservedVars))
+	envTemp.MergeProperties(environ.EnvToProprietor(preservedVars))
 	// run different checks here for muxers, etc...
 	var (
 		err                        error
