@@ -21,7 +21,7 @@ sixel, iTerm2, kitty, Terminology, DomTerm, urxvt, X11, GDI+, block characters
 <details open><summary><h2>Example CLI Tool</h2></summary>
 
 <blockquote><details open>
-<summary><h3><span style="color:mediumseagreen">timg</span> CLI Tool</h3></summary>
+<summary><h3>timg CLI Tool</h3></summary>
 
 ![demo.gif](_demos/demo.gif)
 
