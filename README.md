@@ -23,7 +23,7 @@ sixel, iTerm2, kitty, Terminology, DomTerm, urxvt, X11, GDI+, block characters
 <blockquote><details open>
 <summary><h3>timg CLI Tool</h3></summary>
 
-<img src="termimg/_demos/demo.gif"/>
+<img src="https://raw.githubusercontent.com/srlehn/termimg/master/_demos/demo.gif"/>
 
 installation:
 
