@@ -6,8 +6,6 @@ import (
 	"context"
 	"fmt"
 	"image"
-	_ "image/jpeg"
-	_ "image/png"
 	"os"
 	"os/exec"
 	"path/filepath"
