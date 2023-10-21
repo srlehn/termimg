@@ -9,7 +9,7 @@ import (
 )
 
 func (t *Terminal) Exe() string {
-	if t == nil || t.proprietor == nil {
+	if t == nil || t.properties == nil {
 		return ``
 	}
 	exe, _ := t.Property(propkeys.Executable)
@@ -24,5 +24,5 @@ func (t *Terminal) Exe() string {
 }
 
 func XTGetTCap(tm *Terminal, tcap string) (string, error) {
-	return xtGetTCap(tcap, tm.querier, tm.tty, tm.proprietor, tm.proprietor)
+	return xtGetTCap(tcap, tm.querier, tm.tty, tm.properties, tm.properties)
 }

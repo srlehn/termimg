@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log/slog"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -12,6 +13,7 @@ import (
 	"github.com/srlehn/termimg/internal/consts"
 	"github.com/srlehn/termimg/internal/errors"
 	"github.com/srlehn/termimg/internal/exc"
+	"github.com/srlehn/termimg/internal/logx"
 	"github.com/srlehn/termimg/term"
 )
 
@@ -32,6 +34,7 @@ func init() {
 	// local flags
 	rootCmd.Flags().BoolVarP(&debugFlag, `debug`, `d`, false, `debug errors`)
 	rootCmd.Flags().BoolVarP(&silentFlag, `silent`, `s`, false, `silence errors`)
+	rootCmd.Flags().StringVarP(&logFileFlag, `log-file`, `l`, ``, `log file`)
 }
 
 func main() {
@@ -41,8 +44,11 @@ func main() {
 }
 
 var (
-	debugFlag  bool
-	silentFlag bool
+	// TODO debug flag should also set log level
+	debugFlag     bool
+	silentFlag    bool
+	logFileFlag   string
+	logFileOption term.Option
 )
 
 type terminalSwapper func(tm **term.Terminal) error
@@ -75,7 +81,13 @@ func run(fn terminalSwapper) {
 		}
 		os.Exit(exitCode)
 	}()
+	if len(logFileFlag) > 0 {
+		logFileOption = term.SetLogFile(logFileFlag, true)
+	}
 	if err = fn(&tm); err != nil {
+		if tm != nil {
+			logx.IsErr(err, tm, slog.LevelError)
+		}
 		exitCode = 1
 		if !silentFlag {
 			if stackFramer, ok := err.(interface{ ErrorStack() string }); debugFlag && ok {

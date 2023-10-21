@@ -5,9 +5,11 @@ import (
 	"image"
 	"log/slog"
 	"os"
+	"os/signal"
 	"runtime"
 	"sort"
 	"strings"
+	"syscall"
 
 	"golang.org/x/exp/slices"
 
@@ -16,7 +18,7 @@ import (
 	"github.com/srlehn/termimg/internal/environ"
 	"github.com/srlehn/termimg/internal/errors"
 	"github.com/srlehn/termimg/internal/linux"
-	"github.com/srlehn/termimg/internal/log"
+	"github.com/srlehn/termimg/internal/logx"
 	"github.com/srlehn/termimg/internal/propkeys"
 	"github.com/srlehn/termimg/internal/wndws"
 	"github.com/srlehn/termimg/wm"
@@ -80,7 +82,7 @@ func (c *termCheckerCore) Check(qu Querier, tty TTY, inp environ.Properties) (is
 		return false, nil
 	}
 
-	pr := environ.NewProprietor()
+	pr := environ.NewProperties()
 	mightBe, prCE := c.parent.CheckExclude(inp)
 	if !mightBe {
 		return false, nil
@@ -100,17 +102,17 @@ func (c *termCheckerCore) Check(qu Querier, tty TTY, inp environ.Properties) (is
 }
 
 func (c *termCheckerCore) CheckExclude(environ.Properties) (mightBe bool, p environ.Properties) {
-	p = environ.NewProprietor()
+	p = environ.NewProperties()
 	p.SetProperty(propkeys.CheckTermEnvExclPrefix+c.Name(), consts.CheckTermDummy)
 	return false, p
 }
 func (c *termCheckerCore) CheckIsQuery(Querier, TTY, environ.Properties) (is bool, p environ.Properties) {
-	p = environ.NewProprietor()
+	p = environ.NewProperties()
 	p.SetProperty(propkeys.CheckTermQueryIsPrefix+c.Name(), consts.CheckTermDummy)
 	return false, p
 }
 func (c *termCheckerCore) CheckIsWindow(wm.Window) (is bool, p environ.Properties) {
-	p = environ.NewProprietor()
+	p = environ.NewProperties()
 	p.SetProperty(propkeys.CheckTermWindowIsPrefix+c.Name(), consts.CheckTermDummy)
 	return false, p
 }
@@ -136,14 +138,15 @@ func (c *termCheckerCore) NewTerminal(opts ...Option) (*Terminal, error) {
 	tm := newDummyTerminal()
 	overwriteEnv := false // likely already set by caller function (NewTerminal())
 	opts = append(opts, setInternalDefaults, setEnvAndMuxers(overwriteEnv))
-	if err := tm.SetOptions(opts...); log.IsErr(tm.Logger(), slog.LevelInfo, err) {
+	if err := tm.SetOptions(opts...); logx.IsErr(err, tm, slog.LevelInfo) {
 		return nil, err
 	}
+	logx.Info(`terminal auto-detection`, tm, `terminal`, c.Name())
 	composeManuallyStr, composeManually := tm.Property(propkeys.ManualComposition)
 	if composeManually && composeManuallyStr == `true` {
 		// manual composition
 		tm.SetOptions(setTTYAndQuerier(nil))
-		tm.surveyor = getSurveyor(tm.partialSurveyor, tm.proprietor)
+		tm.surveyor = getSurveyor(tm.partialSurveyor, tm.properties)
 		if tm.closer == nil {
 			tm.closer = internal.NewCloser()
 		}
@@ -167,39 +170,39 @@ func (c *termCheckerCore) NewTerminal(opts ...Option) (*Terminal, error) {
 	if ex, okExe := c.parent.(interface {
 		Exe(environ.Properties) string
 	}); okExe {
-		exe = ex.Exe(tm.proprietor)
+		exe = ex.Exe(tm.properties)
 	}
 	var ar internal.Arger
 	if arg, okArger := c.parent.(interface {
 		Args(environ.Properties) []string
 	}); okArger {
-		ar = newArger(arg.Args(tm.proprietor))
+		ar = newArger(arg.Args(tm.properties))
 	}
-	if err := tm.SetOptions(setTTYAndQuerier(c)); log.IsErr(tm.Logger(), slog.LevelInfo, err) {
+	if err := tm.SetOptions(setTTYAndQuerier(c)); logx.IsErr(err, tm, slog.LevelInfo) {
 		return nil, err
 	}
 	var w wm.Window
 	if tm.windowProvider != nil {
-		w = tm.windowProvider(c.parent.CheckIsWindow, tm.proprietor)
+		w = tm.windowProvider(c.parent.CheckIsWindow, tm.properties)
 	}
 	if w == nil {
 		if wdwer, okWdwer := c.parent.(interface {
 			Window(environ.Properties) (wm.Window, error)
 		}); okWdwer {
-			wChk, err := wdwer.Window(tm.proprietor)
+			wChk, err := wdwer.Window(tm.properties)
 			if err == nil && wChk != nil {
 				w = wChk
 			}
 		}
 		if w == nil && tm.windowProviderDefault != nil {
-			w = tm.windowProviderDefault(c.parent.CheckIsWindow, tm.proprietor)
+			w = tm.windowProviderDefault(c.parent.CheckIsWindow, tm.properties)
 		}
 	}
 	if tm.partialSurveyor == nil {
 		if surver, okSurver := c.parent.(interface {
 			Surveyor(environ.Properties) PartialSurveyor
 		}); okSurver {
-			tm.partialSurveyor = surver.Surveyor(tm.proprietor)
+			tm.partialSurveyor = surver.Surveyor(tm.properties)
 		}
 		if tm.partialSurveyor == nil {
 			tm.partialSurveyor = tm.partialSurveyorDefault
@@ -210,14 +213,14 @@ func (c *termCheckerCore) NewTerminal(opts ...Option) (*Terminal, error) {
 	}
 
 	drCkInp := &drawerCheckerInput{
-		Properties: tm.proprietor,
+		Properties: tm.properties,
 		Querier:    tm.querier,
 		TTY:        tm.tty,
 		w:          w,
 		name:       c.parent.Name(),
 	}
 	drawers, drProps, err := drawersFor(drCkInp)
-	if log.IsErr(tm.Logger(), slog.LevelInfo, err) {
+	if logx.IsErr(err, tm, slog.LevelInfo) {
 		return nil, err
 	}
 	if len(drawers) == 0 {
@@ -228,7 +231,7 @@ func (c *termCheckerCore) NewTerminal(opts ...Option) (*Terminal, error) {
 	tm.MergeProperties(drProps)
 	var lessFn func(i, j int) bool
 	drawerMap := make(map[string]struct{})
-	if _, isRemote := tm.proprietor.Property(propkeys.IsRemote); isRemote {
+	if _, isRemote := tm.properties.Property(propkeys.IsRemote); isRemote {
 		lessFn = func(i, j int) bool {
 			return slices.Index(drawersPriorityOrderedRemote, drawers[i].Name()) < slices.Index(drawersPriorityOrderedRemote, drawers[j].Name())
 		}
@@ -269,7 +272,7 @@ func (c *termCheckerCore) NewTerminal(opts ...Option) (*Terminal, error) {
 		tm.resizer = ResizerDefault()
 	}
 
-	tm.surveyor = getSurveyor(tm.partialSurveyor, tm.proprietor)
+	tm.surveyor = getSurveyor(tm.partialSurveyor, tm.properties)
 	tm.arger = ar
 	tm.window = w
 	tm.drawers = drawers
@@ -279,6 +282,14 @@ func (c *termCheckerCore) NewTerminal(opts ...Option) (*Terminal, error) {
 	tm.SetProperty(propkeys.TerminalName, c.parent.Name())
 	if len(exe) > 0 {
 		tm.SetProperty(propkeys.Executable, exe)
+	}
+	if tm.Logger() != nil {
+		drs := make([]string, 0, len(tm.Drawers()))
+		for _, dr := range tm.Drawers() {
+			drs = append(drs, dr.Name())
+		}
+		drsStr := strings.Join(drs, `,`)
+		logx.Info(`drawer auto-detection`, tm, `drawers`, drsStr)
 	}
 
 	_ = tm.watchWINCHStart()
@@ -300,6 +311,26 @@ func (c *termCheckerCore) NewTerminal(opts ...Option) (*Terminal, error) {
 		tm.addClosers(dr)
 	}
 	runtime.SetFinalizer(tm, func(tc *Terminal) { _ = tc.Close() })
+	if noCleanUpOnInterrupt, ok := tm.Property(propkeys.NoCleanUpOnInterrupt); !ok || noCleanUpOnInterrupt != `true` {
+		if internal.IsDefaultTTY(tm.ptyName()) {
+			sigs := make(chan os.Signal, 1)
+			signal.Notify(
+				sigs,
+				syscall.SIGHUP,  // 1 // TODO does tmux pass this?
+				os.Interrupt,    // 2
+				syscall.SIGQUIT, // 3
+				syscall.SIGABRT, // 6
+				syscall.SIGTERM, // 15
+			)
+			go func() {
+				sig := <-sigs
+				logx.Info(`terminal was interrupted`, tm, `signal`, sig.String())
+				tm.Close()
+				signal.Stop(sigs)
+				close(sigs)
+			}()
+		}
+	}
 
 	return tm, nil
 }

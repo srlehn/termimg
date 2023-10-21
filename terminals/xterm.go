@@ -28,7 +28,7 @@ var _ term.TermChecker = (*termCheckerXTerm)(nil)
 type termCheckerXTerm struct{ term.TermChecker }
 
 func (t *termCheckerXTerm) CheckExclude(pr environ.Properties) (mightBe bool, p environ.Properties) {
-	p = environ.NewProprietor()
+	p = environ.NewProperties()
 	if t == nil || pr == nil {
 		p.SetProperty(propkeys.CheckTermEnvExclPrefix+termNameXTerm, consts.CheckTermFailed)
 		return false, p
@@ -45,7 +45,7 @@ func (t *termCheckerXTerm) CheckExclude(pr environ.Properties) (mightBe bool, p 
 	return false, p
 }
 func (t *termCheckerXTerm) CheckIsQuery(qu term.Querier, tty term.TTY, pr environ.Properties) (is bool, p environ.Properties) {
-	p = environ.NewProprietor()
+	p = environ.NewProperties()
 	if t == nil || pr == nil {
 		p.SetProperty(propkeys.CheckTermQueryIsPrefix+termNameXTerm, consts.CheckTermFailed)
 		return false, p
@@ -98,7 +98,7 @@ func (t *termCheckerXTerm) CheckIsQuery(qu term.Querier, tty term.TTY, pr enviro
 	return true, p
 }
 func (t *termCheckerXTerm) CheckIsWindow(w wm.Window) (is bool, p environ.Properties) {
-	p = environ.NewProprietor()
+	p = environ.NewProperties()
 	if t == nil || w == nil {
 		p.SetProperty(propkeys.CheckTermWindowIsPrefix+termNameXTerm, consts.CheckTermFailed)
 		return false, p

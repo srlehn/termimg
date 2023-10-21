@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
 	"strings"
 
@@ -11,6 +12,7 @@ import (
 	"github.com/srlehn/termimg"
 	"github.com/srlehn/termimg/internal"
 	"github.com/srlehn/termimg/internal/errors"
+	"github.com/srlehn/termimg/internal/logx"
 	"github.com/srlehn/termimg/internal/parser"
 	"github.com/srlehn/termimg/internal/queries"
 	"github.com/srlehn/termimg/term"
@@ -81,12 +83,13 @@ func queryFunc(cmd *cobra.Command, args []string) terminalSwapper {
 		} else {
 			ptyName = internal.DefaultTTYDevice()
 		}
+		fmt.Println(logFileFlag, logFileOption != nil)
 		opts := []term.Option{
+			logFileOption,
 			termimg.DefaultConfig,
 			term.SetPTYName(ptyName),
 			term.ManualComposition, // TODO for tmux parent tty
 		}
-		var err error
 		tm2, err := term.NewTerminal(opts...)
 		if err != nil {
 			return err
@@ -133,7 +136,7 @@ func queryFunc(cmd *cobra.Command, args []string) terminalSwapper {
 				fmt.Print(repl)
 			}
 		}
-		return err
+		return logx.Err(err, tm2, slog.LevelError, `query`, query, `reply`, replCombined)
 	}
 }
 

@@ -56,7 +56,7 @@ func GetPromptLineLengths(env []string) (l []uint, err error) {
 	return l, err
 }
 
-func GetPromptSize(env []string) (width, height uint, err error) {
+func GetPromptSize(env []string, termWidth uint) (width, height uint, err error) {
 	l, e := GetPromptLineLengths(env)
 	err = e
 	if err != nil {
@@ -68,7 +68,15 @@ func GetPromptSize(env []string) (width, height uint, err error) {
 	height = uint(len(l))
 
 	for _, i := range l {
-		if i > width {
+		if termWidth > 0 && i > termWidth {
+			if n := i / termWidth; n > 1 {
+				height += n - 1
+			}
+			if i%termWidth > 0 {
+				height++
+			}
+			width = termWidth
+		} else if i > width {
 			width = i
 		}
 	}

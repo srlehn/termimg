@@ -25,7 +25,7 @@ var _ term.TermChecker = (*termCheckerDomTerm)(nil)
 type termCheckerDomTerm struct{ term.TermChecker }
 
 func (t *termCheckerDomTerm) CheckExclude(pr environ.Properties) (mightBe bool, p environ.Properties) {
-	p = environ.NewProprietor()
+	p = environ.NewProperties()
 	if t == nil || pr == nil {
 		p.SetProperty(propkeys.CheckTermEnvExclPrefix+termNameDomTerm, consts.CheckTermFailed)
 		return false, p
@@ -65,7 +65,7 @@ func (t *termCheckerDomTerm) CheckExclude(pr environ.Properties) (mightBe bool, 
 }
 
 func (t *termCheckerDomTerm) CheckIsWindow(w wm.Window) (is bool, p environ.Properties) {
-	p = environ.NewProprietor()
+	p = environ.NewProperties()
 	if t == nil || w == nil {
 		p.SetProperty(propkeys.CheckTermWindowIsPrefix+termNameDomTerm, consts.CheckTermFailed)
 		return false, p

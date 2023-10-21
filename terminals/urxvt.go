@@ -32,7 +32,7 @@ type termCheckerURXVT struct {
 }
 
 func (t *termCheckerURXVT) CheckExclude(pr environ.Properties) (mightBe bool, p environ.Properties) {
-	p = environ.NewProprietor()
+	p = environ.NewProperties()
 	if t == nil || pr == nil {
 		p.SetProperty(propkeys.CheckTermEnvExclPrefix+termNameURXVT, consts.CheckTermFailed)
 		return false, p
@@ -61,7 +61,7 @@ func (t *termCheckerURXVT) CheckIsQuery(qu term.Querier, tty term.TTY, pr enviro
 
 	// TODO urxvt isn't recognized anymore
 
-	p = environ.NewProprietor()
+	p = environ.NewProperties()
 	if t == nil || pr == nil {
 		p.SetProperty(propkeys.CheckTermQueryIsPrefix+termNameURXVT, consts.CheckTermFailed)
 		return false, p
@@ -116,7 +116,7 @@ func (t *termCheckerURXVT) CheckIsQuery(qu term.Querier, tty term.TTY, pr enviro
 	return true, p
 }
 func (t *termCheckerURXVT) CheckIsWindow(w wm.Window) (is bool, p environ.Properties) {
-	p = environ.NewProprietor()
+	p = environ.NewProperties()
 	if t == nil || w == nil {
 		p.SetProperty(propkeys.CheckTermWindowIsPrefix+termNameURXVT, consts.CheckTermFailed)
 		return false, p

@@ -1,14 +1,18 @@
 package terminology
 
 import (
+	"context"
 	"fmt"
 	"image"
+	"log/slog"
 	"strings"
+	"time"
 
 	"github.com/srlehn/termimg/internal/consts"
 	"github.com/srlehn/termimg/internal/encoder/encpng"
 	"github.com/srlehn/termimg/internal/environ"
 	"github.com/srlehn/termimg/internal/errors"
+	"github.com/srlehn/termimg/internal/logx"
 	"github.com/srlehn/termimg/mux"
 	"github.com/srlehn/termimg/term"
 )
@@ -27,36 +31,48 @@ func (d *drawerTerminology) IsApplicable(inp term.DrawerCheckerInput) (bool, env
 }
 
 func (d *drawerTerminology) Draw(img image.Image, bounds image.Rectangle, tm *term.Terminal) error {
-	if d == nil {
-		return errors.New(consts.ErrNilReceiver)
+	drawFn, err := d.Prepare(context.Background(), img, bounds, tm)
+	if err != nil {
+		return err
 	}
-	if tm == nil || img == nil {
-		return errors.New(consts.ErrNilParam)
+	return logx.TimeIt(drawFn, `image drawing`, tm, `drawer`, d.Name())
+}
+
+func (d *drawerTerminology) Prepare(ctx context.Context, img image.Image, bounds image.Rectangle, tm *term.Terminal) (drawFn func() error, _ error) {
+	if d == nil || tm == nil || img == nil || ctx == nil {
+		return nil, errors.New(`nil parameter`)
 	}
+	start := time.Now()
 	timg, ok := img.(*term.Image)
 	if !ok {
 		timg = term.NewImage(img)
 	}
 	if timg == nil {
-		return errors.New(consts.ErrNilImage)
+		return nil, errors.New(consts.ErrNilImage)
 	}
 
 	rsz := tm.Resizer()
 	if rsz == nil {
-		return errors.New(`nil resizer`)
+		return nil, errors.New(`nil resizer`)
 	}
 	err := timg.Fit(bounds, rsz, tm)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	terminologyString, err := d.inbandString(timg, bounds, tm)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	tm.WriteString(terminologyString)
 
-	return nil
+	logx.Info(`image preparation`, tm, `drawer`, d.Name(), `duration`, time.Since(start))
+
+	drawFn = func() error {
+		_, err := tm.WriteString(terminologyString)
+		return logx.Err(err, tm, slog.LevelInfo)
+	}
+
+	return drawFn, nil
 }
 
 func (d *drawerTerminology) inbandString(timg *term.Image, bounds image.Rectangle, term *term.Terminal) (string, error) {

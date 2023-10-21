@@ -36,8 +36,8 @@ type termCheckerConHost struct {
 	term.TermChecker
 }
 
-func (t *termCheckerConHost) CheckExclude(pr environ.Proprietor) (mightBe bool, p environ.Proprietor) {
-	p = environ.NewProprietor()
+func (t *termCheckerConHost) CheckExclude(pr environ.Properties) (mightBe bool, p environ.Properties) {
+	p = environ.NewProperties()
 	if t == nil || pr == nil {
 		p.SetProperty(propkeys.CheckTermEnvExclPrefix+termNameConHost, consts.CheckTermFailed)
 		return false, p
@@ -53,10 +53,10 @@ func (t *termCheckerConHost) CheckExclude(pr environ.Proprietor) (mightBe bool, 
 	return false, p
 }
 
-func (t *termCheckerConHost) Windower(pr environ.Proprietor) (wm.Window, error) {
+func (t *termCheckerConHost) Windower(pr environ.Properties) (wm.Window, error) {
 	return getConHostWindow()
 }
-func (t *termCheckerConHost) Surveyor(pr environ.Proprietor) term.PartialSurveyor {
+func (t *termCheckerConHost) Surveyor(pr environ.Properties) term.PartialSurveyor {
 	return &surveyorConhost{}
 }
 

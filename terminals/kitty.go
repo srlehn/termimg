@@ -23,7 +23,7 @@ var _ term.TermChecker = (*termCheckerKitty)(nil)
 type termCheckerKitty struct{ term.TermChecker }
 
 func (t *termCheckerKitty) CheckExclude(pr environ.Properties) (mightBe bool, p environ.Properties) {
-	p = environ.NewProprietor()
+	p = environ.NewProperties()
 	if t == nil || pr == nil {
 		p.SetProperty(propkeys.CheckTermEnvExclPrefix+termNameKitty, consts.CheckTermFailed)
 		return false, p
@@ -44,7 +44,7 @@ func (t *termCheckerKitty) CheckExclude(pr environ.Properties) (mightBe bool, p 
 	return true, p
 }
 func (t *termCheckerKitty) CheckIsWindow(w wm.Window) (is bool, p environ.Properties) {
-	p = environ.NewProprietor()
+	p = environ.NewProperties()
 	if t == nil || w == nil {
 		p.SetProperty(propkeys.CheckTermWindowIsPrefix+termNameMlterm, consts.CheckTermFailed)
 		return false, p

@@ -2,15 +2,19 @@ package domterm
 
 import (
 	"bytes"
+	"context"
 	"encoding/base64"
 	"fmt"
 	"html"
 	"image"
 	"image/jpeg"
+	"log/slog"
+	"time"
 
 	"github.com/srlehn/termimg/internal/consts"
 	"github.com/srlehn/termimg/internal/environ"
 	"github.com/srlehn/termimg/internal/errors"
+	"github.com/srlehn/termimg/internal/logx"
 	"github.com/srlehn/termimg/mux"
 	"github.com/srlehn/termimg/term"
 )
@@ -29,23 +33,38 @@ func (d *drawerDomTerm) IsApplicable(inp term.DrawerCheckerInput) (bool, environ
 }
 
 func (d *drawerDomTerm) Draw(img image.Image, bounds image.Rectangle, tm *term.Terminal) error {
-	if d == nil || tm == nil || img == nil {
-		return errors.New(`nil parameter`)
+	drawFn, err := d.Prepare(context.Background(), img, bounds, tm)
+	if err != nil {
+		return err
 	}
+	return logx.TimeIt(drawFn, `image drawing`, tm, `drawer`, d.Name())
+}
+
+func (d *drawerDomTerm) Prepare(ctx context.Context, img image.Image, bounds image.Rectangle, tm *term.Terminal) (drawFn func() error, _ error) {
+	if d == nil || tm == nil || img == nil || ctx == nil {
+		return nil, errors.New(`nil parameter`)
+	}
+	start := time.Now()
 	timg, ok := img.(*term.Image)
 	if !ok {
 		timg = term.NewImage(img)
 	}
 	if timg == nil {
-		return errors.New(consts.ErrNilImage)
+		return nil, errors.New(consts.ErrNilImage)
 	}
 
 	domTermString, err := d.inbandString(timg, bounds, tm)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	tm.WriteString(domTermString)
-	return nil
+
+	logx.Info(`image preparation`, tm, `drawer`, d.Name(), `duration`, time.Since(start))
+
+	drawFn = func() error {
+		_, err := tm.WriteString(domTermString)
+		return logx.Err(err, tm, slog.LevelInfo)
+	}
+	return drawFn, nil
 }
 
 func (d *drawerDomTerm) inbandString(timg *term.Image, bounds image.Rectangle, tm *term.Terminal) (string, error) {

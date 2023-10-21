@@ -1,15 +1,19 @@
 package urxvt
 
 import (
+	"context"
 	"fmt"
 	"image"
+	"log/slog"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/srlehn/termimg/internal/consts"
 	"github.com/srlehn/termimg/internal/encoder/encpng"
 	"github.com/srlehn/termimg/internal/environ"
 	"github.com/srlehn/termimg/internal/errors"
+	"github.com/srlehn/termimg/internal/logx"
 	"github.com/srlehn/termimg/mux"
 	"github.com/srlehn/termimg/term"
 )
@@ -31,36 +35,48 @@ func (d *drawerURXVT) IsApplicable(inp term.DrawerCheckerInput) (bool, environ.P
 // TODO replace urxvt graphic with persistent block graphic when cleared
 
 func (d *drawerURXVT) Draw(img image.Image, bounds image.Rectangle, tm *term.Terminal) error {
-	if d == nil {
-		return errors.New(consts.ErrNilReceiver)
+	drawFn, err := d.Prepare(context.Background(), img, bounds, tm)
+	if err != nil {
+		return err
 	}
-	if tm == nil || img == nil {
-		return errors.New(consts.ErrNilParam)
+	return logx.TimeIt(drawFn, `image drawing`, tm, `drawer`, d.Name())
+}
+
+func (d *drawerURXVT) Prepare(ctx context.Context, img image.Image, bounds image.Rectangle, tm *term.Terminal) (drawFn func() error, _ error) {
+	if d == nil || tm == nil || img == nil || ctx == nil {
+		return nil, errors.New(`nil parameter`)
 	}
+	start := time.Now()
 	timg, ok := img.(*term.Image)
 	if !ok {
 		timg = term.NewImage(img)
 	}
 	if timg == nil {
-		return errors.New(consts.ErrNilImage)
+		return nil, errors.New(consts.ErrNilImage)
 	}
 
 	rsz := tm.Resizer()
 	if rsz == nil {
-		return errors.New(`nil resizer`)
+		return nil, errors.New(`nil resizer`)
 	}
 	err := timg.Fit(bounds, rsz, tm)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	urxvtString, err := d.inbandString(timg, bounds, tm)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	tm.Write([]byte(urxvtString))
 
-	return nil
+	logx.Info(`image preparation`, tm, `drawer`, d.Name(), `duration`, time.Since(start))
+
+	drawFn = func() error {
+		_, err := tm.WriteString(urxvtString)
+		return logx.Err(err, tm, slog.LevelInfo)
+	}
+
+	return drawFn, nil
 }
 
 func (d *drawerURXVT) inbandString(timg *term.Image, bounds image.Rectangle, tm *term.Terminal) (string, error) {

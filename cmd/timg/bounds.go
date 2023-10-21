@@ -5,6 +5,7 @@ import (
 	_ "image/gif"
 	_ "image/jpeg"
 	_ "image/png"
+	"log/slog"
 	"strconv"
 	"strings"
 
@@ -15,6 +16,7 @@ import (
 	_ "golang.org/x/image/webp"
 
 	"github.com/srlehn/termimg/internal/errors"
+	"github.com/srlehn/termimg/internal/logx"
 	"github.com/srlehn/termimg/internal/prompt"
 	"github.com/srlehn/termimg/term"
 )
@@ -22,27 +24,34 @@ import (
 // func splitDimArg(dim string, surv term.Surveyor, imgFile string) (x, y, w, h int, e error) {
 func splitDimArg(dim string, surv term.Surveyor, env []string, img image.Image) (x, y, w, h int, autoX, autoY bool, e error) {
 	dimParts := strings.Split(dim, `,`)
+	// var logger *slog.Logger
+	var loggerProv logx.LoggerProvider
+	if surv != nil {
+		if lp, ok := surv.(logx.LoggerProvider); ok {
+			loggerProv = lp
+		}
+	}
 	if len(dimParts) > 4 {
-		return 0, 0, 0, 0, false, false, errors.New(`image position string not "<x>,<y>,<w>x<h>"`)
+		return 0, 0, 0, 0, false, false, logx.Err(errors.New(`image position string not "<x>,<y>,<w>x<h>"`), loggerProv, slog.LevelError)
 	}
 	var err error
 	var xu, yu, wu, hu uint64
 	for i, dimPart := range dimParts {
 		if strings.Contains(dimPart, `x`) {
 			if i != len(dimParts)-1 {
-				return 0, 0, 0, 0, false, false, errors.New(showUsageStr)
+				return 0, 0, 0, 0, false, false, logx.Err(errors.New(showUsageStr), loggerProv, slog.LevelError)
 			}
 			sizes := strings.SplitN(dimPart, `x`, 2)
 			if len(sizes[0]) > 0 {
 				wu, err = strconv.ParseUint(sizes[0], 10, 64)
 				if err != nil {
-					return 0, 0, 0, 0, false, false, errors.New(showUsageStr)
+					return 0, 0, 0, 0, false, false, logx.Err(errors.New(showUsageStr), loggerProv, slog.LevelError)
 				}
 			}
 			if len(sizes[1]) > 0 {
 				hu, err = strconv.ParseUint(sizes[1], 10, 64)
 				if err != nil {
-					return 0, 0, 0, 0, false, false, errors.New(showUsageStr)
+					return 0, 0, 0, 0, false, false, logx.Err(errors.New(showUsageStr), loggerProv, slog.LevelError)
 				}
 			}
 			break
@@ -52,7 +61,7 @@ func splitDimArg(dim string, surv term.Surveyor, env []string, img image.Image) 
 		if len(dimPart) > 0 {
 			val, err = strconv.ParseUint(dimPart, 10, 64)
 			if err != nil {
-				return 0, 0, 0, 0, false, false, errors.New(showUsageStr)
+				return 0, 0, 0, 0, false, false, logx.Err(errors.New(showUsageStr), loggerProv, slog.LevelError)
 			}
 		}
 		switch i {
@@ -69,24 +78,23 @@ func splitDimArg(dim string, surv term.Surveyor, env []string, img image.Image) 
 	var wScaled, hScaled uint
 	if wu == 0 || hu == 0 {
 		if img == nil {
-			return 0, 0, 0, 0, false, false, errors.New(`nil image`)
+			return 0, 0, 0, 0, false, false, logx.Err(errors.New(`nil image`), loggerProv, slog.LevelError)
 		}
 		imgBounds := img.Bounds()
 		// return 0, 0, 0, 0, errors.New(`rectangle side with length 0`)
 		tcw, tch, err := surv.SizeInCells()
 		if err != nil {
-			return 0, 0, 0, 0, false, false, errors.New(err)
+			return 0, 0, 0, 0, false, false, logx.Err(errors.New(err), loggerProv, slog.LevelError)
 		}
 		cpw, cph, err := surv.CellSize()
 		if err != nil {
-			return 0, 0, 0, 0, false, false, errors.New(err)
+			return 0, 0, 0, 0, false, false, logx.Err(errors.New(err), loggerProv, slog.LevelError)
 		}
 		if cpw == 0 || cph == 0 {
-			return 0, 0, 0, 0, false, false, errors.New(`unable to query terminal size in cells`)
+			return 0, 0, 0, 0, false, false, logx.Err(errors.New(`unable to query terminal size in cells`), loggerProv, slog.LevelError)
 		}
-		_, ph, err := prompt.GetPromptSize(env)
-		if err != nil {
-			// TODO log error
+		_, ph, err := prompt.GetPromptSize(env, tcw)
+		if logx.IsErr(err, loggerProv, slog.LevelInfo) {
 			ph = 1
 		}
 		tch -= ph                                               // subtract shell prompt height
@@ -115,10 +123,9 @@ func splitDimArg(dim string, surv term.Surveyor, env []string, img image.Image) 
 				hScaled = uint((float64(hAvail) * areaRatio) / arc)
 			}
 			sizeScaled, err := surv.CellScale(img.Bounds().Size(), image.Point{})
-			if err == nil &&
+			if !logx.IsErr(err, loggerProv, slog.LevelInfo) &&
 				(sizeScaled.X > 0 && sizeScaled.Y > 0) &&
 				(sizeScaled.X < int(wScaled) || sizeScaled.Y < int(hScaled)) {
-				// TODO log error
 				wScaled = uint(sizeScaled.X)
 				hScaled = uint(sizeScaled.Y)
 			}
@@ -142,7 +149,7 @@ func splitDimArg(dim string, surv term.Surveyor, env []string, img image.Image) 
 		h = int(hu)
 	}
 	if w < 1 && h < 1 {
-		return 0, 0, 0, 0, false, false, errors.New(`image position outside visible area`)
+		return 0, 0, 0, 0, false, false, logx.Err(errors.New(`image position outside visible area`), loggerProv, slog.LevelError)
 	}
 	return x, y, w, h, autoX, autoY, nil
 }

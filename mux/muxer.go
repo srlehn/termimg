@@ -220,7 +220,7 @@ Outer:
 					name:       strings.TrimSuffix(termType, `-server`),
 					procServer: proc,
 					procClient: procClient,
-					env:        environ.EnvToProprietor(env),
+					env:        environ.EnvToProperties(env),
 					ttyInner:   ttyLast,
 					isRemote:   isRemote,
 				})
@@ -261,7 +261,7 @@ Outer:
 		}
 		envInner = environ.CleanEnv(envrnOuter, envrnInner)
 	} else {
-		envInner = environ.NewProprietor()
+		envInner = environ.NewProperties()
 	}
 	if passagesStr := passages.String(); len(passagesStr) > 0 {
 		envInner.SetProperty(propkeys.Passages, passagesStr)
@@ -337,10 +337,10 @@ func getClientProc(procTerm, procInner *process.Process, termTypeLast string) (p
 		}
 	}
 	if env == nil {
-		env = environ.NewProprietor()
+		env = environ.NewProperties()
 	}
-	envTemp := environ.CloneProprietor(env)
-	envTemp.MergeProperties(environ.EnvToProprietor(preservedVars))
+	envTemp := environ.CloneProperties(env)
+	envTemp.MergeProperties(environ.EnvToProperties(preservedVars))
 	// run different checks here for muxers, etc...
 	var (
 		err                        error

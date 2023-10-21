@@ -8,6 +8,6 @@ import (
 	"github.com/srlehn/termimg/wm"
 )
 
-func createWindowConsole(env environ.Proprietor, name, class, instance string, isWindow wm.IsWindowFunc) wm.Window {
+func createWindowConsole(env environ.Properties, name, class, instance string, isWindow wm.IsWindowFunc) wm.Window {
 	return &wminternal.WindowDummy{}
 }

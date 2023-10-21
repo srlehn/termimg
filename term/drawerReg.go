@@ -16,7 +16,7 @@ func drawersFor(inp DrawerCheckerInput) ([]Drawer, environ.Properties, error) {
 	if inp == nil {
 		return nil, nil, errors.New(consts.ErrNilParam)
 	}
-	prs := environ.NewProprietor()
+	prs := environ.NewProperties()
 	var applDrawers []Drawer
 	for _, dr := range drawersRegistered {
 		if dr == nil {

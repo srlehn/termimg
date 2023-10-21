@@ -1,17 +1,19 @@
 package generic2
 
 import (
+	"context"
 	"fmt"
 	"image"
 	"image/color"
+	"log/slog"
 	"math"
-	"os"
 	"strings"
+	"time"
 
 	"github.com/srlehn/termimg/internal/consts"
-	"github.com/srlehn/termimg/internal/encoder/encpng"
 	"github.com/srlehn/termimg/internal/environ"
 	"github.com/srlehn/termimg/internal/errors"
+	"github.com/srlehn/termimg/internal/logx"
 	"github.com/srlehn/termimg/internal/util"
 	"github.com/srlehn/termimg/term"
 )
@@ -30,24 +32,33 @@ func (d *drawerBraille) IsApplicable(inp term.DrawerCheckerInput) (bool, environ
 }
 
 func (d *drawerBraille) Draw(img image.Image, bounds image.Rectangle, tm *term.Terminal) error {
-	if d == nil || tm == nil || img == nil {
-		return errors.New(`nil parameter`)
+	drawFn, err := d.Prepare(context.Background(), img, bounds, tm)
+	if err != nil {
+		return err
 	}
+	return logx.TimeIt(drawFn, `image drawing`, tm, `drawer`, d.Name())
+}
+
+func (d *drawerBraille) Prepare(ctx context.Context, img image.Image, bounds image.Rectangle, tm *term.Terminal) (drawFn func() error, _ error) {
+	if d == nil || tm == nil || img == nil || ctx == nil {
+		return nil, errors.New(`nil parameter`)
+	}
+	start := time.Now()
 	timg, ok := img.(*term.Image)
 	if !ok {
 		timg = term.NewImage(img)
 	}
 	if timg == nil {
-		return errors.New(consts.ErrNilImage)
+		return nil, errors.New(consts.ErrNilImage)
 	}
 
 	boundsBraille := image.Rect(bounds.Min.X*2, bounds.Min.Y*4, bounds.Max.X*2, bounds.Max.Y*4)
 	rsz := tm.Resizer()
 	if rsz == nil {
-		return errors.New(`nil resizer`)
+		return nil, errors.New(`nil resizer`)
 	}
 	if err := timg.Fit(bounds, rsz, tm); err != nil {
-		return err
+		return nil, err
 	}
 
 	//
@@ -126,12 +137,18 @@ func (d *drawerBraille) Draw(img image.Image, bounds image.Rectangle, tm *term.T
 		}
 	}
 	str := b.String()
-	_ = str
-	fmt.Println(str)
 
-	f2 := util.Must2(os.OpenFile(`test.png`, os.O_CREATE|os.O_RDWR, 0644))
-	util.Must((&encpng.PngEncoder{}).Encode(f2, g, `.png`))
-	f2.Close()
+	// TODO rm
+	// f2 := util.Must2(os.OpenFile(`test.png`, os.O_CREATE|os.O_RDWR, 0644))
+	// util.Must((&encpng.PngEncoder{}).Encode(f2, g, `.png`))
+	// f2.Close()
 
-	return nil
+	logx.Info(`image preparation`, tm, `drawer`, d.Name(), `duration`, time.Since(start))
+
+	drawFn = func() error {
+		_, err := tm.WriteString(str)
+		return logx.Err(err, tm, slog.LevelInfo)
+	}
+
+	return drawFn, nil
 }

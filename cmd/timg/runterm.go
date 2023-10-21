@@ -4,12 +4,14 @@ package main
 
 import (
 	"image"
+	"log/slog"
 	"os"
 
 	"github.com/spf13/cobra"
 
 	_ "github.com/srlehn/termimg/drawers/all"
 	"github.com/srlehn/termimg/internal/errors"
+	"github.com/srlehn/termimg/internal/logx"
 	"github.com/srlehn/termimg/internal/testutil"
 	"github.com/srlehn/termimg/term"
 	_ "github.com/srlehn/termimg/terminals"
@@ -64,6 +66,9 @@ func runTermFunc(cmd *cobra.Command, args []string) terminalSwapper {
 			testutil.DrawFuncPictureWithFrame,
 			imgFileBytes, bounds, ``, doDisplay,
 		); err != nil {
+			if tm != nil && *tm != nil {
+				logx.IsErr(err, (*tm), slog.LevelError)
+			}
 			return err
 		}
 		return nil

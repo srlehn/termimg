@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log/slog"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -10,6 +11,7 @@ import (
 	_ "github.com/srlehn/termimg/drawers/all"
 	"github.com/srlehn/termimg/internal"
 	"github.com/srlehn/termimg/internal/errors"
+	"github.com/srlehn/termimg/internal/logx"
 	"github.com/srlehn/termimg/internal/propkeys"
 	"github.com/srlehn/termimg/internal/testutil/routines"
 	"github.com/srlehn/termimg/resize/rdefault"
@@ -93,11 +95,11 @@ func propFunc(cmd *cobra.Command, args []string) terminalSwapper {
 			ptyName = internal.DefaultTTYDevice()
 		}
 		opts := []term.Option{
+			logFileOption,
 			termimg.DefaultConfig,
 			term.SetPTYName(ptyName),
 			term.SetResizer(&rdefault.Resizer{}),
 		}
-		var err error
 		tm2, err := term.NewTerminal(opts...)
 		if err != nil {
 			return err
@@ -141,7 +143,7 @@ func propFunc(cmd *cobra.Command, args []string) terminalSwapper {
 			propXRes = true
 		}
 
-		if err = routines.ListTermProps(tm2, propTerm, propDrawers, propQueries, propEnv, propPassages, propWindow, propXRes); err != nil {
+		if err = routines.ListTermProps(tm2, propTerm, propDrawers, propQueries, propEnv, propPassages, propWindow, propXRes); logx.IsErr(err, tm2, slog.LevelError) {
 			return err
 		}
 		return nil

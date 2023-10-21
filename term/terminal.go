@@ -19,7 +19,7 @@ import (
 	"github.com/srlehn/termimg/internal/consts"
 	"github.com/srlehn/termimg/internal/environ"
 	"github.com/srlehn/termimg/internal/errors"
-	"github.com/srlehn/termimg/internal/log"
+	"github.com/srlehn/termimg/internal/logx"
 	"github.com/srlehn/termimg/internal/propkeys"
 	"github.com/srlehn/termimg/internal/queries"
 	"github.com/srlehn/termimg/internal/wminternal"
@@ -62,7 +62,7 @@ var _ interface {
 type (
 	tty        = TTY
 	querier    = Querier
-	proprietor = environ.Properties
+	properties = environ.Properties
 	arger      = internal.Arger
 	closer     = internal.Closer
 )
@@ -70,7 +70,7 @@ type (
 type Terminal struct {
 	tty
 	querier
-	proprietor // Data
+	properties // Data
 	surveyor   SurveyorLight
 	arger
 	window wm.Window
@@ -114,12 +114,12 @@ type Terminal struct {
 func NewTerminal(opts ...Option) (*Terminal, error) {
 	tm := newDummyTerminal()
 	opts = append(opts, setInternalDefaults, setEnvAndMuxers(true))
-	if err := tm.SetOptions(opts...); log.IsErr(tm.Logger(), slog.LevelError, err) {
+	if err := tm.SetOptions(opts...); logx.IsErr(err, tm, slog.LevelError) {
 		return nil, err
 	}
 
 	ttyTmp, quTmp, err := getTTYAndQuerier(tm, nil)
-	if log.IsErr(tm.Logger(), slog.LevelError, err) {
+	if logx.IsErr(err, tm, slog.LevelError) {
 		return nil, err
 	}
 
@@ -127,18 +127,18 @@ func NewTerminal(opts ...Option) (*Terminal, error) {
 	composeManuallyStr, composeManually := tm.Property(propkeys.ManualComposition)
 	if !composeManually || composeManuallyStr != `true` {
 		// find terminal checker
-		chk, prChecker, err := findTermChecker(tm.proprietor, ttyTmp, quTmp)
-		if log.IsErr(tm.Logger(), slog.LevelInfo, err) {
+		chk, prChecker, err := findTermChecker(tm.properties, ttyTmp, quTmp)
+		if logx.IsErr(err, tm, slog.LevelInfo) {
 			return nil, err
 		}
-		tm.proprietor.MergeProperties(prChecker)
+		tm.properties.MergeProperties(prChecker)
 		checker = chk
 	} else {
 		checker = &termCheckerCore{} // dummy
 	}
 	// terminal specific settings
 	tm, err = checker.NewTerminal(replaceTerminal(tm))
-	if log.IsErr(tm.Logger(), slog.LevelInfo, err) {
+	if logx.IsErr(err, tm, slog.LevelInfo) {
 		return nil, err
 	}
 
@@ -146,7 +146,7 @@ func NewTerminal(opts ...Option) (*Terminal, error) {
 }
 func newDummyTerminal() *Terminal {
 	tm := &Terminal{
-		proprietor: environ.NewProprietor(),
+		properties: environ.NewProperties(),
 		printMu:    &sync.Mutex{},
 		closer:     internal.NewCloser(),
 	}
@@ -190,11 +190,11 @@ func getTTYAndQuerier(tm *Terminal, tc *termCheckerCore) (TTY, Querier, error) {
 			if ttyProv, okTTYProv := tc.parent.(interface {
 				TTY(pytName string, ci environ.Properties) (TTY, error)
 			}); okTTYProv {
-				tty, err := ttyProv.TTY(tm.ptyName(), tm.proprietor)
+				tty, err := ttyProv.TTY(tm.ptyName(), tm.properties)
 				if err != nil {
 					errs = append(errs, err)
 				} else if tty != nil {
-					if tm.proprietor != nil {
+					if tm.properties != nil {
 						tm.tty = tty
 					}
 					ttyTemp = tty
@@ -229,7 +229,7 @@ func getTTYAndQuerier(tm *Terminal, tc *termCheckerCore) (TTY, Querier, error) {
 			if querier, okQuerier := tc.parent.(interface {
 				Querier(environ.Properties) Querier
 			}); okQuerier {
-				quTemp = querier.Querier(tm.proprietor)
+				quTemp = querier.Querier(tm.properties)
 			}
 		}
 		if quTemp == nil && tm.querierDefault != nil {
@@ -250,7 +250,7 @@ func findTermChecker(env environ.Properties, tty TTY, qu Querier) (tc TermChecke
 	if env == nil {
 		return RegisteredTermChecker(consts.TermGenericName), nil, nil
 	}
-	pr := environ.NewProprietor()
+	pr := environ.NewProperties()
 	ptyName := tty.TTYDevName()
 
 	termGenericPreCheck(env)
@@ -427,7 +427,7 @@ func findTermChecker(env environ.Properties, tty TTY, qu Querier) (tc TermChecke
 }
 
 func (t *Terminal) Name() string {
-	if t == nil || t.proprietor == nil {
+	if t == nil || t.properties == nil {
 		return ``
 	}
 	termName, _ := t.Property(propkeys.TerminalName)
@@ -435,7 +435,7 @@ func (t *Terminal) Name() string {
 }
 
 func (t *Terminal) ptyName() string {
-	if t == nil || t.proprietor == nil {
+	if t == nil || t.properties == nil {
 		return ``
 	}
 	ptyName, _ := t.Property(propkeys.PTYName)
@@ -443,14 +443,20 @@ func (t *Terminal) ptyName() string {
 }
 
 func (t *Terminal) tempDir() string {
-	if t == nil || t.proprietor == nil {
+	if t == nil || t.properties == nil {
 		return ``
 	}
 	tempDir, _ := t.Property(propkeys.TempDir)
 	return tempDir
 }
 
-func (t *Terminal) Query(qs string, p Parser) (string, error) { return t.query(qs, p) }
+func (t *Terminal) Query(qs string, p Parser) (string, error) {
+	repl, err := t.query(qs, p)
+	if t != nil && t.logger != nil {
+		t.logger.Info(`terminal query`, `query`, qs, `reply`, repl)
+	}
+	return repl, err
+}
 
 func (t *Terminal) query(qs string, p Parser) (_ string, err error) {
 	if t == nil {
@@ -462,7 +468,7 @@ func (t *Terminal) query(qs string, p Parser) (_ string, err error) {
 	if t.querier == nil {
 		return ``, errors.New(`nil querier`)
 	}
-	if t.proprietor == nil {
+	if t.properties == nil {
 		return ``, errors.New(`nil proprietor`)
 	}
 	defer func() {
@@ -484,7 +490,7 @@ func (t *Terminal) CreateTemp(pattern string) (*os.File, error) {
 	tempDir := t.tempDir()
 	if len(tempDir) == 0 {
 		dir, err := os.MkdirTemp(``, consts.LibraryName+`.`)
-		if log.IsErr(t.Logger(), slog.LevelInfo, err) {
+		if logx.IsErr(err, t, slog.LevelInfo) {
 			return nil, err
 		}
 		t.SetProperty(propkeys.TempDir, tempDir)
@@ -495,7 +501,7 @@ func (t *Terminal) CreateTemp(pattern string) (*os.File, error) {
 	}
 
 	f, err := os.CreateTemp(tempDir, pattern)
-	if log.IsErr(t.Logger(), slog.LevelInfo, err) {
+	if logx.IsErr(err, t, slog.LevelInfo) {
 		return nil, err
 	}
 	onCloseFunc := func() error { return errors.New(errors.Join(f.Close(), os.Remove(f.Name()))) }
@@ -554,7 +560,7 @@ func (t *Terminal) Printf(format string, a ...any) (int, error) {
 		return 0, errors.New(consts.ErrNilReceiver)
 	}
 	n, err := t.WriteString(t.passages.Wrap(fmt.Sprintf(format, a...)))
-	if log.IsErr(t.Logger(), slog.LevelInfo, err) {
+	if logx.IsErr(err, t, slog.LevelInfo) {
 		return n, errors.New(err)
 	}
 	return n, nil
@@ -594,7 +600,7 @@ func (t *Terminal) CellScale(ptSrcPx, ptDstCl image.Point) (ptSrcCl image.Point,
 		return image.Point{}, errors.New(consts.ErrNilReceiver)
 	}
 	cpw, cph, err := t.CellSize()
-	if log.IsErr(t.Logger(), slog.LevelInfo, err) {
+	if logx.IsErr(err, t, slog.LevelInfo) {
 		return image.Point{}, err
 	}
 	if cpw < 1 || cph < 1 {
@@ -631,8 +637,8 @@ func (t *Terminal) watchWINCHStart() error {
 	if t == nil || t.surveyor == nil {
 		return errors.New(consts.ErrNilReceiver)
 	}
-	winch, closeFunc, err := t.surveyor.WatchResizeEventsStart(t.tty, t.querier, t.window, t.proprietor)
-	if log.IsErr(t.Logger(), slog.LevelInfo, err) {
+	winch, closeFunc, err := t.surveyor.WatchResizeEventsStart(t.tty, t.querier, t.window, t.properties)
+	if logx.IsErr(err, t, slog.LevelInfo) {
 		return err
 	}
 	t.closer.OnClose(closeFunc)
@@ -685,25 +691,25 @@ func (t *Terminal) logDebug(msg string, args ...any) {
 	if t == nil {
 		return
 	}
-	log.Log(t.logger, slog.LevelDebug, 3, msg, args...)
+	logx.Log(msg, t.logger, slog.LevelDebug, 3, args...)
 }
 func (t *Terminal) logInfo(msg string, args ...any) {
 	if t == nil {
 		return
 	}
-	log.Log(t.logger, slog.LevelInfo, 3, msg, args...)
+	logx.Log(msg, t.logger, slog.LevelInfo, 3, args...)
 }
 func (t *Terminal) logWarn(msg string, args ...any) {
 	if t == nil {
 		return
 	}
-	log.Log(t.logger, slog.LevelWarn, 3, msg, args...)
+	logx.Log(msg, t.logger, slog.LevelWarn, 3, args...)
 }
 func (t *Terminal) logError(msg string, args ...any) {
 	if t == nil {
 		return
 	}
-	log.Log(t.logger, slog.LevelError, 3, msg, args...)
+	logx.Log(msg, t.logger, slog.LevelError, 3, args...)
 }
 
 // round away from zero (toward infinity)
@@ -720,7 +726,7 @@ func (t *Terminal) Scroll(lineCnt int) error {
 		return errors.New(consts.ErrNilParam)
 	}
 	_, tch, err := t.SizeInCells()
-	if log.IsErr(t.Logger(), slog.LevelInfo, err) {
+	if logx.IsErr(err, t, slog.LevelInfo) {
 		return err
 	}
 	if tch == 0 {
@@ -737,13 +743,13 @@ func (t *Terminal) Scroll(lineCnt int) error {
 	switch {
 	case lineCnt == 0:
 		_, y, err := t.Cursor()
-		if log.IsErr(t.Logger(), slog.LevelInfo, err) {
+		if logx.IsErr(err, t, slog.LevelInfo) {
 			return err
 		}
 		lineCnt = int(y)
 		fallthrough
 	case lineCnt > 0:
-		if err := t.SetCursor(0, tch); log.IsErr(t.Logger(), slog.LevelInfo, err) {
+		if err := t.SetCursor(0, tch); logx.IsErr(err, t, slog.LevelInfo) {
 			return err
 		}
 		if avoidCS1IndexSuffix {
@@ -754,7 +760,7 @@ func (t *Terminal) Scroll(lineCnt int) error {
 			// tm2.Printf(queries.CSI+`%dT`, lineCnt) // SD - Scroll Down
 		}
 	case lineCnt < 0:
-		if err := t.SetCursor(0, 0); log.IsErr(t.Logger(), slog.LevelInfo, err) {
+		if err := t.SetCursor(0, 0); logx.IsErr(err, t, slog.LevelInfo) {
 			return err
 		}
 		t.Printf(`%s`, strings.Repeat(queries.RI, -lineCnt)) // C1 Index - moves up same column
@@ -777,8 +783,8 @@ func (t *Terminal) CellSize() (width, height float64, _ error) {
 	if !t.timeResCellInPxls.IsZero() && t.timeResCellInPxls.Equal(t.timeLastWINCH) {
 		cpw, cph = t.resCellInPxlsW, t.resCellInPxlsH
 	} else {
-		cpw, cph, err = t.surveyor.CellSize(t.tty, t.querier, t.window, t.proprietor)
-		if log.IsErr(t.Logger(), slog.LevelInfo, err) {
+		cpw, cph, err = t.surveyor.CellSize(t.tty, t.querier, t.window, t.properties)
+		if logx.IsErr(err, t, slog.LevelInfo) {
 			return 0, 0, err
 		}
 	}
@@ -804,7 +810,7 @@ func (t *Terminal) SizeInCells() (width, height uint, err error) {
 	if !t.timeResTermInCells.IsZero() && t.timeResTermInCells.Equal(t.timeLastWINCH) {
 		return t.resTermInCellsW, t.resTermInCellsH, nil
 	}
-	w, h, err := t.surveyor.SizeInCells(t.tty, t.querier, t.window, t.proprietor)
+	w, h, err := t.surveyor.SizeInCells(t.tty, t.querier, t.window, t.properties)
 	if !t.timeLastWINCH.IsZero() && err == nil && w > 0 && h > 0 {
 		t.resTermInCellsW = w
 		t.resTermInCellsH = h
@@ -824,7 +830,7 @@ func (t *Terminal) SizeInPixels() (width, height uint, err error) {
 	if !t.timeResTermInPxls.IsZero() && t.timeResTermInPxls.Equal(t.timeLastWINCH) {
 		return t.resTermInPxlsW, t.resTermInPxlsH, nil
 	}
-	w, h, err := t.surveyor.SizeInPixels(t.tty, t.querier, t.window, t.proprietor)
+	w, h, err := t.surveyor.SizeInPixels(t.tty, t.querier, t.window, t.properties)
 	if !t.timeLastWINCH.IsZero() && err == nil && w > 0 && h > 0 {
 		t.resTermInPxlsW = w
 		t.resTermInPxlsH = h
@@ -840,7 +846,7 @@ func (t *Terminal) Cursor() (xPosCells, yPosCells uint, err error) {
 	if t.surveyor == nil {
 		return 0, 0, errors.New(`nil surveyor`)
 	}
-	return t.surveyor.Cursor(t.tty, t.querier, t.window, t.proprietor)
+	return t.surveyor.Cursor(t.tty, t.querier, t.window, t.properties)
 }
 
 func (t *Terminal) SetCursor(xPosCells, yPosCells uint) (err error) {
@@ -850,7 +856,7 @@ func (t *Terminal) SetCursor(xPosCells, yPosCells uint) (err error) {
 	if t.surveyor == nil {
 		return errors.New(`nil surveyor`)
 	}
-	return t.surveyor.SetCursor(xPosCells, yPosCells, t.tty, t.querier, t.window, t.proprietor)
+	return t.surveyor.SetCursor(xPosCells, yPosCells, t.tty, t.querier, t.window, t.properties)
 }
 
 // default
@@ -869,7 +875,7 @@ func (t *Terminal) NewCanvas(bounds image.Rectangle) (*Canvas, error) {
 		return nil, errors.New(consts.ErrNilReceiver)
 	}
 	cpw, cph, err := t.CellSize()
-	if log.IsErr(t.Logger(), slog.LevelInfo, err) {
+	if logx.IsErr(err, t, slog.LevelInfo) {
 		return nil, err
 	}
 	boundsPixels := image.Rectangle{
@@ -887,7 +893,9 @@ func (t *Terminal) NewCanvas(bounds image.Rectangle) (*Canvas, error) {
 		boundsPixels: boundsPixels,
 		lastSetX:     -2,
 		drawing:      image.NewRGBA(image.Rect(0, 0, boundsPixels.Dx(), boundsPixels.Dy())),
+		closed:       make(chan struct{}),
 	}
+	t.AddClosers(c)
 	return c, nil
 }
 

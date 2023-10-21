@@ -15,6 +15,7 @@ const (
 	EnvIsLoaded                 = GeneralPrefix + `envIsLoaded`
 	Mode                        = GeneralPrefix + `mode` /// "tui", "cli" (default)
 	ManualComposition           = GeneralPrefix + `manualComposition`
+	NoCleanUpOnInterrupt        = GeneralPrefix + `noCleanUpOnInterrupt`
 	TerminalName                = GeneralPrefix + `termName`
 	TerminalPID                 = GeneralPrefix + `termPID`
 	TerminalTTY                 = GeneralPrefix + `termTTY` // directly provided tty by the terminal

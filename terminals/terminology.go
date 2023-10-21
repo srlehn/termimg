@@ -27,7 +27,7 @@ var _ term.TermChecker = (*termCheckerTerminology)(nil)
 type termCheckerTerminology struct{ term.TermChecker }
 
 func (t *termCheckerTerminology) CheckExclude(pr environ.Properties) (mightBe bool, p environ.Properties) {
-	p = environ.NewProprietor()
+	p = environ.NewProperties()
 	if t == nil || pr == nil {
 		p.SetProperty(propkeys.CheckTermEnvExclPrefix+termNameTerminology, consts.CheckTermFailed)
 		return false, p
@@ -42,7 +42,7 @@ func (t *termCheckerTerminology) CheckExclude(pr environ.Properties) (mightBe bo
 }
 
 func (t *termCheckerTerminology) CheckIsQuery(qu term.Querier, tty term.TTY, pr environ.Properties) (is bool, p environ.Properties) {
-	p = environ.NewProprietor()
+	p = environ.NewProperties()
 	if t == nil || pr == nil {
 		p.SetProperty(propkeys.CheckTermQueryIsPrefix+termNameTerminology, consts.CheckTermFailed)
 		return false, p

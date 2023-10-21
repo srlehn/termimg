@@ -32,7 +32,7 @@ func CachedQuery(qu Querier, qs string, tty TTY, p Parser, prIn, prOut environ.P
 		return ``, errors.New(consts.ErrNilParam)
 	}
 	if prOut == nil {
-		prOut = environ.NewProprietor()
+		prOut = environ.NewProperties()
 	}
 	qsEnc := base64.StdEncoding.EncodeToString([]byte(qs))
 	propKey := propkeys.QueryCachePrefix + qsEnc
@@ -289,7 +289,7 @@ func xtGetTCap(tcap string, qu Querier, tty TTY, prIn, prOut environ.Properties)
 	}
 
 	if prOut == nil {
-		prOut = environ.NewProprietor()
+		prOut = environ.NewProperties()
 	}
 	setProps := func(pr environ.Properties, repl string) {
 		prOut.SetProperty(propkeys.XTGETTCAPKeyNamePrefix+tcapHex, repl)

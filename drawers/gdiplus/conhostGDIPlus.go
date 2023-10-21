@@ -4,15 +4,19 @@ package gdiplus
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"image"
 	"image/png"
+	"log/slog"
+	"time"
 
 	"github.com/lxn/win"
 
 	"github.com/srlehn/termimg/internal/consts"
 	"github.com/srlehn/termimg/internal/environ"
 	"github.com/srlehn/termimg/internal/errors"
+	"github.com/srlehn/termimg/internal/logx"
 	"github.com/srlehn/termimg/internal/wndws"
 	"github.com/srlehn/termimg/term"
 )
@@ -28,7 +32,7 @@ type drawerGDI struct {
 
 func (d *drawerGDI) Name() string     { return `conhost_gdi` }
 func (d *drawerGDI) New() term.Drawer { return &drawerGDI{} }
-func (d *drawerGDI) IsApplicable(inp term.DrawerCheckerInput) (bool, environ.Proprietor) {
+func (d *drawerGDI) IsApplicable(inp term.DrawerCheckerInput) (bool, environ.Properties) {
 	return inp != nil && inp.Name() == `conhost` && !wndws.RunsOnWine(), nil
 }
 func (d *drawerGDI) init() error {
@@ -62,27 +66,36 @@ func (d *drawerGDI) Close() error {
 	return errors.Join(errs...)
 }
 func (d *drawerGDI) Draw(img image.Image, bounds image.Rectangle, tm *term.Terminal) error {
-	if d == nil || tm == nil || img == nil {
-		return errors.New(`nil parameter`)
-	}
-	if err := d.init(); err != nil {
+	drawFn, err := d.Prepare(context.Background(), img, bounds, tm)
+	if err != nil {
 		return err
+	}
+	return logx.TimeIt(drawFn, `image drawing`, tm, `drawer`, d.Name())
+}
+
+func (d *drawerGDI) Prepare(ctx context.Context, img image.Image, bounds image.Rectangle, tm *term.Terminal) (drawFn func() error, _ error) {
+	if d == nil || tm == nil || img == nil || ctx == nil {
+		return nil, errors.New(`nil parameter`)
+	}
+	start := time.Now()
+	if err := d.init(); err != nil {
+		return nil, err
 	}
 	timg, ok := img.(*term.Image)
 	if !ok {
 		timg = term.NewImage(img)
 	}
 	if timg == nil {
-		return errors.New(consts.ErrNilImage)
+		return nil, errors.New(consts.ErrNilImage)
 	}
 
 	rsz := tm.Resizer()
 	if rsz == nil {
-		return errors.New(`nil resizer`)
+		return nil, errors.New(`nil resizer`)
 	}
 	err := timg.Fit(bounds, rsz, tm)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	var (
@@ -97,12 +110,12 @@ func (d *drawerGDI) Draw(img image.Image, bounds image.Rectangle, tm *term.Termi
 
 	sp, err := timg.DrawerObject(d)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if sp != nil {
 		spt, okTyped := sp.(*GDIImage)
 		if !okTyped || spt == nil {
-			return errors.New(fmt.Sprintf(`term.DrawerSpec[%s] (%T) is nil or not of type %T`, d.Name(), sp, &GDIImage{}))
+			return nil, errors.New(fmt.Sprintf(`term.DrawerSpec[%s] (%T) is nil or not of type %T`, d.Name(), sp, &GDIImage{}))
 		}
 		spTyped = spt
 		goto draw
@@ -115,7 +128,7 @@ createBitmap:
 		if len(timg.Encoded) > 0 {
 			gpBmp, close, err = wndws.GetGpBitmapFromBytes(timg.Encoded)
 			if err != nil {
-				return err
+				return nil, err
 			}
 			if close != nil {
 				timg.OnClose(close)
@@ -123,16 +136,16 @@ createBitmap:
 		} else if len(timg.FileName) > 0 {
 			gpBmp, err = wndws.GetGpBitmapFromFile(timg.FileName)
 			if err != nil {
-				return err
+				return nil, err
 			}
 		} else {
 			bytBuf := new(bytes.Buffer)
 			if err = png.Encode(bytBuf, timg.Cropped); err != nil {
-				return errors.New(err)
+				return nil, errors.New(err)
 			}
 			timg.Encoded = bytBuf.Bytes()
 			if len(timg.Encoded) == 0 {
-				return errors.New(`image encoding failed`)
+				return nil, errors.New(`image encoding failed`)
 			}
 			goto createBitmap
 		}
@@ -141,7 +154,7 @@ createBitmap:
 
 		// create HBITMAP
 		if status := win.GdipCreateHBITMAPFromBitmap((*win.GpBitmap)(gpBmp), &hBmp, 0); status != win.Ok {
-			return errors.New(fmt.Sprintf("GdipCreateHBITMAPFromBitmap failed with status '%s'", status))
+			return nil, errors.New(fmt.Sprintf("GdipCreateHBITMAPFromBitmap failed with status '%s'", status))
 		}
 		timg.OnClose(func() error { _ = win.DeleteObject(win.HGDIOBJ(hBmp)); return nil })
 		spTyped.hBitmap = &hBmp
@@ -151,7 +164,7 @@ createBitmap:
 		hdcMem = win.CreateCompatibleDC(termDC)
 		hBmpOld = win.SelectObject(hdcMem, win.HGDIOBJ(hBmp))
 		if hBmpOld == 0 {
-			return errors.New("SelectObject failed")
+			return nil, errors.New("SelectObject failed")
 		}
 		timg.OnClose(func() error { _ = win.SelectObject(hdcMem, hBmpOld); return nil })
 		timg.OnClose(func() error { _ = win.ReleaseDC(0, hdcMem); return nil })
@@ -159,24 +172,30 @@ createBitmap:
 
 		// timg.DrawerSpec[d.Name()] = spTyped // TODO rm
 		if err := timg.SetPosObject(image.Rectangle{}, spTyped, d, tm); err != nil {
-			return err
+			return nil, err
 		}
 	}
 
 draw:
 	// TODO: win.HALFTONE or win.COLORONCOLOR?
 	if 0 == win.SetStretchBltMode(termDC, win.COLORONCOLOR) {
-		return errors.New("SetStretchBltMode")
-	}
-	if !win.StretchBlt(
-		termDC, int32(bounds.Min.X*8), int32(bounds.Min.Y*16), int32(bounds.Dx()*8), int32(bounds.Dy()*16),
-		spTyped.dc, int32(0), int32(0), int32(timg.Bounds().Dx()), int32(timg.Bounds().Dy()),
-		win.SRCCOPY,
-	) {
-		return errors.New("StretchBlt failed")
+		return nil, errors.New("SetStretchBltMode")
 	}
 
-	return nil
+	logx.Info(`image preparation`, tm, `drawer`, d.Name(), `duration`, time.Since(start))
+
+	drawFn = func() error {
+		if !win.StretchBlt(
+			termDC, int32(bounds.Min.X*8), int32(bounds.Min.Y*16), int32(bounds.Dx()*8), int32(bounds.Dy()*16),
+			spTyped.dc, int32(0), int32(0), int32(timg.Bounds().Dx()), int32(timg.Bounds().Dy()),
+			win.SRCCOPY,
+		) {
+			return logx.Err(errors.New("StretchBlt failed"), tm, slog.LevelInfo)
+		}
+		return nil
+	}
+
+	return drawFn, nil
 }
 
 type GDIImage struct {

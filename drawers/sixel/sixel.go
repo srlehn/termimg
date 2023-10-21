@@ -2,9 +2,12 @@ package sixel
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"image"
+	"log/slog"
 	"strings"
+	"time"
 
 	"golang.org/x/exp/slices"
 
@@ -13,6 +16,7 @@ import (
 	"github.com/srlehn/termimg/internal/consts"
 	"github.com/srlehn/termimg/internal/environ"
 	"github.com/srlehn/termimg/internal/errors"
+	"github.com/srlehn/termimg/internal/logx"
 	"github.com/srlehn/termimg/internal/parser"
 	"github.com/srlehn/termimg/internal/propkeys"
 	"github.com/srlehn/termimg/internal/queries"
@@ -70,33 +74,47 @@ func (d *drawerSixel) IsApplicable(inp term.DrawerCheckerInput) (bool, environ.P
 }
 
 func (d *drawerSixel) Draw(img image.Image, bounds image.Rectangle, tm *term.Terminal) error {
-	if d == nil || tm == nil || img == nil {
-		return errors.New(`nil parameter`)
+	drawFn, err := d.Prepare(context.Background(), img, bounds, tm)
+	if err != nil {
+		return err
 	}
+	return logx.TimeIt(drawFn, `image drawing`, tm, `drawer`, d.Name())
+}
+
+func (d *drawerSixel) Prepare(ctx context.Context, img image.Image, bounds image.Rectangle, tm *term.Terminal) (drawFn func() error, _ error) {
+	if d == nil || tm == nil || img == nil || ctx == nil {
+		return nil, errors.New(`nil parameter`)
+	}
+	start := time.Now()
 	timg, ok := img.(*term.Image)
 	if !ok {
 		timg = term.NewImage(img)
 	}
 	if timg == nil {
-		return errors.New(consts.ErrNilImage)
+		return nil, errors.New(consts.ErrNilImage)
 	}
 
 	rsz := tm.Resizer()
 	if rsz == nil {
-		return errors.New(`nil resizer`)
+		return nil, errors.New(`nil resizer`)
 	}
 	if err := timg.Fit(bounds, rsz, tm); err != nil {
-		return err
+		return nil, err
 	}
 
 	sixelString, err := d.inbandString(timg, bounds, tm)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	tm.WriteString(sixelString)
+	logx.Info(`image preparation`, tm, `drawer`, d.Name(), `duration`, time.Since(start))
 
-	return nil
+	drawFn = func() error {
+		_, err := tm.WriteString(sixelString)
+		return logx.Err(err, tm, slog.LevelInfo)
+	}
+
+	return drawFn, nil
 }
 
 func (d *drawerSixel) inbandString(timg *term.Image, bounds image.Rectangle, term *term.Terminal) (string, error) {

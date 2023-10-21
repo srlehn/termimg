@@ -22,7 +22,7 @@ var _ term.TermChecker = (*termCheckerMacTerm)(nil)
 type termCheckerMacTerm struct{ term.TermChecker }
 
 func (t *termCheckerMacTerm) CheckExclude(pr environ.Properties) (mightBe bool, p environ.Properties) {
-	p = environ.NewProprietor()
+	p = environ.NewProperties()
 	if t == nil || pr == nil {
 		p.SetProperty(propkeys.CheckTermEnvExclPrefix+termNameMacTerm, consts.CheckTermFailed)
 		return false, p

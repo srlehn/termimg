@@ -1,15 +1,19 @@
 package generic2
 
 import (
+	"context"
 	"fmt"
 	"image"
 	"image/color"
+	"log/slog"
 	"math"
 	"strings"
+	"time"
 
 	"github.com/srlehn/termimg/internal/consts"
 	"github.com/srlehn/termimg/internal/environ"
 	"github.com/srlehn/termimg/internal/errors"
+	"github.com/srlehn/termimg/internal/logx"
 	"github.com/srlehn/termimg/term"
 )
 
@@ -38,15 +42,24 @@ func (d *drawerGeneric2) IsApplicable(inp term.DrawerCheckerInput) (bool, enviro
 }
 
 func (d *drawerGeneric2) Draw(img image.Image, bounds image.Rectangle, tm *term.Terminal) error {
-	if d == nil || tm == nil || img == nil {
-		return errors.New(`nil parameter`)
+	drawFn, err := d.Prepare(context.Background(), img, bounds, tm)
+	if err != nil {
+		return err
 	}
+	return logx.TimeIt(drawFn, `image drawing`, tm, `drawer`, d.Name())
+}
+
+func (d *drawerGeneric2) Prepare(ctx context.Context, img image.Image, bounds image.Rectangle, tm *term.Terminal) (drawFn func() error, _ error) {
+	if d == nil || tm == nil || img == nil || ctx == nil {
+		return nil, errors.New(`nil parameter`)
+	}
+	start := time.Now()
 	timg, ok := img.(*term.Image)
 	if !ok {
 		timg = term.NewImage(img)
 	}
 	if timg == nil {
-		return errors.New(consts.ErrNilImage)
+		return nil, errors.New(consts.ErrNilImage)
 	}
 
 	var (
@@ -59,17 +72,17 @@ func (d *drawerGeneric2) Draw(img image.Image, bounds image.Rectangle, tm *term.
 	)
 	rsz := tm.Resizer()
 	if rsz == nil {
-		return errors.New(`nil resizer`)
+		return nil, errors.New(`nil resizer`)
 	}
 	if err := timg.Fit(bounds, rsz, tm); err != nil {
-		return err
+		return nil, err
 	}
 
 	//
 
 	cimg, err := rsz.Resize(timg.Cropped, image.Pt(boundsPixelated.Dx(), boundsPixelated.Dy()))
 	if err != nil {
-		return err
+		return nil, err
 	}
 	doAvgColors := true
 	g := newGray2From(cimg, doAvgColors)
@@ -199,9 +212,15 @@ func (d *drawerGeneric2) Draw(img image.Image, bounds image.Rectangle, tm *term.
 		}
 	}
 	str := b.String()
-	tm.WriteString(str)
 
-	return nil
+	logx.Info(`image preparation`, tm, `drawer`, d.Name(), `duration`, time.Since(start))
+
+	drawFn = func() error {
+		_, err := tm.WriteString(str)
+		return logx.Err(err, tm, slog.LevelInfo)
+	}
+
+	return drawFn, nil
 }
 
 func distQuad(c1, c2 color.Color) uint64 {

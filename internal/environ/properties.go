@@ -28,22 +28,22 @@ type PropertyExporter interface {
 	ExportProperties() map[string]string
 }
 
-var _ Properties = (*proprietorGeneric)(nil)
+var _ Properties = (*propertiesGeneric)(nil)
 
-type proprietorGeneric struct {
+type propertiesGeneric struct {
 	sync.Locker
 	properties map[string]string
 }
 
-func NewProprietor() Properties {
-	return &proprietorGeneric{Locker: &sync.Mutex{}, properties: make(map[string]string)}
+func NewProperties() Properties {
+	return &propertiesGeneric{Locker: &sync.Mutex{}, properties: make(map[string]string)}
 }
 
-func CloneProprietor(pr PropertyExporter) Properties {
+func CloneProperties(pr PropertyExporter) Properties {
 	if pr == nil {
 		return nil
 	}
-	p := &proprietorGeneric{Locker: &sync.Mutex{}, properties: make(map[string]string)}
+	p := &propertiesGeneric{Locker: &sync.Mutex{}, properties: make(map[string]string)}
 	if pr == nil {
 		return nil
 	}
@@ -52,9 +52,9 @@ func CloneProprietor(pr PropertyExporter) Properties {
 }
 
 // Property ...
-func (p *proprietorGeneric) Property(key string) (string, bool) {
+func (p *propertiesGeneric) Property(key string) (string, bool) {
 	if p == nil || p.properties == nil {
-		*p = proprietorGeneric{Locker: &sync.Mutex{}, properties: make(map[string]string)}
+		*p = propertiesGeneric{Locker: &sync.Mutex{}, properties: make(map[string]string)}
 		return ``, false
 	}
 	if p.Locker != nil {
@@ -66,9 +66,9 @@ func (p *proprietorGeneric) Property(key string) (string, bool) {
 }
 
 // SetProperty ...
-func (p *proprietorGeneric) SetProperty(key, value string) {
+func (p *propertiesGeneric) SetProperty(key, value string) {
 	if p == nil {
-		*p = proprietorGeneric{Locker: &sync.Mutex{}, properties: make(map[string]string)}
+		*p = propertiesGeneric{Locker: &sync.Mutex{}, properties: make(map[string]string)}
 	}
 	if p.Locker != nil {
 		p.Lock()
@@ -80,9 +80,9 @@ func (p *proprietorGeneric) SetProperty(key, value string) {
 	p.properties[key] = value
 }
 
-func (p *proprietorGeneric) ExportProperties() map[string]string {
+func (p *propertiesGeneric) ExportProperties() map[string]string {
 	if p == nil {
-		*p = proprietorGeneric{Locker: &sync.Mutex{}, properties: make(map[string]string)}
+		*p = propertiesGeneric{Locker: &sync.Mutex{}, properties: make(map[string]string)}
 	}
 	if p.Locker != nil {
 		p.Lock()
@@ -91,13 +91,13 @@ func (p *proprietorGeneric) ExportProperties() map[string]string {
 	return p.properties
 }
 
-func (p *proprietorGeneric) LookupEnv(v string) (string, bool) {
+func (p *propertiesGeneric) LookupEnv(v string) (string, bool) {
 	return p.Property(propkeys.EnvPrefix + v)
 }
 
-func (p *proprietorGeneric) Environ() []string {
+func (p *propertiesGeneric) Environ() []string {
 	if p == nil {
-		*p = proprietorGeneric{Locker: &sync.Mutex{}, properties: make(map[string]string)}
+		*p = propertiesGeneric{Locker: &sync.Mutex{}, properties: make(map[string]string)}
 	}
 	if p.Locker != nil {
 		p.Lock()
@@ -121,7 +121,7 @@ func (p *proprietorGeneric) Environ() []string {
 
 // MergeProperties combines both Proprietors,
 // possibly overwriting with values from pr.
-func (p *proprietorGeneric) MergeProperties(pr PropertyExporter) {
+func (p *propertiesGeneric) MergeProperties(pr PropertyExporter) {
 	// TODO fix doc comment
 	if p == nil || pr == nil {
 		return
@@ -143,7 +143,7 @@ func (p *proprietorGeneric) MergeProperties(pr PropertyExporter) {
 	}
 }
 
-func (p *proprietorGeneric) String() string {
+func (p *propertiesGeneric) String() string {
 	if p == nil || p.properties == nil {
 		return `<nil>`
 	}

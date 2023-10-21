@@ -3,7 +3,7 @@ package main
 import (
 	"image"
 	"io/fs"
-	"log"
+	"log/slog"
 	"math"
 	"os"
 	"path/filepath"
@@ -19,6 +19,7 @@ import (
 	"github.com/srlehn/termimg"
 	"github.com/srlehn/termimg/internal"
 	"github.com/srlehn/termimg/internal/errors"
+	"github.com/srlehn/termimg/internal/logx"
 	"github.com/srlehn/termimg/internal/parser"
 	"github.com/srlehn/termimg/internal/queries"
 	"github.com/srlehn/termimg/resize/rdefault"
@@ -64,11 +65,11 @@ func listFunc(cmd *cobra.Command, args []string) terminalSwapper {
 
 		wm.SetImpl(wmimpl.Impl())
 		opts := []term.Option{
+			logFileOption,
 			termimg.DefaultConfig,
 			term.SetPTYName(internal.DefaultTTYDevice()),
 			term.SetResizer(&rdefault.Resizer{}),
 		}
-		var err error
 		tm2, err := term.NewTerminal(opts...)
 		if err != nil {
 			return err
@@ -80,23 +81,23 @@ func listFunc(cmd *cobra.Command, args []string) terminalSwapper {
 		if len(listDrawer) > 0 {
 			dr = term.GetRegDrawerByName(listDrawer)
 			if dr == nil {
-				return errors.New(`unknown drawer "` + listDrawer + `"`)
+				return logx.Err(errors.New(`unknown drawer "`+listDrawer+`"`), tm2, slog.LevelError)
 			}
 		} else {
 			dr = tm2.Drawers()[0]
 		}
 
 		tcw, tch, err := tm2.SizeInCells()
-		if err != nil {
+		if logx.IsErr(err, tm2, slog.LevelError) {
 			return err
 		}
 		_, cph, err := tm2.CellSize()
-		if err != nil {
+		if logx.IsErr(err, tm2, slog.LevelError) {
 			return err
 		}
 		var rowCursor uint
-		_, rowCursor, errRowCursor := tm2.Cursor() // TODO log error
-		if errRowCursor != nil {
+		_, rowCursor, errRowCursor := tm2.Cursor()
+		if logx.IsErr(errRowCursor, tm2, slog.LevelInfo) {
 			rowCursor = 0
 		}
 
@@ -108,13 +109,13 @@ func listFunc(cmd *cobra.Command, args []string) terminalSwapper {
 		tileWidth := tileBaseSize
 		tileHeight := tileBaseSize + textHeight
 		szTile, err := tm2.CellScale(image.Point{X: tileWidth, Y: tileHeight}, image.Point{X: 0, Y: 0})
-		if err != nil {
+		if logx.IsErr(err, tm2, slog.LevelError) {
 			return err
 		}
 		maxTilesX := int(float64(tcw) / float64(szTile.X+1))
 
 		goFont, err := truetype.Parse(goregular.TTF)
-		if err != nil {
+		if logx.IsErr(err, tm2, slog.LevelError) {
 			return err
 		}
 		goFontFace := truetype.NewFace(goFont, &truetype.Options{
@@ -133,19 +134,19 @@ func listFunc(cmd *cobra.Command, args []string) terminalSwapper {
 				img image.Image
 			)
 			path, err = filepath.Abs(path)
-			if err != nil {
+			if logx.IsErr(err, tm2, slog.LevelInfo) {
 				return err
 			}
 			name := filepath.Base(path)
 			fi, err = os.Stat(path)
-			if err != nil {
+			if logx.IsErr(err, tm2, slog.LevelInfo) {
 				return err
 			}
 			if fi.IsDir() {
 				return nil
 			}
 			img, err = thumbnails.OpenThumbnail(path, image.Point{Y: tileBaseSize}, true)
-			if err != nil {
+			if logx.IsErr(err, tm2, slog.LevelInfo) {
 				return err
 			}
 			var imgOffsetX int
@@ -160,7 +161,7 @@ func listFunc(cmd *cobra.Command, args []string) terminalSwapper {
 						h := int(float64(tileBaseSize*dy) / float64(dx))
 						imgOffsetY = (tileBaseSize - h) / 2
 						m, err := rsz.Resize(img, image.Point{X: tileBaseSize, Y: h})
-						if err == nil && m != nil {
+						if !logx.IsErr(err, tm2, slog.LevelInfo) && m != nil {
 							img = m
 						}
 					}
@@ -169,7 +170,7 @@ func listFunc(cmd *cobra.Command, args []string) terminalSwapper {
 						w := int(float64(tileBaseSize*dx) / float64(dy))
 						imgOffsetX = (tileBaseSize - w) / 2
 						m, err := rsz.Resize(img, image.Point{X: w, Y: tileBaseSize})
-						if err == nil && m != nil {
+						if !logx.IsErr(err, tm2, slog.LevelInfo) && m != nil {
 							img = m
 						}
 					}
@@ -183,7 +184,7 @@ func listFunc(cmd *cobra.Command, args []string) terminalSwapper {
 				}
 				bounds = image.Rectangle{Min: offset, Max: offset.Add(szTile)}
 				if bounds.Max.Y >= int(tch) {
-					tm2.Scroll(szTile.Y + 1)
+					logx.IsErr(tm2.Scroll(szTile.Y+1), tm2, slog.LevelInfo)
 					shifts++
 					offset.Y = (imgCtr/maxTilesX-shifts)*(szTile.Y+1) + int(rowCursor)
 					bounds = image.Rectangle{Min: offset, Max: offset.Add(szTile)}
@@ -230,7 +231,7 @@ func listFunc(cmd *cobra.Command, args []string) terminalSwapper {
 			c.Clip()
 			img = c.Image()
 
-			if err := term.Draw(img, bounds, tm2, dr); err != nil {
+			if err := term.Draw(img, bounds, tm2, dr); logx.IsErr(err, tm2, slog.LevelError) {
 				goto end
 			}
 		end:
@@ -239,17 +240,16 @@ func listFunc(cmd *cobra.Command, args []string) terminalSwapper {
 		}
 		for _, path := range paths {
 			pathAbs, err := filepath.Abs(path)
-			if err != nil {
-				log.Println(err)
+			if logx.IsErr(err, tm2, slog.LevelError) {
 				continue
 			}
 			switch fi, err := os.Stat(pathAbs); {
-			case err != nil:
+			case logx.IsErr(err, tm2, slog.LevelError):
 			case !fi.IsDir():
 				_ = handlePath(pathAbs)
 			default:
 				dirEntries, err := os.ReadDir(pathAbs)
-				if err != nil {
+				if logx.IsErr(err, tm2, slog.LevelError) {
 					continue
 				}
 				for _, de := range dirEntries {
@@ -259,7 +259,7 @@ func listFunc(cmd *cobra.Command, args []string) terminalSwapper {
 
 		}
 
-		_ = tm2.SetCursor(0, uint(bounds.Max.Y+1))
+		logx.IsErr(tm2.SetCursor(0, uint(bounds.Max.Y+1)), tm2, slog.LevelInfo)
 		pauseVolatile(tm2, dr)
 
 		if errRowCursor != nil {
@@ -277,30 +277,30 @@ func getForegroundBackground(tm *term.Terminal) (fg, bg [3]float64, _ error) {
 	// DECSCNM - https://vt100.net/docs/vt510-rm/DECSCNM.html
 	prs := parser.NewParser(false, true)
 	replFG, err := tm.Query(queries.Foreground+queries.DA1, prs)
-	if err != nil {
+	if logx.IsErr(err, tm, slog.LevelInfo) {
 		return fg, bg, err
 	}
 	replBG, err := tm.Query(queries.Background+queries.DA1, prs)
-	if err != nil {
+	if logx.IsErr(err, tm, slog.LevelInfo) {
 		return fg, bg, err
 	}
 	parseRGB := func(s string) (rgb [3]float64, _ error) {
 		parts := strings.SplitN(s, queries.ST, 2)
 		if len(parts) < 2 {
-			return rgb, errors.New(`no reply`)
+			return rgb, logx.Err(errors.New(`no reply`), tm, slog.LevelError)
 		}
 		s, okFG := strings.CutPrefix(parts[0], queries.OSC+"10;rgb:")
 		s, okBG := strings.CutPrefix(s, queries.OSC+"11;rgb:")
 		if !okFG && !okBG {
-			return rgb, errors.New(`invalid reply`)
+			return rgb, logx.Err(errors.New(`invalid reply`), tm, slog.LevelError)
 		}
 		cols := strings.SplitN(s, `/`, 3)
 		if len(cols) < 3 {
-			return rgb, errors.New(`invalid reply`)
+			return rgb, logx.Err(errors.New(`invalid reply`), tm, slog.LevelError)
 		}
 		for i, col := range cols {
 			h, err := strconv.ParseUint(col, 16, 64)
-			if err != nil {
+			if logx.IsErr(err, tm, slog.LevelError) {
 				return rgb, errors.New(err)
 			}
 			rgb[i] = float64(h) / float64(1<<16)
@@ -308,25 +308,25 @@ func getForegroundBackground(tm *term.Terminal) (fg, bg [3]float64, _ error) {
 		return rgb, nil
 	}
 	fg, err = parseRGB(replFG)
-	if err != nil {
+	if logx.IsErr(err, tm, slog.LevelInfo) {
 		return fg, bg, err
 	}
 	bg, err = parseRGB(replBG)
-	if err != nil {
+	if logx.IsErr(err, tm, slog.LevelInfo) {
 		return fg, bg, err
 	}
 	replRevVid, err := tm.Query(queries.ReverseVideo+queries.DA1, parser.StopOnC)
-	if err != nil {
+	if logx.IsErr(err, tm, slog.LevelInfo) {
 		return fg, bg, err
 	}
 	{
 		parts := strings.SplitN(replRevVid, `$y`, 2)
 		if len(parts) != 2 {
-			return fg, bg, errors.New(`invalid reply`)
+			return fg, bg, logx.Err(errors.New(`invalid reply`), tm, slog.LevelInfo)
 		}
 		parts = strings.SplitN(parts[0], `;`, 2)
 		if len(parts) != 2 {
-			return fg, bg, errors.New(`invalid reply`)
+			return fg, bg, logx.Err(errors.New(`invalid reply`), tm, slog.LevelInfo)
 		}
 		if parts[1] == `1` || parts[1] == `3` {
 			fg, bg = bg, fg

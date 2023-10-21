@@ -1,14 +1,18 @@
 package generic
 
 import (
+	"context"
 	"fmt"
 	"image"
+	"log/slog"
 	"math"
 	"strings"
+	"time"
 
 	"github.com/srlehn/termimg/internal/consts"
 	"github.com/srlehn/termimg/internal/environ"
 	"github.com/srlehn/termimg/internal/errors"
+	"github.com/srlehn/termimg/internal/logx"
 	"github.com/srlehn/termimg/term"
 )
 
@@ -30,20 +34,39 @@ TODO stretch
 */
 
 func (d *DrawerGeneric) Draw(img image.Image, bounds image.Rectangle, tm *term.Terminal) error {
+	drawFn, err := d.Prepare(context.Background(), img, bounds, tm)
+	if err != nil {
+		return err
+	}
+	return logx.TimeIt(drawFn, `image drawing`, tm, `drawer`, d.Name())
+}
+
+func (d *DrawerGeneric) Prepare(ctx context.Context, img image.Image, bounds image.Rectangle, tm *term.Terminal) (drawFn func() error, _ error) {
+	if d == nil || tm == nil || img == nil || ctx == nil {
+		return nil, errors.New(`nil parameter`)
+	}
+	start := time.Now()
 	timg, ok := img.(*term.Image)
 	if !ok {
 		timg = term.NewImage(img)
 	}
 	if timg == nil {
-		return errors.New(consts.ErrNilImage)
+		return nil, errors.New(consts.ErrNilImage)
 	}
 
 	blochCharString, err := d.inbandString(timg, bounds, tm)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	tm.WriteString(blochCharString)
-	return nil
+
+	logx.Info(`image preparation`, tm, `drawer`, d.Name(), `duration`, time.Since(start))
+
+	drawFn = func() error {
+		_, err := tm.WriteString(blochCharString)
+		return logx.Err(err, tm, slog.LevelInfo)
+	}
+
+	return drawFn, nil
 }
 
 func (d *DrawerGeneric) inbandString(timg *term.Image, bounds image.Rectangle, tm *term.Terminal) (string, error) {

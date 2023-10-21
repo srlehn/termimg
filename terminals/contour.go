@@ -23,7 +23,7 @@ var _ term.TermChecker = (*termCheckerContour)(nil)
 type termCheckerContour struct{ term.TermChecker }
 
 func (t *termCheckerContour) CheckExclude(pr environ.Properties) (mightBe bool, p environ.Properties) {
-	p = environ.NewProprietor()
+	p = environ.NewProperties()
 	if t == nil || pr == nil {
 		p.SetProperty(propkeys.CheckTermEnvExclPrefix+termNameContour, consts.CheckTermFailed)
 		return false, p
@@ -50,7 +50,7 @@ func (t *termCheckerContour) CheckExclude(pr environ.Properties) (mightBe bool, 
 	return true, p
 }
 func (t *termCheckerContour) CheckIsWindow(w wm.Window) (is bool, p environ.Properties) {
-	p = environ.NewProprietor()
+	p = environ.NewProperties()
 	if t == nil || w == nil {
 		p.SetProperty(propkeys.CheckTermWindowIsPrefix+termNameContour, consts.CheckTermFailed)
 		return false, p

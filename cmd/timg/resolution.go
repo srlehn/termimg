@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"log/slog"
 	"math"
 	"os"
 	"strings"
@@ -10,6 +11,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/srlehn/termimg"
+	"github.com/srlehn/termimg/internal/logx"
 	"github.com/srlehn/termimg/term"
 )
 
@@ -50,7 +52,11 @@ var (
 
 func resolutionFunc(cmd *cobra.Command, args []string) terminalSwapper {
 	return func(tm **term.Terminal) error {
-		tm2, err := termimg.Terminal()
+		opts := []term.Option{
+			logFileOption,
+			termimg.DefaultConfig,
+		}
+		tm2, err := term.NewTerminal(opts...)
 		if err != nil {
 			return err
 		}
@@ -62,12 +68,12 @@ func resolutionFunc(cmd *cobra.Command, args []string) terminalSwapper {
 		resCellsX, resCellsY, errResCells := tm2.SizeInCells()
 		if customFormat {
 			res.errResCells = errResCells
-			if errResCells == nil {
+			if !logx.IsErr(errResCells, tm2, slog.LevelInfo) {
 				res.resCellsX = resCellsX
 				res.resCellsY = resCellsY
 			}
 		} else {
-			if errResCells == nil && resCellsX != 0 && resCellsY != 0 {
+			if !logx.IsErr(errResCells, tm2, slog.LevelInfo) && resCellsX != 0 && resCellsY != 0 {
 				fmt.Printf("terminal resolution:      %dx%d (cells)\n", resCellsX, resCellsY)
 			}
 		}
@@ -79,7 +85,7 @@ func resolutionFunc(cmd *cobra.Command, args []string) terminalSwapper {
 				res.resPixelsY = resPixelsY
 			}
 		} else {
-			if errResPixels == nil && resPixelsX != 0 && resPixelsY != 0 {
+			if !logx.IsErr(errResPixels, tm2, slog.LevelInfo) && resPixelsX != 0 && resPixelsY != 0 {
 				fmt.Printf("terminal resolution:      %dx%d (pixels)\n", resPixelsX, resPixelsY)
 			}
 		}
@@ -89,7 +95,7 @@ func resolutionFunc(cmd *cobra.Command, args []string) terminalSwapper {
 		cpw, cph, errCellRes := tm2.CellSize()
 		if customFormat {
 			res.errCellRes = errCellRes
-			if errCellRes == nil {
+			if !logx.IsErr(errCellRes, tm2, slog.LevelInfo) {
 				if cpw >= 0 && !math.IsNaN(cpw) {
 					res.cpw = cpw
 				}

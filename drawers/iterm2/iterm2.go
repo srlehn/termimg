@@ -2,16 +2,20 @@ package iterm2
 
 import (
 	"bytes"
+	"context"
 	"encoding/base64"
 	"fmt"
 	"image"
 	"image/jpeg"
 	"image/png"
+	"log/slog"
 	"strconv"
+	"time"
 
 	"github.com/srlehn/termimg/internal/consts"
 	"github.com/srlehn/termimg/internal/environ"
 	"github.com/srlehn/termimg/internal/errors"
+	"github.com/srlehn/termimg/internal/logx"
 	"github.com/srlehn/termimg/internal/propkeys"
 	"github.com/srlehn/termimg/mux"
 	"github.com/srlehn/termimg/term"
@@ -106,32 +110,41 @@ func (d *drawerITerm2) IsApplicable(inp term.DrawerCheckerInput) (bool, environ.
 }
 
 func (d *drawerITerm2) Draw(img image.Image, bounds image.Rectangle, tm *term.Terminal) error {
-	if d == nil || tm == nil || img == nil {
-		return errors.New(`nil parameter`)
+	drawFn, err := d.Prepare(context.Background(), img, bounds, tm)
+	if err != nil {
+		return err
 	}
+	return logx.TimeIt(drawFn, `image drawing`, tm, `drawer`, d.Name())
+}
+
+func (d *drawerITerm2) Prepare(ctx context.Context, img image.Image, bounds image.Rectangle, tm *term.Terminal) (drawFn func() error, _ error) {
+	if d == nil || tm == nil || img == nil || ctx == nil {
+		return nil, errors.New(`nil parameter`)
+	}
+	start := time.Now()
 	timg, ok := img.(*term.Image)
 	if !ok {
 		timg = term.NewImage(img)
 	}
 	if timg == nil {
-		return errors.New(consts.ErrNilImage)
+		return nil, errors.New(consts.ErrNilImage)
 	}
 
 	rsz := tm.Resizer()
 	if rsz == nil {
-		return errors.New(`nil resizer`)
+		return nil, errors.New(`nil resizer`)
 	}
 	if err := timg.Fit(bounds, rsz, tm); err != nil {
-		return err
+		return nil, err
 	}
 
 	tcw, tch, err := tm.SizeInCells()
 	if err != nil {
 		fmt.Println(err)
-		return err
+		return nil, err
 	}
 	if tcw == 0 || tch == 0 {
-		return errors.New("could not query terminal dimensions")
+		return nil, errors.New("could not query terminal dimensions")
 	}
 
 	buf := new(bytes.Buffer)
@@ -139,11 +152,11 @@ func (d *drawerITerm2) Draw(img image.Image, bounds image.Rectangle, tm *term.Te
 		// error for png image:
 		// ERROR  wezterm_gui::glyphcache     > Error decoding image: inconsistent 600x450 -> 810000
 		if err = jpeg.Encode(buf, timg.Cropped, &jpeg.Options{Quality: 100}); err != nil {
-			return err
+			return nil, err
 		}
 	} else {
 		if err = png.Encode(buf, timg.Cropped); err != nil {
-			return err
+			return nil, err
 		}
 	}
 	imgBytes := buf.Bytes()
@@ -198,9 +211,14 @@ func (d *drawerITerm2) Draw(img image.Image, bounds image.Rectangle, tm *term.Te
 	iterm2String = fmt.Sprintf("\033[%d;%dH%s", bounds.Min.Y+1, bounds.Min.X+1, iterm2String)
 	timg.SetInband(bounds, iterm2String, d, tm)
 
-	tm.Printf(`%s`, iterm2String)
+	logx.Info(`image preparation`, tm, `drawer`, d.Name(), `duration`, time.Since(start))
 
-	return nil
+	drawFn = func() error {
+		_, err := tm.Printf(`%s`, iterm2String)
+		return logx.Err(err, tm, slog.LevelInfo)
+	}
+
+	return drawFn, nil
 }
 
 // https://iterm2.com/documentation-images.html

@@ -55,7 +55,7 @@ func ptyRun(termCmd []string, f PTYRunFunc) (errRet error) {
 	}
 
 	wm.SetImpl(wmimpl.Impl())
-	conn, err := wm.NewConn(environ.EnvToProprietor(cmd.Env))
+	conn, err := wm.NewConn(environ.EnvToProperties(cmd.Env))
 	if err != nil {
 		return err
 	}

@@ -28,7 +28,7 @@ var _ term.TermChecker = (*termCheckerVTE)(nil)
 type termCheckerVTE struct{ term.TermChecker }
 
 func (t *termCheckerVTE) CheckExclude(pr environ.Properties) (mightBe bool, p environ.Properties) {
-	p = environ.NewProprietor()
+	p = environ.NewProperties()
 	if t == nil || pr == nil {
 		p.SetProperty(propkeys.CheckTermEnvExclPrefix+termNameVTE, consts.CheckTermFailed)
 		return false, p
@@ -56,7 +56,7 @@ func (t *termCheckerVTE) CheckExclude(pr environ.Properties) (mightBe bool, p en
 	return true, p
 }
 func (t *termCheckerVTE) CheckIsQuery(qu term.Querier, tty term.TTY, pr environ.Properties) (is bool, p environ.Properties) {
-	p = environ.NewProprietor()
+	p = environ.NewProperties()
 	if t == nil || pr == nil {
 		p.SetProperty(propkeys.CheckTermQueryIsPrefix+termNameVTE, consts.CheckTermFailed)
 		return false, p

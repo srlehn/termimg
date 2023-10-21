@@ -26,7 +26,7 @@ var _ term.TermChecker = (*termCheckerHyper)(nil)
 type termCheckerHyper struct{ term.TermChecker }
 
 func (t *termCheckerHyper) CheckExclude(pr environ.Properties) (mightBe bool, p environ.Properties) {
-	p = environ.NewProprietor()
+	p = environ.NewProperties()
 	if t == nil || pr == nil {
 		p.SetProperty(propkeys.CheckTermEnvExclPrefix+termNameHyper, consts.CheckTermFailed)
 		return false, p

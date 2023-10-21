@@ -2,15 +2,19 @@ package kitty
 
 import (
 	"bytes"
+	"context"
 	"encoding/base64"
 	"fmt"
 	"image"
 	"image/png"
+	"log/slog"
 	"strings"
+	"time"
 
 	"github.com/srlehn/termimg/internal/consts"
 	"github.com/srlehn/termimg/internal/environ"
 	"github.com/srlehn/termimg/internal/errors"
+	"github.com/srlehn/termimg/internal/logx"
 	"github.com/srlehn/termimg/internal/parser"
 	"github.com/srlehn/termimg/internal/queries"
 	"github.com/srlehn/termimg/mux"
@@ -58,33 +62,42 @@ func (d *drawerKitty) IsApplicable(inp term.DrawerCheckerInput) (bool, environ.P
 }
 
 func (d *drawerKitty) Draw(img image.Image, bounds image.Rectangle, tm *term.Terminal) error {
-	if d == nil || tm == nil || img == nil {
-		return errors.New(`nil parameter`)
+	drawFn, err := d.Prepare(context.Background(), img, bounds, tm)
+	if err != nil {
+		return err
 	}
+	return logx.TimeIt(drawFn, `image drawing`, tm, `drawer`, d.Name())
+}
+
+func (d *drawerKitty) Prepare(ctx context.Context, img image.Image, bounds image.Rectangle, tm *term.Terminal) (drawFn func() error, _ error) {
+	if d == nil || tm == nil || img == nil || ctx == nil {
+		return nil, errors.New(`nil parameter`)
+	}
+	start := time.Now()
 	timg, ok := img.(*term.Image)
 	if !ok {
 		timg = term.NewImage(img)
 	}
 	if timg == nil {
-		return errors.New(consts.ErrNilImage)
+		return nil, errors.New(consts.ErrNilImage)
 	}
 
 	rsz := tm.Resizer()
 	if rsz == nil {
-		return errors.New(`nil resizer`)
+		return nil, errors.New(`nil resizer`)
 	}
 	if err := timg.Fit(bounds, rsz, tm); err != nil {
-		return err
+		return nil, err
 	}
 
 	// TODO get inband
 
 	tcw, tch, err := tm.SizeInCells()
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if tcw == 0 || tch == 0 {
-		return errors.New("could not query terminal dimensions")
+		return nil, errors.New("could not query terminal dimensions")
 	}
 
 	var imgHeight uint
@@ -100,7 +113,7 @@ func (d *drawerKitty) Draw(img image.Image, bounds image.Rectangle, tm *term.Ter
 	// https://sw.kovidgoyal.net/kitty/graphics-protocol.html#controlling-displayed-image-layout
 	bytBuf := new(bytes.Buffer)
 	if err = png.Encode(bytBuf, img); err != nil {
-		return err
+		return nil, err
 	}
 	imgBase64 := base64.StdEncoding.EncodeToString(bytBuf.Bytes())
 	lenImgB64 := len([]byte(imgBase64))
@@ -128,7 +141,11 @@ func (d *drawerKitty) Draw(img image.Image, bounds image.Rectangle, tm *term.Ter
 
 	timg.SetInband(bounds, kittyString, d, tm)
 
-	tm.Printf(`%s`, kittyString)
+	logx.Info(`image preparation`, tm, `drawer`, d.Name(), `duration`, time.Since(start))
 
-	return nil
+	drawFn = func() error {
+		_, err := tm.Printf(`%s`, kittyString)
+		return logx.Err(err, tm, slog.LevelInfo)
+	}
+	return drawFn, nil
 }

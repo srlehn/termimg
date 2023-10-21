@@ -1,11 +1,14 @@
 package w3mimgdisplay
 
 import (
+	"context"
 	"fmt"
 	"image"
+	"log/slog"
 	"os"
 	"os/exec"
 	"strings"
+	"time"
 
 	"github.com/jezek/xgb/xproto"
 	"github.com/srlehn/xgbutil"
@@ -15,6 +18,7 @@ import (
 	"github.com/srlehn/termimg/internal/encoder/encpng"
 	"github.com/srlehn/termimg/internal/environ"
 	"github.com/srlehn/termimg/internal/errors"
+	"github.com/srlehn/termimg/internal/logx"
 	"github.com/srlehn/termimg/term"
 	"github.com/srlehn/termimg/wm"
 )
@@ -74,9 +78,18 @@ func (d *drawerW3MImgDisplay) IsApplicable(inp term.DrawerCheckerInput) (bool, e
 }
 
 func (d *drawerW3MImgDisplay) Draw(img image.Image, bounds image.Rectangle, tm *term.Terminal) error {
-	if d == nil || tm == nil || img == nil {
-		return errors.New(`nil parameter`)
+	drawFn, err := d.Prepare(context.Background(), img, bounds, tm)
+	if err != nil {
+		return err
 	}
+	return logx.TimeIt(drawFn, `image drawing`, tm, `drawer`, d.Name())
+}
+
+func (d *drawerW3MImgDisplay) Prepare(ctx context.Context, img image.Image, bounds image.Rectangle, tm *term.Terminal) (drawFn func() error, _ error) {
+	if d == nil || tm == nil || img == nil || ctx == nil {
+		return nil, errors.New(`nil parameter`)
+	}
+	start := time.Now()
 	var (
 		termOffSet image.Point
 		cpw, cph   float64
@@ -86,15 +99,15 @@ func (d *drawerW3MImgDisplay) Draw(img image.Image, bounds image.Rectangle, tm *
 		timg = term.NewImage(img)
 	}
 	if timg == nil {
-		return errors.New(consts.ErrNilImage)
+		return nil, errors.New(consts.ErrNilImage)
 	}
 
 	rsz := tm.Resizer()
 	if rsz == nil {
-		return errors.New(`nil resizer`)
+		return nil, errors.New(`nil resizer`)
 	}
 	if err := timg.Fit(bounds, rsz, tm); err != nil {
-		return err
+		return nil, err
 	}
 
 	var w3mImgDisplayString string
@@ -109,12 +122,12 @@ func (d *drawerW3MImgDisplay) Draw(img image.Image, bounds image.Rectangle, tm *
 
 	cpw, cph, err = tm.CellSize()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	_, err = timg.SaveAsFile(tm, `png`, &encpng.PngEncoder{})
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// trying to get window size
@@ -125,10 +138,10 @@ func (d *drawerW3MImgDisplay) Draw(img image.Image, bounds image.Rectangle, tm *
 		}
 		connXU, okXU := conn.Conn().(*xgbutil.XUtil)
 		if !okXU {
-			return errors.New(consts.ErrPlatformNotSupported)
+			return nil, errors.New(consts.ErrPlatformNotSupported)
 		}
 		if connXU == nil {
-			return errors.New(`nil connection`)
+			return nil, errors.New(`nil connection`)
 		}
 		termName := tm.Name()
 		tChk := term.RegisteredTermChecker(termName)
@@ -138,7 +151,7 @@ func (d *drawerW3MImgDisplay) Draw(img image.Image, bounds image.Rectangle, tm *
 		var windowsMatching []wm.Window
 		windows, err := conn.Windows()
 		if err != nil {
-			return err
+			return nil, err
 		}
 		for _, wdw := range windows {
 			if is, _ := tChk.CheckIsWindow(wdw); !is {
@@ -191,13 +204,16 @@ skipFindingTermOffSet:
 	}
 
 exc:
-	cmd := exec.Command(exeW3MImgDisplay)
-	cmd.Stdin = strings.NewReader(w3mImgDisplayString)
-	if err := cmd.Run(); err != nil {
-		return errors.New(err)
-	}
-
 	timg.SetPosObject(bounds, w3mImgDisplayString, d, tm)
 
-	return nil
+	logx.Info(`image preparation`, tm, `drawer`, d.Name(), `duration`, time.Since(start))
+
+	drawFn = func() error {
+		cmd := exec.Command(exeW3MImgDisplay)
+		cmd.Stdin = strings.NewReader(w3mImgDisplayString)
+		err := cmd.Run()
+		return logx.Err(err, tm, slog.Level(slog.LevelInfo))
+	}
+
+	return drawFn, nil
 }

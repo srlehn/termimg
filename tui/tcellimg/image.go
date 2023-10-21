@@ -1,23 +1,30 @@
 package tcellimg
 
 import (
+	"context"
 	"image"
+	"image/draw"
+	"log/slog"
+	"time"
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/gdamore/tcell/v2/views"
 
 	"github.com/srlehn/termimg/internal/consts"
 	"github.com/srlehn/termimg/internal/errors"
+	"github.com/srlehn/termimg/internal/logx"
 	"github.com/srlehn/termimg/term"
 )
 
 // TODO handle events
 
+var _ image.Image = (*Image)(nil)
+var _ draw.Image = (*Image)(nil)
 var _ views.Widget = (*Image)(nil)
 
 type Image struct {
 	*views.CellView
-	img  *term.Image
+	*term.Canvas
 	term *term.Terminal
 	scr  tcell.Screen
 	mdl  linesModel
@@ -27,9 +34,16 @@ func NewImage(img *term.Image, bounds image.Rectangle, tm *term.Terminal, scr tc
 	if img == nil || tm == nil || scr == nil {
 		return nil, errors.New(consts.ErrNilParam)
 	}
+	canvas, err := tm.NewCanvas(bounds)
+	if err != nil {
+		return nil, err
+	}
+	if logx.IsErr(canvas.SetImage(img), tm, slog.LevelError) {
+		return nil, err
+	}
 	m := &Image{
 		CellView: views.NewCellView(),
-		img:      img,
+		Canvas:   canvas,
 		term:     tm,
 		scr:      scr,
 	}
@@ -53,20 +67,38 @@ func (m *Image) Draw() {
 	x, y, _, _ := mdl.GetCursor()
 	w, h := mdl.GetBounds()
 	bounds := image.Rect(x, y, x+w, y+h)
-
+	if !bounds.Eq(m.Canvas.CellArea()) {
+		logx.Error(`bounds changed`, m.term, "canvas-bounds", m.Canvas.CellArea(), "tcell-bounds", bounds)
+	}
 	m.CellView.Lock()
 	defer m.CellView.Unlock()
 	m.scr.LockRegion(x, y, w, h, true)
 	defer m.scr.LockRegion(x, y, w, h, false)
-	for _, dr := range m.term.Drawers() {
-		// TODO log
-		if err := dr.Draw(m.img, bounds, m.term); err == nil {
-			break
-		}
-	}
+	err := m.Canvas.Draw(nil)
+	_ = logx.IsErr(err, m.term, slog.LevelError)
 }
 
-// copied from github.com/gdamore/tcell/v2/views/textarea.go
+func (m *Image) Video(ctx context.Context, dur time.Duration) chan<- image.Image {
+	if m == nil || m.Canvas == nil || ctx == nil {
+		return nil
+	}
+	return m.Canvas.Video(ctx, dur)
+}
+
+func (m *Image) Close() error {
+	if m == nil {
+		return nil
+	}
+	if m.Canvas == nil {
+		m = nil
+		return nil
+	}
+	err := m.Canvas.Close()
+	m = nil
+	return logx.Err(err, m.term, slog.LevelError)
+}
+
+// copied from github.com/gdamore/tcell/v2/views/textarea.go (Apache-2.0 license)
 type linesModel struct {
 	runes  [][]rune
 	width  int

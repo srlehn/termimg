@@ -3,8 +3,11 @@
 package x11
 
 import (
+	"context"
 	"image"
+	"log/slog"
 	"strings"
+	"time"
 
 	"github.com/jezek/xgb/xproto"
 	"github.com/srlehn/xgbutil"
@@ -14,6 +17,7 @@ import (
 	"github.com/srlehn/termimg/internal/consts"
 	"github.com/srlehn/termimg/internal/environ"
 	"github.com/srlehn/termimg/internal/errors"
+	"github.com/srlehn/termimg/internal/logx"
 	"github.com/srlehn/termimg/internal/propkeys"
 	"github.com/srlehn/termimg/term"
 	"github.com/srlehn/termimg/wm"
@@ -80,52 +84,58 @@ func (d *drawerX11) IsApplicable(inp term.DrawerCheckerInput) (bool, environ.Pro
 		return false, nil
 	}
 
-	pr := environ.NewProprietor()
+	pr := environ.NewProperties()
 	pr.SetProperty(propkeys.DrawerPrefix+drawerNameX11+propkeys.DrawerVolatileSuffix, `true`)
 
 	return true, pr
 }
 
 func (d *drawerX11) Draw(img image.Image, bounds image.Rectangle, tm *term.Terminal) error {
-	if d == nil {
-		return errors.New(`nil receiver or receiver with nil values`)
+	drawFn, err := d.Prepare(context.Background(), img, bounds, tm)
+	if err != nil {
+		return err
 	}
-	if tm == nil || img == nil {
-		return errors.New(`nil parameter`)
+	return logx.TimeIt(drawFn, `image drawing`, tm, `drawer`, d.Name())
+}
+
+func (d *drawerX11) Prepare(ctx context.Context, img image.Image, bounds image.Rectangle, tm *term.Terminal) (drawFn func() error, _ error) {
+	if d == nil || tm == nil || img == nil || ctx == nil {
+		return nil, errors.New(`nil parameter`)
 	}
+	start := time.Now()
 	tmw := tm.Window()
 	if tmw == nil {
-		return errors.New(`nil window`)
+		return nil, errors.New(`nil window`)
 	}
 	if tmw.WindowType() != `x11` {
-		return errors.New(`wrong window type`)
+		return nil, errors.New(`wrong window type`)
 	}
 	if err := tmw.WindowFind(); err != nil {
-		return err
+		return nil, err
 	}
 	connXU, okConn := tmw.WindowConn().Conn().(*xgbutil.XUtil) // TODO make generic Conn
 	if !okConn {
-		return errors.New(`not a X11 connection`)
+		return nil, errors.New(`not a X11 connection`)
 	}
 	if connXU == nil {
-		return errors.New(`nil X11 connection`)
+		return nil, errors.New(`nil X11 connection`)
 	}
 
 	timg := term.NewImage(img)
 	if timg == nil {
-		return errors.New(consts.ErrNilImage)
+		return nil, errors.New(consts.ErrNilImage)
 	}
 	rsz := tm.Resizer()
 	if rsz == nil {
-		return errors.New(`nil resizer`)
+		return nil, errors.New(`nil resizer`)
 	}
 	if err := timg.Fit(bounds, rsz, tm); err != nil {
-		return err
+		return nil, err
 	}
 
 	cw, ch, err := tm.CellSize()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// X11
@@ -184,11 +194,14 @@ func (d *drawerX11) Draw(img image.Image, bounds image.Rectangle, tm *term.Termi
 	boundsPx := image.Rect(int(cw)*bounds.Min.X+xOffset, int(ch)*bounds.Min.Y+yOffset,
 		int(cw)*bounds.Max.X+xOffset, int(ch)*bounds.Max.Y+yOffset)
 
-	if err := draw(connXU, w, timg, boundsPx); err != nil {
-		return err
+	logx.Info(`image preparation`, tm, `drawer`, d.Name(), `duration`, time.Since(start))
+
+	drawFn = func() error {
+		err := draw(connXU, w, timg, boundsPx)
+		return logx.Err(err, tm, slog.Level(slog.LevelInfo))
 	}
 
-	return nil
+	return drawFn, nil
 }
 
 type drawFunc func(connXU *xgbutil.XUtil, w *xwindow.Window, timg *term.Image, boundsPx image.Rectangle) error

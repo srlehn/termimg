@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"image"
 	"io"
+	"log/slog"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -15,6 +16,7 @@ import (
 	"github.com/srlehn/termimg"
 	"github.com/srlehn/termimg/internal"
 	"github.com/srlehn/termimg/internal/errors"
+	"github.com/srlehn/termimg/internal/logx"
 	"github.com/srlehn/termimg/internal/propkeys"
 	"github.com/srlehn/termimg/internal/testutil"
 	"github.com/srlehn/termimg/resize/rdefault"
@@ -68,51 +70,6 @@ var (
 
 func showFunc(cmd *cobra.Command, args []string) terminalSwapper {
 	return func(tm **term.Terminal) error {
-		var timg image.Image
-		if len(showFile) > 0 {
-			p, err := filepath.Abs(showFile)
-			if err != nil {
-				return errors.New(err)
-			}
-			showImageLocalPath = p
-		} else if len(showURL) == 0 {
-			if len(args) == 1 && len(args[0]) > 0 {
-				if strings.HasPrefix(args[0], `https://`) || strings.HasPrefix(args[0], `http://`) {
-					showURL = args[0]
-				} else {
-					p, err := filepath.Abs(args[0])
-					if err != nil {
-						return errors.New(err)
-					}
-					if _, err := os.Stat(p); err == nil {
-						showImageLocalPath = p
-					} else {
-						showURL = args[0]
-					}
-				}
-			} else {
-				return errors.New(`no image path specified`)
-			}
-		}
-		if len(showImageLocalPath) > 0 {
-			timg = termimg.NewImageFileName(showImageLocalPath)
-		} else {
-			m, err := downloadImage(showURL)
-			if err != nil {
-				return err
-			}
-			timg = m
-		}
-		if timg == nil {
-			return errors.New(`nil image`)
-		}
-		{
-			if timgTyped, ok := timg.(*term.Image); ok && timgTyped != nil {
-				if err := timgTyped.Decode(); err != nil {
-					return err
-				}
-			}
-		}
 
 		wm.SetImpl(wmimpl.Impl())
 		var rsz term.Resizer
@@ -132,11 +89,11 @@ func showFunc(cmd *cobra.Command, args []string) terminalSwapper {
 			ptyName = internal.DefaultTTYDevice()
 		}
 		opts := []term.Option{
+			logFileOption,
 			termimg.DefaultConfig,
 			term.SetPTYName(ptyName),
 			term.SetResizer(rsz),
 		}
-		var err error
 		tm2, err := term.NewTerminal(opts...)
 		if err != nil {
 			return err
@@ -147,8 +104,55 @@ func showFunc(cmd *cobra.Command, args []string) terminalSwapper {
 		if len(showTTY) == 0 {
 			env = append(env, os.Environ()...) // TODO rm when PS1 from inner shell included
 		}
+
+		var timg image.Image
+		if len(showFile) > 0 {
+			p, err := filepath.Abs(showFile)
+			if logx.IsErr(err, tm2, slog.LevelError) {
+				return errors.New(err)
+			}
+			showImageLocalPath = p
+		} else if len(showURL) == 0 {
+			if len(args) == 1 && len(args[0]) > 0 {
+				if strings.HasPrefix(args[0], `https://`) || strings.HasPrefix(args[0], `http://`) {
+					showURL = args[0]
+				} else {
+					p, err := filepath.Abs(args[0])
+					if logx.IsErr(err, tm2, slog.LevelError) {
+						return errors.New(err)
+					}
+					if _, err := os.Stat(p); !logx.IsErr(err, tm2, slog.LevelInfo) {
+						showImageLocalPath = p
+					} else {
+						showURL = args[0]
+					}
+				}
+			} else {
+				return logx.Err(errors.New(`no image path specified`), tm2, slog.LevelError)
+			}
+		}
+		if len(showImageLocalPath) > 0 {
+			timg = termimg.NewImageFileName(showImageLocalPath)
+		} else {
+			m, err := downloadImage(showURL)
+			if logx.IsErr(err, tm2, slog.LevelError) {
+				return err
+			}
+			timg = m
+		}
+		if timg == nil {
+			return logx.Err(errors.New(`nil image`), tm2, slog.LevelError)
+		}
+		{
+			if timgTyped, ok := timg.(*term.Image); ok && timgTyped != nil {
+				if err := timgTyped.Decode(); logx.IsErr(err, tm2, slog.LevelError) {
+					return err
+				}
+			}
+		}
+
 		x, y, w, h, autoX, autoY, err := splitDimArg(showPosition, tm2, env, timg)
-		if err != nil {
+		if logx.IsErr(err, tm2, slog.LevelError) {
 			return err
 		}
 		bounds := image.Rect(x, y, x+w, y+h)
@@ -157,14 +161,16 @@ func showFunc(cmd *cobra.Command, args []string) terminalSwapper {
 		if len(showDrawer) > 0 {
 			dr = term.GetRegDrawerByName(showDrawer)
 			if dr == nil {
-				return errors.New(`unknown drawer "` + showDrawer + `"`)
+				return logx.Err(errors.New(`unknown drawer "`+showDrawer+`"`), tm2, slog.LevelError)
 			}
+		} else if drawers := tm2.Drawers(); len(drawers) > 0 {
+			dr = drawers[0]
 		} else {
-			dr = tm2.Drawers()[0]
+			return logx.Err(errors.New(`no drawer`), tm2, slog.LevelError)
 		}
 		if autoX && autoY {
-			_ = tm2.Scroll(0)       // TODO log error
-			_ = tm2.SetCursor(0, 0) // TODO log error
+			logx.IsErr(tm2.Scroll(0), tm2, slog.LevelInfo)
+			logx.IsErr(tm2.SetCursor(0, 0), tm2, slog.LevelInfo)
 		}
 		coordWidth := 2
 		gridBorderWidth := 3
@@ -178,11 +184,11 @@ func showFunc(cmd *cobra.Command, args []string) terminalSwapper {
 		if showGrid {
 			tm2.WriteString(testutil.ChessPattern(areaAddBorder(bounds, gridBorderWidth), false))
 		}
-		if err := dr.Draw(timg, bounds, tm2); err != nil {
+		if err := dr.Draw(timg, bounds, tm2); logx.IsErr(err, tm2, slog.LevelError) {
 			return err
 		}
 
-		_ = tm2.SetCursor(0, uint(bounds.Max.Y)+1) // TODO log error
+		logx.IsErr(tm2.SetCursor(0, uint(bounds.Max.Y)+1), tm2, slog.LevelInfo)
 		pauseVolatile(tm2, dr)
 
 		return nil
@@ -194,7 +200,14 @@ func isVolatileDrawer(tm *term.Terminal, dr term.Drawer) bool {
 		return false
 	}
 	if dr == nil {
-		dr = tm.Drawers()[0]
+		if drawers := tm.Drawers(); len(drawers) > 0 {
+			dr = drawers[0]
+		} else {
+			if logger := tm.Logger(); logger != nil {
+				logger.Error(`no drawer`)
+			}
+			return false
+		}
 	}
 	isVolatileStr, isVolatile := tm.Property(propkeys.DrawerPrefix + dr.Name() + propkeys.DrawerVolatileSuffix)
 	if !isVolatile || isVolatileStr != `true` {
@@ -207,13 +220,12 @@ func pauseVolatile(tm *term.Terminal, dr term.Drawer) {
 	if isVolatileDrawer(tm, dr) {
 		if ptyName, okPTYName := tm.Property(propkeys.PTYName); okPTYName && internal.IsDefaultTTY(ptyName) {
 			fi, err := os.Stdout.Stat()
-			if err == nil && fi.Mode()&os.ModeNamedPipe != os.ModeNamedPipe {
+			if !logx.IsErr(err, tm, slog.LevelInfo) && fi.Mode()&os.ModeNamedPipe != os.ModeNamedPipe {
 				tm.WriteString(`press any key`)
 				_, _ = os.Stdin.Read(make([]byte, 1)) // TODO read only 1 char
 				return
 			}
 		}
-		// TODO log error
 		time.Sleep(2 * time.Second)
 	}
 }

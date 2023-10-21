@@ -98,7 +98,7 @@ func (c *connX11) Resources() (environ.Properties, error) {
 	if err != nil {
 		return nil, err
 	}
-	pr := environ.NewProprietor()
+	pr := environ.NewProperties()
 	for _, res := range xRes {
 		pr.SetProperty(propkeys.XResourcesPrefix+res[0], res[1])
 	}

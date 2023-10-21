@@ -6,8 +6,8 @@ import (
 	"github.com/srlehn/termimg/internal/propkeys"
 )
 
-func EnvToProprietor(env []string) Properties {
-	pr := NewProprietor()
+func EnvToProperties(env []string) Properties {
+	pr := NewProperties()
 	for _, v := range env {
 		if len(v) == 0 {
 			continue
@@ -53,9 +53,9 @@ func CleanEnv(envParent, envInner []string) (env Properties) {
 		`DISPLAY`:          {},
 		`XDG_SESSION_TYPE`: {},
 	}
-	ep := EnvToProprietor(envParent)
-	ei := EnvToProprietor(envInner)
-	envCleaned := NewProprietor()
+	ep := EnvToProperties(envParent)
+	ei := EnvToProperties(envInner)
+	envCleaned := NewProperties()
 	for k, v := range ei.ExportProperties() {
 		k, isEnvEntry := strings.CutPrefix(k, propkeys.EnvPrefix)
 		if !isEnvEntry {

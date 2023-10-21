@@ -3,12 +3,15 @@ package term
 import (
 	"log/slog"
 	"os"
+	"runtime/debug"
+	"strings"
 
 	"github.com/srlehn/termimg/env/advanced"
 	"github.com/srlehn/termimg/internal"
+	"github.com/srlehn/termimg/internal/consts"
 	"github.com/srlehn/termimg/internal/environ"
 	"github.com/srlehn/termimg/internal/errors"
-	"github.com/srlehn/termimg/internal/log"
+	"github.com/srlehn/termimg/internal/logx"
 	"github.com/srlehn/termimg/internal/propkeys"
 	"github.com/srlehn/termimg/wm"
 )
@@ -36,7 +39,10 @@ func (t *Terminal) SetOptions(opts ...Option) error {
 		t = newDummyTerminal()
 	}
 	for _, opt := range opts {
-		if err := opt.ApplyOption(t); log.IsErr(t.Logger(), slog.LevelError, err) {
+		if opt == nil {
+			continue
+		}
+		if err := opt.ApplyOption(t); logx.IsErr(err, t, slog.LevelError) {
 			return errors.New(err)
 		}
 	}
@@ -45,8 +51,8 @@ func (t *Terminal) SetOptions(opts ...Option) error {
 
 func SetPTYName(ptyName string) Option {
 	return OptFunc(func(t *Terminal) error {
-		if t.proprietor == nil {
-			t.proprietor = environ.NewProprietor()
+		if t.properties == nil {
+			t.properties = environ.NewProperties()
 		}
 		if len(ptyName) == 0 {
 			ptyName = internal.DefaultTTYDevice()
@@ -110,18 +116,18 @@ func SetResizer(rsz Resizer) Option {
 }
 func SetProprietor(pr environ.Properties, merge bool) Option {
 	return OptFunc(func(t *Terminal) error {
-		if merge && t.proprietor != nil {
-			t.proprietor.MergeProperties(pr)
+		if merge && t.properties != nil {
+			t.properties.MergeProperties(pr)
 		} else {
-			t.proprietor = pr
+			t.properties = pr
 		}
 		return nil
 	})
 }
 func SetTerminalName(termName string) Option {
 	return OptFunc(func(t *Terminal) error {
-		if t.proprietor == nil {
-			t.proprietor = environ.NewProprietor()
+		if t.properties == nil {
+			t.properties = environ.NewProperties()
 		}
 		t.SetProperty(propkeys.TerminalName, `true`)
 		return nil
@@ -129,8 +135,8 @@ func SetTerminalName(termName string) Option {
 }
 func SetExe(exe string) Option {
 	return OptFunc(func(t *Terminal) error {
-		if t.proprietor == nil {
-			t.proprietor = environ.NewProprietor()
+		if t.properties == nil {
+			t.properties = environ.NewProperties()
 		}
 		if len(exe) > 0 {
 			return nil
@@ -174,6 +180,7 @@ func SetLogFile(filename string, enable bool) Option {
 			}
 			t.logger = slog.New(slog.NewTextHandler(logFile, hOpts))
 			t.logInfo(`opening log file`)
+			logBuildInfo(t)
 			t.OnClose(func() error {
 				if logFile == nil {
 					return nil
@@ -187,17 +194,55 @@ func SetLogFile(filename string, enable bool) Option {
 		return nil
 	})
 }
+func logBuildInfo(loggerProv logx.LoggerProvider) {
+	if loggerProv == nil {
+		return
+	}
+	bi, ok := debug.ReadBuildInfo()
+	if !ok || bi == nil {
+		return
+	}
+	args := []any{`go-version`, bi.GoVersion}
+	for _, m := range append([]*debug.Module{&bi.Main}, bi.Deps...) {
+		if m != nil && strings.HasSuffix(m.Path, consts.LibraryName) {
+			if len(m.Version) > 0 {
+				args = append(args, consts.LibraryName+`-version`, m.Version)
+			}
+			if len(m.Sum) > 0 {
+				args = append(args, consts.LibraryName+`-checksum`, m.Sum)
+			}
+		}
+	}
+	for _, bs := range bi.Settings {
+		switch bs.Key {
+		case `CGO_ENABLED`,
+			`CGO_CFLAGS`, `CGO_CPPFLAGS`, `CGO_CXXFLAGS`, `CGO_LDFLAGS`,
+			`GOARCH`,
+			`GOAMD64`, `GOARM`, `GO386`,
+			`GOOS`,
+			`vcs`, `vcs.revision`, `vcs.time`, `vcs.modified`:
+			if len(bs.Value) > 0 {
+				args = append(args, bs.Key, bs.Value)
+			}
+		}
+	}
+	logx.Info(`build info`, loggerProv, args...)
+}
 
 var (
-	TUIMode           Option = tuiMode
-	CLIMode           Option = cliMode
-	ManualComposition Option = manualComposition // disable terminal detection
+	TUIMode              Option = tuiMode
+	CLIMode              Option = cliMode
+	ManualComposition    Option = manualComposition    // disable terminal detection
+	NoCleanUpOnInterrupt Option = noCleanUpOnInterrupt // disable terminal cleanup on Interrupt or TERM signal
 )
 
 var tuiMode Option = OptFunc(func(t *Terminal) error { t.SetProperty(propkeys.Mode, `tui`); return nil })
 var cliMode Option = OptFunc(func(t *Terminal) error { t.SetProperty(propkeys.Mode, `cli`); return nil })
 var manualComposition Option = OptFunc(func(t *Terminal) error { t.SetProperty(propkeys.ManualComposition, `true`); return nil })
+var noCleanUpOnInterrupt Option = OptFunc(func(t *Terminal) error { t.SetProperty(propkeys.NoCleanUpOnInterrupt, `true`); return nil })
 
+// replaceTerminal is for injecting an already set up *terminal.Terminal into *termCheckerCore.NewTerminal()
+// replacing its dummy one.
 func replaceTerminal(t *Terminal) Option {
 	return OptFunc(func(tOld *Terminal) error {
 		if t == nil || tOld == nil {
@@ -226,7 +271,7 @@ var setInternalDefaults Option = OptFunc(func(t *Terminal) error {
 func setTTYAndQuerier(tc *termCheckerCore) Option {
 	return OptFunc(func(t *Terminal) error {
 		tty, qu, err := getTTYAndQuerier(t, tc)
-		if log.IsErr(t.Logger(), slog.LevelInfo, err) {
+		if logx.IsErr(err, t, slog.LevelInfo) {
 			return err
 		}
 		t.tty = tty
@@ -238,7 +283,7 @@ func setTTYAndQuerier(tc *termCheckerCore) Option {
 func setEnvAndMuxers(overwrite bool) Option {
 	return OptFunc(func(t *Terminal) error {
 		if overwrite {
-			if t.proprietor != nil {
+			if t.properties != nil {
 				composeManuallyStr, composeManually := t.Property(propkeys.ManualComposition)
 				if composeManually && composeManuallyStr == `true` {
 					envIsLoadedStr, envIsLoaded := t.Property(propkeys.EnvIsLoaded)
@@ -248,58 +293,58 @@ func setEnvAndMuxers(overwrite bool) Option {
 				}
 			}
 		} else {
-			if t.proprietor != nil || t.passages != nil {
+			if t.properties != nil || t.passages != nil {
 				return nil
 			}
 		}
 		ptyName := t.ptyName()
 		if len(ptyName) == 0 {
-			if t.proprietor != nil {
+			if t.properties != nil {
 				ptyNameDefault := internal.DefaultTTYDevice()
 				t.SetProperty(propkeys.PTYName, ptyNameDefault)
 				ptyName = ptyNameDefault
 			}
 		}
 		pr, passages, err := advanced.GetEnv(ptyName)
-		_ = log.IsErr(t.logger, slog.LevelInfo, err)
+		_ = logx.IsErr(err, t, slog.LevelInfo)
 		var skipSettingEnvIsLoaded bool
-		if t.proprietor != nil {
+		if t.properties != nil {
 			envIsLoadedStr, _ := t.Property(propkeys.EnvIsLoaded)
 			switch envIsLoadedStr {
 			case `true`:
 				skipSettingEnvIsLoaded = true
 			case `merge`:
 				// use new Proprietor as receiver to allow implementation choice
-				pr.MergeProperties(t.proprietor)
+				pr.MergeProperties(t.properties)
 			}
 		}
 		if !skipSettingEnvIsLoaded {
-			t.proprietor = pr
+			t.properties = pr
 		}
-		if t.proprietor != nil {
+		if t.properties != nil {
 			t.SetProperty(propkeys.EnvIsLoaded, `true`)
 		}
 		t.passages = passages
 
 		// X11 Resources
 
-		xdgSessionType, hasXDGSessionType := t.proprietor.LookupEnv(`XDG_SESSION_TYPE`)
+		xdgSessionType, hasXDGSessionType := t.properties.LookupEnv(`XDG_SESSION_TYPE`)
 		if !hasXDGSessionType || xdgSessionType != `x11` {
 			return nil
 		}
 
-		conn, err := wm.NewConn(t.proprietor)
-		if log.IsErr(t.Logger(), slog.LevelInfo, err) {
+		conn, err := wm.NewConn(t.properties)
+		if logx.IsErr(err, t, slog.LevelInfo) {
 			return err
 		}
 		res, err := conn.Resources()
-		if log.IsErr(t.Logger(), slog.LevelInfo, err) {
+		if logx.IsErr(err, t, slog.LevelInfo) {
 			return err
 		}
-		if t.proprietor != nil {
-			t.proprietor.MergeProperties(res)
+		if t.properties != nil {
+			t.properties.MergeProperties(res)
 		} else {
-			t.proprietor = res
+			t.properties = res
 		}
 
 		return nil

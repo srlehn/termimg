@@ -22,7 +22,7 @@ var _ term.TermChecker = (*termCheckerTabby)(nil)
 type termCheckerTabby struct{ term.TermChecker }
 
 func (t *termCheckerTabby) CheckExclude(pr environ.Properties) (mightBe bool, p environ.Properties) {
-	p = environ.NewProprietor()
+	p = environ.NewProperties()
 	if t == nil || pr == nil {
 		p.SetProperty(propkeys.CheckTermEnvExclPrefix+termNameTabby, consts.CheckTermFailed)
 		return false, p

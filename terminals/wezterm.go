@@ -23,14 +23,14 @@ var _ term.TermChecker = (*termCheckerWezTerm)(nil)
 type termCheckerWezTerm struct{ term.TermChecker }
 
 func (t *termCheckerWezTerm) CheckExclude(ci environ.Properties) (mightBe bool, p environ.Properties) {
-	p = environ.NewProprietor()
+	p = environ.NewProperties()
 	if t == nil || ci == nil {
 		p.SetProperty(propkeys.CheckTermEnvExclPrefix+termNameWezTerm, consts.CheckTermFailed)
 		return false, p
 	}
 
 	var r bool
-	pr := environ.NewProprietor()
+	pr := environ.NewProperties()
 	if v, ok := ci.LookupEnv(`TERM_PROGRAM`); ok && v == `WezTerm` {
 		r = true
 	}
@@ -58,7 +58,7 @@ func (t *termCheckerWezTerm) CheckExclude(ci environ.Properties) (mightBe bool, 
 	return true, p
 }
 func (t *termCheckerWezTerm) CheckIsWindow(w wm.Window) (is bool, p environ.Properties) {
-	p = environ.NewProprietor()
+	p = environ.NewProperties()
 	if t == nil || w == nil {
 		p.SetProperty(propkeys.CheckTermWindowIsPrefix+termNameWezTerm, consts.CheckTermFailed)
 		return false, p

@@ -17,7 +17,7 @@ var _ wm.Connection = (*connWindows)(nil)
 // connWindows ...
 type connWindows struct{}
 
-func newConn(_ environ.Proprietor) (*connWindows, error) { return &connWindows{}, nil }
+func newConn(_ environ.Properties) (*connWindows, error) { return &connWindows{}, nil }
 
 func (c *connWindows) Close() error { return nil }
 
@@ -29,21 +29,21 @@ func (c *connWindows) Windows() ([]wm.Window, error) {
 
 // DisplayImage ...
 func (c *connWindows) DisplayImage(img image.Image, windowName string) {}
-func (c *connWindows) Resources() (environ.Proprietor, error) {
+func (c *connWindows) Resources() (environ.Properties, error) {
 	return nil, errors.New(consts.ErrNotImplemented)
 }
 
 // windowWindows ...
 type windowWindows struct {
 	wminternal.WindowDummy
-	is      func(w wm.Window) (is bool, p environ.Proprietor)
+	is      func(w wm.Window) (is bool, p environ.Properties)
 	isInit  bool
 	errFind error
 }
 
 var _ wm.Window = (*windowWindows)(nil)
 
-func createWindow(env environ.Proprietor, name, class, instance string, isWindow wm.IsWindowFunc) wm.Window {
+func createWindow(env environ.Properties, name, class, instance string, isWindow wm.IsWindowFunc) wm.Window {
 	return &windowWindows{}
 }
 

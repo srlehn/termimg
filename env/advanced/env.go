@@ -124,7 +124,7 @@ end:
 	if errRet != nil {
 		if internal.IsDefaultTTY(ptyName) {
 			// fallback
-			envInner = environ.EnvToProprietor(os.Environ())
+			envInner = environ.EnvToProperties(os.Environ())
 		} else {
 			return nil, nil, errRet
 		}

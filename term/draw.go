@@ -1,16 +1,19 @@
 package term
 
 import (
+	"context"
 	"image"
 	"image/color"
 	"image/draw"
 	"log/slog"
+	"runtime"
+	"sync"
 	"time"
 
 	"github.com/srlehn/termimg/internal/consts"
 	"github.com/srlehn/termimg/internal/environ"
 	"github.com/srlehn/termimg/internal/errors"
-	"github.com/srlehn/termimg/internal/log"
+	"github.com/srlehn/termimg/internal/logx"
 	"github.com/srlehn/termimg/internal/util"
 )
 
@@ -27,6 +30,7 @@ type Drawer interface {
 	New() Drawer
 	IsApplicable(DrawerCheckerInput) (bool, environ.Properties)
 	Draw(img image.Image, bounds image.Rectangle, term *Terminal) error
+	Prepare(ctx context.Context, img image.Image, bounds image.Rectangle, term *Terminal) (drawFn func() error, _ error)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -66,7 +70,7 @@ func drawWith(img image.Image, bounds image.Rectangle, term *Terminal, dr Drawer
 	defer func() {
 		if r := recover(); r != nil {
 			err = errors.New(r)
-			_ = log.IsErr(term.Logger(), slog.LevelError, err)
+			_ = logx.IsErr(err, term, slog.LevelError)
 		}
 	}()
 	// TODO check if redraw is necessary
@@ -82,15 +86,18 @@ var _ draw.Image = (*Canvas)(nil)
 
 var canvasScreenshotRefreshDuration = 100 * time.Millisecond // TODO add terminal Option for setting duration
 
+// Canvas has to be created with (*term.Terminal).NewCanvas()
 type Canvas struct {
 	terminal            *Terminal
 	bounds              image.Rectangle
 	boundsPixels        image.Rectangle
 	screenshot          image.Image
 	drawing             draw.Image
+	image               image.Image
 	lastScreenshotTaken time.Time
 	lastSetX            int // draw.Draw: for y{for x{}}
 	vid                 chan image.Image
+	closed              chan struct{}
 }
 
 func (c *Canvas) Set(x, y int, col color.Color) {
@@ -100,17 +107,22 @@ func (c *Canvas) Set(x, y int, col color.Color) {
 	if !(&image.Point{X: x, Y: y}).In(c.boundsPixels.Sub(c.boundsPixels.Min)) {
 		return
 	}
-	if c.drawing == nil ||
-		c.drawing.Bounds().Dx() != c.boundsPixels.Dx() ||
-		c.drawing.Bounds().Dy() != c.boundsPixels.Dy() {
+	if c.drawing == nil || c.drawing.Bounds().Eq(c.boundsPixels) {
 		c.lastSetX = -2
 		c.drawing = image.NewRGBA(image.Rect(0, 0, c.boundsPixels.Dx(), c.boundsPixels.Dy()))
+	}
+	if c.image != nil {
+		if c.lastSetX < -1 && c.drawing.Bounds().Eq(c.image.Bounds()) {
+			draw.Draw(c.drawing, c.drawing.Bounds(), c.image, c.image.Bounds().Min, draw.Src)
+		}
+		util.TryClose(c.image)
+		c.image = nil
 	}
 	c.drawing.Set(x, y, col)
 	if ((x == 0 && y == 0) ||
 		(x == c.boundsPixels.Dx()-1 && y == c.boundsPixels.Dy()-1)) &&
 		(x-c.lastSetX == 1 || x-c.lastSetX == -1) {
-		_ = c.terminal.Draw(c.drawing, c.bounds) // TODO log
+		logx.IsErr(c.terminal.Draw(c.drawing, c.bounds), c.terminal, slog.LevelError)
 	}
 	c.lastSetX = x
 }
@@ -137,7 +149,7 @@ func (c *Canvas) storeScreenshot() error {
 			return errors.New(`nil window`)
 		}
 		img, err := w.Screenshot()
-		if log.IsErr(c.terminal.Logger(), slog.LevelInfo, err) {
+		if logx.IsErr(err, c.terminal, slog.LevelInfo) {
 			return err
 		}
 		if img == nil {
@@ -151,16 +163,53 @@ func (c *Canvas) storeScreenshot() error {
 	return nil
 }
 
-func (c *Canvas) CellArea() image.Rectangle  { return c.bounds }
-func (c *Canvas) Offset() image.Point        { return c.boundsPixels.Min }
-func (c *Canvas) Draw(img image.Image) error { return Draw(img, c.bounds, c.terminal, nil) }
-func (c *Canvas) Flush() error {
-	if c == nil || c.terminal == nil || c.drawing == nil || c.bounds.Eq(image.Rectangle{}) {
-		return errors.New(`nil receiver or null value struct fields`)
+func (c *Canvas) CellArea() image.Rectangle { return c.bounds }
+func (c *Canvas) Offset() image.Point       { return c.boundsPixels.Min }
+func (c *Canvas) SetImage(img image.Image) error {
+	if c == nil || c.bounds.Eq(image.Rectangle{}) {
+		return logx.Err(errors.New(`nil receiver or null value struct fields`), c.terminal, slog.LevelError)
 	}
-	return c.terminal.Draw(c.drawing, c.bounds)
+	c.image = img
+	c.drawing = nil
+	return nil
 }
-func (c *Canvas) Video(dur time.Duration) chan<- image.Image {
+
+// Draw flushes stored image when img is nil
+func (c *Canvas) Draw(img image.Image) error {
+	if c == nil {
+		return errors.New(consts.ErrNilReceiver)
+	}
+	if img != nil {
+		if err := c.SetImage(img); err != nil {
+			return err
+		}
+	}
+	if c.terminal == nil {
+		return logx.Err(errors.New(`no terminal`), c.terminal, slog.LevelError)
+	}
+	drawers := c.terminal.Drawers()
+	if len(drawers) == 0 {
+		return logx.Err(errors.New(`no drawer`), c.terminal, slog.LevelError)
+	}
+	if c.image == nil {
+		if c.drawing != nil {
+			c.image = c.drawing
+		} else {
+			return logx.Err(errors.New(`nothing to draw`), c.terminal, slog.LevelError)
+		}
+	}
+	var errs []error
+	for _, dr := range drawers {
+		err := Draw(c.image, c.bounds, c.terminal, dr)
+		if !logx.IsErr(err, c.terminal, slog.LevelInfo) {
+			goto successfulDraw
+		}
+		errs = append(errs, err)
+	}
+successfulDraw:
+	return logx.Err(errors.Join(errs...), c.terminal, slog.LevelError)
+}
+func (c *Canvas) Video(ctx context.Context, dur time.Duration) chan<- image.Image {
 	if c == nil {
 		return nil
 	}
@@ -171,30 +220,110 @@ func (c *Canvas) Video(dur time.Duration) chan<- image.Image {
 	_ = c.terminal.SetOptions(TUIMode)
 	// TODO count miss/success ratio, avg draw time, etc
 	go func() {
-		var imgLast image.Image
-		var tm time.Time
-		for img := range c.vid {
-			util.TryClose(imgLast)
-			tm = time.Now()
-			_ = Draw(img, c.bounds, c.terminal, nil) // TODO log
-			drawTime := time.Since(tm)
-			if drawTime < dur {
-				time.Sleep(dur - drawTime)
+		defer func() { close(c.vid) }()
+		var drawFnChans []<-chan func() error
+		for i := 0; i < runtime.NumCPU(); i++ {
+			// TODO order images
+			drawFn, err := c.prepImage(ctx, c.vid)
+			if !logx.IsErr(err, c.terminal, slog.LevelInfo) && drawFn != nil {
+				drawFnChans = append(drawFnChans, drawFn)
 			}
-			imgLast = img
+		}
+		drawFnCombChan := make(chan func() error)
+		var wg sync.WaitGroup
+		wg.Add(len(drawFnChans))
+		for _, drawFnChan := range drawFnChans {
+			go func(drawFnChan <-chan func() error) {
+				for drawFn := range drawFnChan {
+					drawFnCombChan <- drawFn
+				}
+				wg.Done()
+			}(drawFnChan)
+		}
+		go func() {
+			wg.Wait()
+			close(drawFnCombChan)
+		}()
+
+		var tm time.Time
+		for {
+			select {
+			case drawFn := <-drawFnCombChan:
+				tm = time.Now()
+				err := logx.TimeIt(drawFn, `image drawing`, c.terminal, `drawer`, c.terminal.Drawers()[0].Name())
+				logx.IsErr(err, c.terminal, slog.LevelError)
+				if c.drawing != nil {
+					util.TryClose(c.drawing)
+					c.drawing = nil
+				}
+				drawTime := time.Since(tm)
+				if drawTime < dur {
+					time.Sleep(dur - drawTime)
+				}
+			case <-c.closed:
+				return
+			case <-ctx.Done():
+				return
+			}
 		}
 	}()
 	return c.vid
+}
+func (c *Canvas) prepImage(ctx context.Context, imgChan <-chan image.Image) (<-chan func() error, error) {
+	if c == nil || c.terminal == nil {
+		return nil, logx.Err(errors.New(consts.ErrNilReceiver), c.terminal, slog.LevelError)
+	}
+	if ctx == nil {
+		return nil, logx.Err(errors.New(consts.ErrNilParam), c.terminal, slog.LevelError)
+	}
+	var dr Drawer
+	if drawers := c.terminal.Drawers(); len(drawers) == 0 {
+		return nil, logx.Err(errors.New(`no drawer`), c.terminal, slog.LevelError)
+	} else {
+		dr = drawers[0]
+	}
+	drawFnChan := make(chan func() error)
+	go func() {
+		defer close(drawFnChan)
+		for {
+			select {
+			case img, ok := <-imgChan:
+				if !ok {
+					return
+				}
+				drawFn, err := dr.Prepare(ctx, img, c.bounds, c.terminal)
+				if !logx.IsErr(err, c.terminal, slog.LevelInfo) && drawFn != nil {
+					drawFnChan <- drawFn
+				}
+				go func(imgLast image.Image) { util.TryClose(imgLast) }(c.image)
+				c.image = img
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
+
+	return drawFnChan, nil
 }
 func (c *Canvas) Screenshot() (image.Image, error) {
 	if c == nil || c.terminal == nil {
 		return nil, errors.New(consts.ErrNilReceiver)
 	}
-	if err := c.storeScreenshot(); log.IsErr(c.terminal.Logger(), slog.LevelInfo, err) {
+	if err := c.storeScreenshot(); logx.IsErr(err, c.terminal, slog.LevelInfo) {
 		return nil, err
 	}
 	if c.screenshot == nil {
 		return nil, errors.New(`nil image`)
 	}
 	return c.screenshot, nil
+}
+func (c *Canvas) Close() error {
+	if c == nil || c.closed == nil {
+		return nil
+	}
+	select {
+	case c.closed <- struct{}{}:
+	default:
+	}
+	return nil
 }
