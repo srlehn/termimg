@@ -24,6 +24,11 @@ import (
 	// "github.com/mattn/go-shellwords"
 )
 
+var (
+	reCSISeq = regexp.MustCompilePOSIX(`(` + "\033" + `|\\e|\\033|\\x1[bB])\[[0-9;]*[[:alpha:]]`) // rough
+	reBell   = regexp.MustCompile(`([^\\])(\\[a]|\\007)`)
+)
+
 func GetPromptCleaned(env []string) (p string, err error) {
 	p, err = GetPrompt(env)
 	if err != nil {
@@ -31,8 +36,8 @@ func GetPromptCleaned(env []string) (p string, err error) {
 	}
 
 	// remove some common ANSI escape sequences
-	p = regexp.MustCompilePOSIX(`(`+"\033"+`|\\e|\\033|\\x1[bB])\[[0-9;]*[[:alpha:]]`).ReplaceAllLiteralString(p, ``)
-	p = regexp.MustCompile(`([^\\])(\\[a]|\\007)`).ReplaceAllString(strings.ReplaceAll(p, "\007", ``), `$1`)
+	p = reCSISeq.ReplaceAllLiteralString(p, ``)
+	p = reBell.ReplaceAllString(strings.ReplaceAll(p, "\007", ``), `$1`)
 	p = applyControlChars(p)
 
 	return

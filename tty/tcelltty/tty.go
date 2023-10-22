@@ -43,14 +43,17 @@ func (t *ttyTCell) TCellScreen() (tcell.Screen, error) {
 }
 
 func (t *ttyTCell) Write(b []byte) (n int, err error) {
+	if t == nil || t.Tty == nil {
+		return 0, errors.New(consts.ErrNilReceiver)
+	}
 	return t.Tty.Write(b)
 }
 
-func (t *ttyTCell) ReadRune() (r rune, size int, err error) {
-	// TODO copy from tui/contd
-	r = '\uFFFD'
-	// t.Tty.Read()
-	return r, 0, consts.ErrNotImplemented
+func (t *ttyTCell) Read(p []byte) (n int, err error) {
+	if t == nil || t.Tty == nil {
+		return 0, errors.New(consts.ErrNilReceiver)
+	}
+	return t.Tty.Read(p)
 }
 
 func (t *ttyTCell) TTYDevName() string {

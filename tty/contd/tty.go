@@ -2,7 +2,6 @@ package contd
 
 import (
 	"os"
-	"unicode/utf8"
 
 	"github.com/containerd/console"
 
@@ -58,35 +57,12 @@ func (t *ttyContD) Write(b []byte) (n int, err error) {
 	return t.Console.Write(b)
 }
 
-func (t *ttyContD) ReadRune() (r rune, size int, err error) {
-	// TODO store remaining bytes
-	r = utf8.RuneError // '\uFFFD'
-	if t == nil {
-		return r, len(string(r)), errors.New(consts.ErrNilReceiver)
+func (t *ttyContD) Read(p []byte) (n int, err error) {
+	if t == nil || t.Console == nil {
+		return 0, errors.New(consts.ErrNilReceiver)
 	}
-	if t.Console == nil {
-		return r, len(string(r)), errors.New(`nil tty`)
-	}
-	rb := make([]byte, 4)
-	var nTotal int
-	for i := 0; i < cap(rb); i++ {
-		b := make([]byte, 1)
-		n, err := t.Console.Read(b)
-		nTotal += n
-		if err != nil {
-			return r, nTotal, errors.New(err)
-		}
-		rb[i] = b[0]
-		if utf8.Valid(rb) {
-			break
-		} else if i == cap(rb)-1 {
-			return r, nTotal, errors.New(err)
-		}
-	}
-	r, _ = utf8.DecodeRune(rb)
-	return r, nTotal, err
+	return t.Console.Read(p)
 }
-
 func (t *ttyContD) TTYDevName() string {
 	if t == nil {
 		return internal.DefaultTTYDevice()

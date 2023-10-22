@@ -83,7 +83,6 @@ func queryFunc(cmd *cobra.Command, args []string) terminalSwapper {
 		} else {
 			ptyName = internal.DefaultTTYDevice()
 		}
-		fmt.Println(logFileFlag, logFileOption != nil)
 		opts := []term.Option{
 			logFileOption,
 			termimg.DefaultConfig,

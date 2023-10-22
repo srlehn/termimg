@@ -23,6 +23,7 @@ type ttyMattN struct {
 	fileName       string
 	winch          chan term.Resolution
 	watchWINCHOnce sync.Once
+	buf            []byte
 }
 
 var _ term.TTY = (*ttyMattN)(nil)
@@ -50,6 +51,41 @@ func (t *ttyMattN) Write(b []byte) (n int, err error) {
 		return 0, errors.New(`nil file`)
 	}
 	return f.Write(b)
+}
+
+func (t *ttyMattN) Read(p []byte) (n int, err error) {
+	if t == nil || t.TTY == nil {
+		return 0, errors.New(consts.ErrNilReceiver)
+	}
+	p = p[:0]
+	i := len(t.buf)
+	if i > 0 {
+		if i >= cap(p) {
+			copy(p, t.buf[:cap(p)-1])
+			t.buf = t.buf[cap(p)-1:]
+			return len(p), nil
+		}
+		t.buf = nil
+		copy(p, t.buf)
+	}
+	for ; i < cap(p); i++ {
+		r, err := t.TTY.ReadRune()
+		if err != nil {
+			return len(p), errors.New(err)
+		}
+		b := []byte(string(r))
+		l := min(cap(p)-len(p), len(b))
+		b1, b2 := b[:l], b[l:]
+		if len(b2) > 0 {
+			t.buf = b2
+		}
+		p = append(p, b1...)
+		if len(p) == cap(p) {
+			break
+		}
+	}
+
+	return len(p), nil
 }
 
 func (t *ttyMattN) ReadRune() (r rune, size int, err error) {

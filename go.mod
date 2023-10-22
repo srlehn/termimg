@@ -1,6 +1,6 @@
 module github.com/srlehn/termimg
 
-go 1.20
+go 1.21
 
 require (
 	github.com/anthonynsimon/bild v0.13.0

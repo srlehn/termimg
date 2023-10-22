@@ -115,6 +115,8 @@ func (i *Image) Decode() error {
 		defer f.Close()
 		rdr = f
 	}
+	// TODO check MIME-Type to recognize animations
+	// animated gifs store a delay time
 	image, _, err := image.Decode(rdr)
 	if err != nil {
 		return errors.New(err)

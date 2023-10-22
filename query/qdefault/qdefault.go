@@ -13,6 +13,7 @@ import (
 	"github.com/srlehn/termimg/internal/consts"
 	"github.com/srlehn/termimg/internal/environ"
 	"github.com/srlehn/termimg/internal/errors"
+	"github.com/srlehn/termimg/internal/iointernal"
 	"github.com/srlehn/termimg/term"
 )
 
@@ -63,6 +64,7 @@ func (q *querierDefault) startReading(tty term.TTY) {
 		return
 	}
 	q.r = make(chan rune)
+	runeReader := iointernal.NewRuneReader(tty)
 
 	go func() {
 		var (
@@ -79,7 +81,9 @@ func (q *querierDefault) startReading(tty term.TTY) {
 			if !drain && drainLeftOver {
 				r, err = rDr, errDr
 			} else {
-				r, _, err = tty.ReadRune() // TODO use io.Reader
+				// TODO use io.Reader
+				// (mattn/go-tty.TTY didn't provide a Read method)
+				r, _, err = runeReader.ReadRune()
 			}
 			if dr, ok := q.drain.Load().(bool); ok {
 				drain = dr
