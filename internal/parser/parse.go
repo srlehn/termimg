@@ -142,7 +142,7 @@ func (p *parser) Parse(r rune) bool {
 				seqType = _Fe
 				ret = true
 
-			// Terminology  \x00 terminated - conflics with Fs escape sequences
+			// Terminology  \x00 terminated - conflicts with Fs escape sequences
 			// https://github.com/borisfaure/terminology/tree/master#extended-escapes-for-terminology-only
 			case p.terminology && r == '}':
 				p.state = terminology
