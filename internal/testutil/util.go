@@ -20,7 +20,6 @@ import (
 	"github.com/srlehn/termimg/resize/rdefault"
 	"github.com/srlehn/termimg/term"
 	"github.com/srlehn/termimg/wm"
-	"github.com/srlehn/termimg/wm/wmimpl"
 )
 
 func PTermPrintImageHelper(
@@ -37,7 +36,6 @@ func PTermPrintImageHelper(
 		if len(ttyFile) == 0 {
 			return termimg.Terminal()
 		}
-		wm.SetImpl(wmimpl.Impl())
 		opts := []term.Option{
 			termimg.DefaultConfig,
 			term.SetPTYName(ttyFile),

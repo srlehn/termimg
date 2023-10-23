@@ -9,8 +9,11 @@ import (
 	"github.com/srlehn/termimg/term"
 )
 
+// TODO set ONLCR so that no \r is needed at line end
+
 type ttyTCell struct {
 	tcell.Tty
+	screen   tcell.Screen
 	fileName string
 }
 
@@ -35,10 +38,15 @@ func (t *ttyTCell) TCellScreen() (tcell.Screen, error) {
 	if t == nil {
 		return nil, errors.New(consts.ErrNilReceiver)
 	}
+	if t.screen != nil {
+		return t.screen, nil
+	}
 	scr, err := tcell.NewTerminfoScreenFromTty(t.Tty)
 	if err != nil {
 		return nil, err
 	}
+	t.screen = scr
+
 	return scr, nil
 }
 
@@ -53,6 +61,7 @@ func (t *ttyTCell) Read(p []byte) (n int, err error) {
 	if t == nil || t.Tty == nil {
 		return 0, errors.New(consts.ErrNilReceiver)
 	}
+	// TODO read key events instead?
 	return t.Tty.Read(p)
 }
 
@@ -61,6 +70,19 @@ func (t *ttyTCell) TTYDevName() string {
 		return internal.DefaultTTYDevice()
 	}
 	return t.fileName
+}
+
+func (t *ttyTCell) SizePixel() (cw int, ch int, pw int, ph int, e error) {
+	if t == nil || t.Tty == nil {
+		return 0, 0, 0, 0, errors.New(consts.ErrNilReceiver)
+	}
+	if t.screen == nil {
+		if _, err := t.TCellScreen(); err != nil {
+			return 0, 0, 0, 0, err
+		}
+	}
+	cw, ch = t.screen.Size()
+	return
 }
 
 // Close ...

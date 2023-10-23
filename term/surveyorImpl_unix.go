@@ -11,6 +11,8 @@ import (
 	"golang.org/x/sys/unix"
 )
 
+// TODO TIOCGWINSZ
+
 func watchWINCH(tty TTY) (_ <-chan Resolution, closeFunc func() error, _ error) {
 	if tty == nil {
 		return nil, nil, errors.New(`nil tty`)

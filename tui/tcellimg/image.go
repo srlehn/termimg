@@ -78,11 +78,11 @@ func (m *Image) Draw() {
 	_ = logx.IsErr(err, m.term, slog.LevelError)
 }
 
-func (m *Image) Video(ctx context.Context, dur time.Duration) chan<- image.Image {
+func (m *Image) Video(ctx context.Context, vid <-chan image.Image, frameDur time.Duration) error {
 	if m == nil || m.Canvas == nil || ctx == nil {
 		return nil
 	}
-	return m.Canvas.Video(ctx, dur)
+	return m.Canvas.Video(ctx, vid, frameDur)
 }
 
 func (m *Image) Close() error {

@@ -24,8 +24,6 @@ import (
 	"github.com/srlehn/termimg/internal/queries"
 	"github.com/srlehn/termimg/resize/rdefault"
 	"github.com/srlehn/termimg/term"
-	"github.com/srlehn/termimg/wm"
-	"github.com/srlehn/termimg/wm/wmimpl"
 )
 
 var (
@@ -63,7 +61,6 @@ func listFunc(cmd *cobra.Command, args []string) terminalSwapper {
 			paths = []string{cwd}
 		}
 
-		wm.SetImpl(wmimpl.Impl())
 		opts := []term.Option{
 			logFileOption,
 			termimg.DefaultConfig,
@@ -81,7 +78,7 @@ func listFunc(cmd *cobra.Command, args []string) terminalSwapper {
 		if len(listDrawer) > 0 {
 			dr = term.GetRegDrawerByName(listDrawer)
 			if dr == nil {
-				return logx.Err(errors.New(`unknown drawer "`+listDrawer+`"`), tm2, slog.LevelError)
+				return logx.Err(`unknown drawer "`+listDrawer+`"`, tm2, slog.LevelError)
 			}
 		} else {
 			dr = tm2.Drawers()[0]
@@ -287,16 +284,16 @@ func getForegroundBackground(tm *term.Terminal) (fg, bg [3]float64, _ error) {
 	parseRGB := func(s string) (rgb [3]float64, _ error) {
 		parts := strings.SplitN(s, queries.ST, 2)
 		if len(parts) < 2 {
-			return rgb, logx.Err(errors.New(`no reply`), tm, slog.LevelError)
+			return rgb, logx.Err(`no reply`, tm, slog.LevelError)
 		}
 		s, okFG := strings.CutPrefix(parts[0], queries.OSC+"10;rgb:")
 		s, okBG := strings.CutPrefix(s, queries.OSC+"11;rgb:")
 		if !okFG && !okBG {
-			return rgb, logx.Err(errors.New(`invalid reply`), tm, slog.LevelError)
+			return rgb, logx.Err(`invalid reply`, tm, slog.LevelError)
 		}
 		cols := strings.SplitN(s, `/`, 3)
 		if len(cols) < 3 {
-			return rgb, logx.Err(errors.New(`invalid reply`), tm, slog.LevelError)
+			return rgb, logx.Err(`invalid reply`, tm, slog.LevelError)
 		}
 		for i, col := range cols {
 			h, err := strconv.ParseUint(col, 16, 64)
@@ -322,11 +319,11 @@ func getForegroundBackground(tm *term.Terminal) (fg, bg [3]float64, _ error) {
 	{
 		parts := strings.SplitN(replRevVid, `$y`, 2)
 		if len(parts) != 2 {
-			return fg, bg, logx.Err(errors.New(`invalid reply`), tm, slog.LevelInfo)
+			return fg, bg, logx.Err(`invalid reply`, tm, slog.LevelInfo)
 		}
 		parts = strings.SplitN(parts[0], `;`, 2)
 		if len(parts) != 2 {
-			return fg, bg, logx.Err(errors.New(`invalid reply`), tm, slog.LevelInfo)
+			return fg, bg, logx.Err(`invalid reply`, tm, slog.LevelInfo)
 		}
 		if parts[1] == `1` || parts[1] == `3` {
 			fg, bg = bg, fg

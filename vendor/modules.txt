@@ -96,7 +96,7 @@ github.com/dsoprea/go-png-image-structure/v2
 ## explicit; go 1.12
 github.com/dsoprea/go-utility/v2/filesystem
 github.com/dsoprea/go-utility/v2/image
-# github.com/esimov/caire v1.4.7-0.20230331122901-fc01f8e08e9e
+# github.com/esimov/caire v1.4.6
 ## explicit; go 1.18
 github.com/esimov/caire
 github.com/esimov/caire/imop
@@ -201,6 +201,9 @@ github.com/golang/geo/s2
 # github.com/gonutz/w32/v2 v2.10.0
 ## explicit; go 1.11
 github.com/gonutz/w32/v2
+# github.com/google/btree v1.1.2
+## explicit; go 1.18
+github.com/google/btree
 # github.com/iancoleman/strcase v0.3.0
 ## explicit; go 1.16
 github.com/iancoleman/strcase
@@ -224,7 +227,7 @@ github.com/lucasb-eyer/go-colorful
 # github.com/lxn/win v0.0.0-20210218163916-a377121e959e
 ## explicit; go 1.12
 github.com/lxn/win
-# github.com/mattn/go-isatty v0.0.19
+# github.com/mattn/go-isatty v0.0.20
 ## explicit; go 1.15
 github.com/mattn/go-isatty
 # github.com/mattn/go-runewidth v0.0.15

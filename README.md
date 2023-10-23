@@ -12,6 +12,10 @@ termimg draws images into terminals.
 
 **VERY EXPERIMENTAL!!**
 
+There are still many small issues to be fixed.
+
+---
+
 The rectangular drawing area for an image is given in cell coordinates (not pixels).
 Origin is the upper left corner.
 
@@ -23,7 +27,8 @@ sixel, iTerm2, kitty, Terminology, DomTerm, urxvt, X11, GDI+, block characters
 <blockquote><details open>
 <summary><h3>timg CLI Tool</h3></summary>
 
-![demo.gif](https://raw.githubusercontent.com/srlehn/termimg/master/_demos/demo.gif)
+![demo_pic_ls.gif](https://raw.githubusercontent.com/srlehn/termimg/master/_demos/demo_pic_ls.gif)
+![demo_vid.gif](https://raw.githubusercontent.com/srlehn/termimg/master/_demos/demo_vid.gif)
 
 installation:
 

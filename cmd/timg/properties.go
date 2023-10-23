@@ -17,8 +17,6 @@ import (
 	"github.com/srlehn/termimg/resize/rdefault"
 	"github.com/srlehn/termimg/term"
 	_ "github.com/srlehn/termimg/terminals"
-	"github.com/srlehn/termimg/wm"
-	"github.com/srlehn/termimg/wm/wmimpl"
 )
 
 func init() {
@@ -87,7 +85,6 @@ var propCmd = &cobra.Command{
 
 func propFunc(cmd *cobra.Command, args []string) terminalSwapper {
 	return func(tm **term.Terminal) error {
-		wm.SetImpl(wmimpl.Impl())
 		var ptyName string
 		if len(propTTY) > 0 {
 			ptyName = propTTY

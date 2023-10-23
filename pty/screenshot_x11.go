@@ -69,7 +69,7 @@ func TakeScreenshot(termName string, termProvider TermProviderFunc, drawerName s
 	}
 	img, _, err := image.Decode(bytes.NewReader(imgBytes))
 	if err != nil {
-		return nil, errors.Wrap(err, 0)
+		return nil, errors.New(err)
 	}
 
 	var imgRet image.Image

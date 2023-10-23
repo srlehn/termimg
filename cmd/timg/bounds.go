@@ -15,14 +15,16 @@ import (
 	_ "golang.org/x/image/vp8l"
 	_ "golang.org/x/image/webp"
 
-	"github.com/srlehn/termimg/internal/errors"
 	"github.com/srlehn/termimg/internal/logx"
 	"github.com/srlehn/termimg/internal/prompt"
 	"github.com/srlehn/termimg/term"
 )
 
-// func splitDimArg(dim string, surv term.Surveyor, imgFile string) (x, y, w, h int, e error) {
-func splitDimArg(dim string, surv term.Surveyor, env []string, img image.Image) (x, y, w, h int, autoX, autoY bool, e error) {
+type bounder interface {
+	Bounds() image.Rectangle
+}
+
+func splitDimArg(dim string, surv term.Surveyor, env []string, img bounder) (x, y, w, h int, autoX, autoY bool, e error) {
 	dimParts := strings.Split(dim, `,`)
 	// var logger *slog.Logger
 	var loggerProv logx.LoggerProvider
@@ -32,26 +34,26 @@ func splitDimArg(dim string, surv term.Surveyor, env []string, img image.Image) 
 		}
 	}
 	if len(dimParts) > 4 {
-		return 0, 0, 0, 0, false, false, logx.Err(errors.New(`image position string not "<x>,<y>,<w>x<h>"`), loggerProv, slog.LevelError)
+		return 0, 0, 0, 0, false, false, logx.Err(`image position string not "<x>,<y>,<w>x<h>"`, loggerProv, slog.LevelError)
 	}
 	var err error
 	var xu, yu, wu, hu uint64
 	for i, dimPart := range dimParts {
 		if strings.Contains(dimPart, `x`) {
 			if i != len(dimParts)-1 {
-				return 0, 0, 0, 0, false, false, logx.Err(errors.New(showUsageStr), loggerProv, slog.LevelError)
+				return 0, 0, 0, 0, false, false, logx.Err(showUsageStr, loggerProv, slog.LevelError)
 			}
 			sizes := strings.SplitN(dimPart, `x`, 2)
 			if len(sizes[0]) > 0 {
 				wu, err = strconv.ParseUint(sizes[0], 10, 64)
 				if err != nil {
-					return 0, 0, 0, 0, false, false, logx.Err(errors.New(showUsageStr), loggerProv, slog.LevelError)
+					return 0, 0, 0, 0, false, false, logx.Err(showUsageStr, loggerProv, slog.LevelError)
 				}
 			}
 			if len(sizes[1]) > 0 {
 				hu, err = strconv.ParseUint(sizes[1], 10, 64)
 				if err != nil {
-					return 0, 0, 0, 0, false, false, logx.Err(errors.New(showUsageStr), loggerProv, slog.LevelError)
+					return 0, 0, 0, 0, false, false, logx.Err(showUsageStr, loggerProv, slog.LevelError)
 				}
 			}
 			break
@@ -61,7 +63,7 @@ func splitDimArg(dim string, surv term.Surveyor, env []string, img image.Image) 
 		if len(dimPart) > 0 {
 			val, err = strconv.ParseUint(dimPart, 10, 64)
 			if err != nil {
-				return 0, 0, 0, 0, false, false, logx.Err(errors.New(showUsageStr), loggerProv, slog.LevelError)
+				return 0, 0, 0, 0, false, false, logx.Err(showUsageStr, loggerProv, slog.LevelError)
 			}
 		}
 		switch i {
@@ -77,21 +79,22 @@ func splitDimArg(dim string, surv term.Surveyor, env []string, img image.Image) 
 	}
 	var wScaled, hScaled uint
 	if wu == 0 || hu == 0 {
+		tcw, tch, err := surv.SizeInCells()
+		if err != nil {
+			return 0, 0, 0, 0, false, false, logx.Err(err, loggerProv, slog.LevelError)
+		}
 		if img == nil {
-			return 0, 0, 0, 0, false, false, logx.Err(errors.New(`nil image`), loggerProv, slog.LevelError)
+			// scale unknown, stretch
+			return x, y, int(tcw) - x, int(tch) - y, true, true, nil
 		}
 		imgBounds := img.Bounds()
 		// return 0, 0, 0, 0, errors.New(`rectangle side with length 0`)
-		tcw, tch, err := surv.SizeInCells()
-		if err != nil {
-			return 0, 0, 0, 0, false, false, logx.Err(errors.New(err), loggerProv, slog.LevelError)
-		}
 		cpw, cph, err := surv.CellSize()
 		if err != nil {
-			return 0, 0, 0, 0, false, false, logx.Err(errors.New(err), loggerProv, slog.LevelError)
+			return 0, 0, 0, 0, false, false, logx.Err(err, loggerProv, slog.LevelError)
 		}
 		if cpw == 0 || cph == 0 {
-			return 0, 0, 0, 0, false, false, logx.Err(errors.New(`unable to query terminal size in cells`), loggerProv, slog.LevelError)
+			return 0, 0, 0, 0, false, false, logx.Err(`unable to query terminal size in cells`, loggerProv, slog.LevelError)
 		}
 		_, ph, err := prompt.GetPromptSize(env, tcw)
 		if logx.IsErr(err, loggerProv, slog.LevelInfo) {
@@ -149,7 +152,7 @@ func splitDimArg(dim string, surv term.Surveyor, env []string, img image.Image) 
 		h = int(hu)
 	}
 	if w < 1 && h < 1 {
-		return 0, 0, 0, 0, false, false, logx.Err(errors.New(`image position outside visible area`), loggerProv, slog.LevelError)
+		return 0, 0, 0, 0, false, false, logx.Err(`image position outside visible area`, loggerProv, slog.LevelError)
 	}
 	return x, y, w, h, autoX, autoY, nil
 }

@@ -7,6 +7,8 @@ import (
 	"time"
 
 	"github.com/srlehn/termimg/internal/errors"
+
+	errorsGo "github.com/go-errors/errors"
 )
 
 func Log(msg string, logger *slog.Logger, lvl slog.Level, skip int, args ...any) {
@@ -63,11 +65,19 @@ func IsErr(err error, loggerProv LoggerProvider, lvl slog.Level, args ...any) bo
 	return false
 }
 
-func Err(err error, loggerProv LoggerProvider, lvl slog.Level, args ...any) error {
-	if IsErr(err, loggerProv, lvl, args...) {
-		return err
+func Err(err any, loggerProv LoggerProvider, lvl slog.Level, args ...any) error {
+	if err == nil {
+		return nil
 	}
-	return nil
+	var e error
+	// don't overwrite origin of failure
+	if errGo, okErrGo := err.(*errorsGo.Error); okErrGo {
+		e = errGo
+	} else {
+		e = errors.Wrap(err, 1)
+	}
+	IsErr(e, loggerProv, lvl, args...)
+	return e
 }
 
 func TimeIt(fn func() error, msg string, loggerProv LoggerProvider, args ...any) error {
@@ -79,7 +89,7 @@ func TimeIt(fn func() error, msg string, loggerProv LoggerProvider, args ...any)
 	}
 	start := time.Now()
 	err := fn()
-	Info(msg, loggerProv, append([]any{`duration`, time.Since(start)}, args...)...)
+	Debug(msg, loggerProv, append([]any{`duration`, time.Since(start)}, args...)...)
 	return err
 }
 
@@ -93,7 +103,7 @@ func TimeIt2[T any](fn func() (T, error), msg string, loggerProv LoggerProvider,
 	}
 	start := time.Now()
 	ret, err := fn()
-	Info(msg, loggerProv, append([]any{`duration`, time.Since(start)}, args...)...)
+	Debug(msg, loggerProv, append([]any{`duration`, time.Since(start)}, args...)...)
 	return ret, err
 }
 

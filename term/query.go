@@ -99,12 +99,6 @@ type ttyDummy struct {
 func (t *ttyDummy) Write(p []byte) (n int, err error) {
 	return 0, errors.New(consts.ErrPlatformNotSupported)
 }
-
-/*
-	func (t *ttyDummy) ReadRune() (r rune, size int, err error) {
-		return 0, 0, errors.New(consts.ErrPlatformNotSupported)
-	}
-*/
 func (t *ttyDummy) Read(p []byte) (n int, err error) {
 	return 0, errors.New(consts.ErrPlatformNotSupported)
 }

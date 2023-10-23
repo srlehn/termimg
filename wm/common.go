@@ -49,10 +49,11 @@ type WindowProvider = func(isWindow IsWindowFunc, env environ.Properties) Window
 
 var implem Implementation
 
-func SetImpl(impl Implementation) {
+func SetImpl(impl Implementation) WindowProvider {
 	if impl != nil {
 		implem = impl
 	}
+	return NewWindow
 }
 
 func NewWindow(isWindow IsWindowFunc, env environ.Properties) Window {

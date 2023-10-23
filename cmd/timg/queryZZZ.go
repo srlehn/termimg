@@ -16,8 +16,6 @@ import (
 	"github.com/srlehn/termimg/internal/parser"
 	"github.com/srlehn/termimg/internal/queries"
 	"github.com/srlehn/termimg/term"
-	"github.com/srlehn/termimg/wm"
-	"github.com/srlehn/termimg/wm/wmimpl"
 )
 
 var (
@@ -76,7 +74,6 @@ func queryFunc(cmd *cobra.Command, args []string) terminalSwapper {
 			return errors.New(`empty query`)
 		}
 
-		wm.SetImpl(wmimpl.Impl())
 		var ptyName string
 		if len(queryTTY) > 0 {
 			ptyName = queryTTY

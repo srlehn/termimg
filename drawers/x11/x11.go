@@ -194,7 +194,7 @@ func (d *drawerX11) Prepare(ctx context.Context, img image.Image, bounds image.R
 	boundsPx := image.Rect(int(cw)*bounds.Min.X+xOffset, int(ch)*bounds.Min.Y+yOffset,
 		int(cw)*bounds.Max.X+xOffset, int(ch)*bounds.Max.Y+yOffset)
 
-	logx.Info(`image preparation`, tm, `drawer`, d.Name(), `duration`, time.Since(start))
+	logx.Debug(`image preparation`, tm, `drawer`, d.Name(), `duration`, time.Since(start))
 
 	drawFn = func() error {
 		err := draw(connXU, w, timg, boundsPx)

@@ -206,7 +206,7 @@ skipFindingTermOffSet:
 exc:
 	timg.SetPosObject(bounds, w3mImgDisplayString, d, tm)
 
-	logx.Info(`image preparation`, tm, `drawer`, d.Name(), `duration`, time.Since(start))
+	logx.Debug(`image preparation`, tm, `drawer`, d.Name(), `duration`, time.Since(start))
 
 	drawFn = func() error {
 		cmd := exec.Command(exeW3MImgDisplay)

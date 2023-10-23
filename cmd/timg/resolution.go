@@ -74,7 +74,7 @@ func resolutionFunc(cmd *cobra.Command, args []string) terminalSwapper {
 			}
 		} else {
 			if !logx.IsErr(errResCells, tm2, slog.LevelInfo) && resCellsX != 0 && resCellsY != 0 {
-				fmt.Printf("terminal resolution:      %dx%d (cells)\n", resCellsX, resCellsY)
+				fmt.Printf("terminal resolution:      %dx%d (cells)\r\n", resCellsX, resCellsY)
 			}
 		}
 		resPixelsX, resPixelsY, errResPixels := tm2.SizeInPixels()
@@ -86,7 +86,7 @@ func resolutionFunc(cmd *cobra.Command, args []string) terminalSwapper {
 			}
 		} else {
 			if !logx.IsErr(errResPixels, tm2, slog.LevelInfo) && resPixelsX != 0 && resPixelsY != 0 {
-				fmt.Printf("terminal resolution:      %dx%d (pixels)\n", resPixelsX, resPixelsY)
+				fmt.Printf("terminal resolution:      %dx%d (pixels)\r\n", resPixelsX, resPixelsY)
 			}
 		}
 
@@ -121,7 +121,7 @@ func resolutionFunc(cmd *cobra.Command, args []string) terminalSwapper {
 				cpw >= 1 && cph >= 1 &&
 				!math.IsNaN(cpw) && !math.IsNaN(cph) &&
 				!math.IsInf(cpw, 0) && !math.IsInf(cph, 0) {
-				fmt.Printf("terminal cell resolution: %.2fx%.2f (pixels)\n", cpw, cph)
+				fmt.Printf("terminal cell resolution: %.2fx%.2f (pixels)\r\n", cpw, cph)
 			}
 		}
 		err = errors.Join(errResCells, errResPixels, errCellRes)

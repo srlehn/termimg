@@ -90,7 +90,7 @@ func (d *drawerFramebuffer) Prepare(ctx context.Context, img image.Image, bounds
 		Max: image.Point{X: int(float64(bounds.Max.X) * cpw), Y: int(float64(bounds.Max.Y) * cph)},
 	}
 
-	logx.Info(`image preparation`, tm, `drawer`, d.Name(), `duration`, time.Since(start))
+	logx.Debug(`image preparation`, tm, `drawer`, d.Name(), `duration`, time.Since(start))
 
 	drawFn = func() error {
 		draw.Draw(dimg, boundsPixels, timg.Cropped, image.Point{}, draw.Src)

@@ -1,6 +1,7 @@
 package term
 
 import (
+	"fmt"
 	"image"
 	"sync"
 
@@ -308,6 +309,7 @@ func (s *surveyor) CellSize(tty TTY, qu Querier, w wm.Window, pr environ.Propert
 	}
 	errRet := errors.Join(errs...)
 	if errRet == nil {
+		fmt.Printf("%+#v\n", s)
 		errRet = errors.New("Surveyor.CellSize failed")
 	} else {
 		errRet = errors.Errorf("%s: %w", "Surveyor.CellSize failed", errRet)

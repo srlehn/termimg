@@ -182,7 +182,7 @@ draw:
 		return nil, errors.New("SetStretchBltMode")
 	}
 
-	logx.Info(`image preparation`, tm, `drawer`, d.Name(), `duration`, time.Since(start))
+	logx.Debug(`image preparation`, tm, `drawer`, d.Name(), `duration`, time.Since(start))
 
 	drawFn = func() error {
 		if !win.StretchBlt(
@@ -190,7 +190,7 @@ draw:
 			spTyped.dc, int32(0), int32(0), int32(timg.Bounds().Dx()), int32(timg.Bounds().Dy()),
 			win.SRCCOPY,
 		) {
-			return logx.Err(errors.New("StretchBlt failed"), tm, slog.LevelInfo)
+			return logx.Err("StretchBlt failed", tm, slog.LevelInfo)
 		}
 		return nil
 	}

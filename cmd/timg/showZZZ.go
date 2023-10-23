@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"image"
 	"io"
 	"log/slog"
@@ -18,11 +19,11 @@ import (
 	"github.com/srlehn/termimg/internal/errors"
 	"github.com/srlehn/termimg/internal/logx"
 	"github.com/srlehn/termimg/internal/propkeys"
+	"github.com/srlehn/termimg/internal/queries"
 	"github.com/srlehn/termimg/internal/testutil"
 	"github.com/srlehn/termimg/resize/rdefault"
 	"github.com/srlehn/termimg/term"
-	"github.com/srlehn/termimg/wm"
-	"github.com/srlehn/termimg/wm/wmimpl"
+	"github.com/srlehn/termimg/video/ffmpeg"
 )
 
 var (
@@ -70,8 +71,6 @@ var (
 
 func showFunc(cmd *cobra.Command, args []string) terminalSwapper {
 	return func(tm **term.Terminal) error {
-
-		wm.SetImpl(wmimpl.Impl())
 		var rsz term.Resizer
 		if showCaire {
 			rszCaire := showResizerCaire()
@@ -128,11 +127,17 @@ func showFunc(cmd *cobra.Command, args []string) terminalSwapper {
 					}
 				}
 			} else {
-				return logx.Err(errors.New(`no image path specified`), tm2, slog.LevelError)
+				return logx.Err(`no image path specified`, tm2, slog.LevelError)
 			}
 		}
+		mediaType := `image`
 		if len(showImageLocalPath) > 0 {
-			timg = termimg.NewImageFileName(showImageLocalPath)
+			switch guessMediaType(showImageLocalPath) {
+			case `video`:
+				mediaType = `video`
+			default:
+				timg = termimg.NewImageFileName(showImageLocalPath)
+			}
 		} else {
 			m, err := downloadImage(showURL)
 			if logx.IsErr(err, tm2, slog.LevelError) {
@@ -140,8 +145,8 @@ func showFunc(cmd *cobra.Command, args []string) terminalSwapper {
 			}
 			timg = m
 		}
-		if timg == nil {
-			return logx.Err(errors.New(`nil image`), tm2, slog.LevelError)
+		if timg == nil && mediaType == `image` {
+			return logx.Err(`nil image`, tm2, slog.LevelError)
 		}
 		{
 			if timgTyped, ok := timg.(*term.Image); ok && timgTyped != nil {
@@ -161,12 +166,12 @@ func showFunc(cmd *cobra.Command, args []string) terminalSwapper {
 		if len(showDrawer) > 0 {
 			dr = term.GetRegDrawerByName(showDrawer)
 			if dr == nil {
-				return logx.Err(errors.New(`unknown drawer "`+showDrawer+`"`), tm2, slog.LevelError)
+				return logx.Err(`unknown drawer "`+showDrawer+`"`, tm2, slog.LevelError)
 			}
 		} else if drawers := tm2.Drawers(); len(drawers) > 0 {
 			dr = drawers[0]
 		} else {
-			return logx.Err(errors.New(`no drawer`), tm2, slog.LevelError)
+			return logx.Err(`no drawer`, tm2, slog.LevelError)
 		}
 		if autoX && autoY {
 			logx.IsErr(tm2.Scroll(0), tm2, slog.LevelInfo)
@@ -184,12 +189,36 @@ func showFunc(cmd *cobra.Command, args []string) terminalSwapper {
 		if showGrid {
 			tm2.WriteString(testutil.ChessPattern(areaAddBorder(bounds, gridBorderWidth), false))
 		}
-		if err := dr.Draw(timg, bounds, tm2); logx.IsErr(err, tm2, slog.LevelError) {
-			return err
+		switch mediaType {
+		case `image`:
+			if err := dr.Draw(timg, bounds, tm2); logx.IsErr(err, tm2, slog.LevelError) {
+				return err
+			}
+		case `video`:
+			fps := 15
+			canvas, err := tm2.NewCanvas(bounds)
+			if logx.IsErr(err, tm2, slog.LevelError) {
+				return err
+			}
+			tm2.WriteString(queries.DECTCEMHide)
+			tm2.OnClose(func() error { _, err := tm2.WriteString(queries.DECTCEMShow); return err })
+			sizePixels := canvas.Bounds().Max.Sub(canvas.Bounds().Min)
+			ctx := context.Background()
+			vid, err := ffmpeg.StreamFrames(ctx, showImageLocalPath, sizePixels, fps)
+			if logx.IsErr(err, tm2, slog.LevelError) {
+				return err
+			}
+			err = canvas.Video(ctx, vid, time.Duration(1000/fps)*time.Millisecond)
+			if logx.IsErr(err, tm2, slog.LevelError) {
+				return err
+			}
+			tm2.WriteString(queries.DECTCEMShow)
 		}
 
 		logx.IsErr(tm2.SetCursor(0, uint(bounds.Max.Y)+1), tm2, slog.LevelInfo)
-		pauseVolatile(tm2, dr)
+		if mediaType == `image` {
+			pauseVolatile(tm2, dr)
+		}
 
 		return nil
 	}
@@ -260,4 +289,29 @@ func downloadImage(u string) (image.Image, error) {
 		return nil, errors.New(`image too large`) // TODO show limit
 	}
 	return term.NewImageBytes(buf.Bytes()), nil
+}
+
+func guessMediaType(filename string) string {
+	ext := strings.ToLower(strings.TrimPrefix(filepath.Ext(filename), `.`))
+	switch ext {
+	case `ami`, `apng`, `apx`, `avif`, `bmp`, `bpg`, `bpx`, `brk`, `bw`, `cal`,
+		`cals`, `cbm`, `cpt`, `cur`, `dds`, `dng`, `exr`, `fif`, `fpx`, `fxo`,
+		`fxs`, `gbr`, `gif`, `giff`, `hdp`, `heic`, `heif`, `icb`, `icns`, `ico`,
+		`iff`, `ilbm`, `img`, `j2c`, `j2k`, `jb2`, `jbig2`, `jfif`, `jng`, `jp2`,
+		`jpc`, `jpe`, `jpeg`, `jpg`, `jpx`, `jxl`, `jxr`, `kdc`, `koa`, `lbm`,
+		`lwf`, `lwi`, `mac`, `miff`, `msk`, `msp`, `ncr`, `ngg`, `nlm`, `nmp`,
+		`nol`, `oaz`, `oil`, `pat`, `pbm`, `pcd`, `pct`, `pcx`, `pdb`, `pdd`,
+		`pgf`, `pgm`, `pic`, `pix`, `pjp`, `pjpeg`, `pld`, `png`, `pnm`, `ppm`,
+		`psb`, `psd`, `psp`, `pspimage`, `qoi`, `qti`, `qtif`, `ras`, `raw`, `rgb`,
+		`rgba`, `rle`, `sgi`, `tga`, `tif`, `tiff`, `wdp`, `webp`, `xbm`, `xcf`,
+		`xpm`:
+		return `image`
+	case `3g2`, `3gp`, `amv`, `asf`, `avi`, `drc`, `flv`, `gifv`, `m2v`,
+		`m4p`, `m4v`, `mkv`, `mng`, `mov`, `mp2`, `mp4`, `mpe`, `mpeg`, `mpg`,
+		`mpv`, `mxf`, `nsv`, `ogg`, `ogv`, `qt`, `rm`, `rmvb`, `roq`, `svi`,
+		`viv`, `vob`, `webm`, `wmv`, `yuv`:
+		return `video`
+	default:
+		return `unknown`
+	}
 }

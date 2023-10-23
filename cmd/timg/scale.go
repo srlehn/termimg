@@ -55,7 +55,7 @@ func scaleFunc(cmd *cobra.Command, args []string) terminalSwapper {
 		*tm = tm2
 		srcSizePixelsParts := strings.SplitN(args[0], `x`, 2)
 		if len(srcSizePixelsParts) != 2 {
-			return logx.Err(errors.New(errScaleUsage), tm2, slog.LevelError)
+			return logx.Err(errScaleUsage, tm2, slog.LevelError)
 		}
 		var (
 			srcSizePixelsW uint64
@@ -66,29 +66,29 @@ func scaleFunc(cmd *cobra.Command, args []string) terminalSwapper {
 		if len(srcSizePixelsParts[0]) > 0 {
 			srcSizePixelsW, err = strconv.ParseUint(srcSizePixelsParts[0], 10, 64)
 			if err != nil {
-				return logx.Err(errors.New(errScaleUsage), tm2, slog.LevelError)
+				return logx.Err(errScaleUsage, tm2, slog.LevelError)
 			}
 		}
 		if len(srcSizePixelsParts[1]) > 0 {
 			srcSizePixelsH, err = strconv.ParseUint(srcSizePixelsParts[1], 10, 64)
 			if err != nil {
-				return logx.Err(errors.New(errScaleUsage), tm2, slog.LevelError)
+				return logx.Err(errScaleUsage, tm2, slog.LevelError)
 			}
 		}
 		dstSizeCellsParts := strings.SplitN(args[1], `x`, 2)
 		if len(dstSizeCellsParts) != 2 {
-			return logx.Err(errors.New(errScaleUsage), tm2, slog.LevelError)
+			return logx.Err(errScaleUsage, tm2, slog.LevelError)
 		}
 		if len(dstSizeCellsParts[0]) > 0 {
 			dstSizeCellsW, err = strconv.ParseUint(dstSizeCellsParts[0], 10, 64)
 			if err != nil {
-				return logx.Err(errors.New(errScaleUsage), tm2, slog.LevelError)
+				return logx.Err(errScaleUsage, tm2, slog.LevelError)
 			}
 		}
 		if len(dstSizeCellsParts[1]) > 0 {
 			dstSizeCellsH, err = strconv.ParseUint(dstSizeCellsParts[1], 10, 64)
 			if err != nil {
-				return logx.Err(errors.New(errScaleUsage), tm2, slog.LevelError)
+				return logx.Err(errScaleUsage, tm2, slog.LevelError)
 			}
 		}
 		ptSrcPx := image.Point{X: int(srcSizePixelsW), Y: int(srcSizePixelsH)}

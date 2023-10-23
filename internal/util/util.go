@@ -74,30 +74,35 @@ func TryClose(obj any) error {
 
 func Must(err error) {
 	if err != nil {
-		panic(errors.Wrap(err, 1))
+		err = errors.Wrap(err, 1)
+		panic(err)
 	}
 }
 func Must2[T any](obj T, err error) T {
 	if err != nil {
-		panic(errors.Wrap(err, 1))
+		err = errors.Wrap(err, 1)
+		panic(err)
 	}
 	return obj
 }
 func Must3[T, U any](obj1 T, obj2 U, err error) (T, U) {
 	if err != nil {
-		panic(errors.Wrap(err, 1))
+		err = errors.Wrap(err, 1)
+		panic(err)
 	}
 	return obj1, obj2
 }
 func Must4[T, U, V any](o1 T, o2 U, o3 V, err error) (T, U, V) {
 	if err != nil {
-		panic(errors.Wrap(err, 1))
+		err = errors.Wrap(err, 1)
+		panic(err)
 	}
 	return o1, o2, o3
 }
 func Must5[T, U, V, W any](o1 T, o2 U, o3 V, o4 W, err error) (T, U, V, W) {
 	if err != nil {
-		panic(errors.Wrap(err, 1))
+		err = errors.Wrap(err, 1)
+		panic(err)
 	}
 	return o1, o2, o3, o4
 }

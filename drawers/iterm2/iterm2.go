@@ -211,7 +211,7 @@ func (d *drawerITerm2) Prepare(ctx context.Context, img image.Image, bounds imag
 	iterm2String = fmt.Sprintf("\033[%d;%dH%s", bounds.Min.Y+1, bounds.Min.X+1, iterm2String)
 	timg.SetInband(bounds, iterm2String, d, tm)
 
-	logx.Info(`image preparation`, tm, `drawer`, d.Name(), `duration`, time.Since(start))
+	logx.Debug(`image preparation`, tm, `drawer`, d.Name(), `duration`, time.Since(start))
 
 	drawFn = func() error {
 		_, err := tm.Printf(`%s`, iterm2String)

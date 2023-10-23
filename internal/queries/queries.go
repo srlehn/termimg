@@ -23,6 +23,9 @@ const (
 	Foreground            = OSC + `10;?` + ST
 	Background            = OSC + `11;?` + ST
 	ReverseVideo          = CSI + `?5$p`
+
+	DECTCEMHide = CSI + `?25l` // tput civis ?
+	DECTCEMShow = CSI + `?25h` // tput cnorm ?
 )
 
 const (

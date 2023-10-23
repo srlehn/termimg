@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/btree"
 	"github.com/srlehn/termimg/internal/consts"
 	"github.com/srlehn/termimg/internal/environ"
 	"github.com/srlehn/termimg/internal/errors"
@@ -96,7 +97,6 @@ type Canvas struct {
 	image               image.Image
 	lastScreenshotTaken time.Time
 	lastSetX            int // draw.Draw: for y{for x{}}
-	vid                 chan image.Image
 	closed              chan struct{}
 }
 
@@ -167,7 +167,7 @@ func (c *Canvas) CellArea() image.Rectangle { return c.bounds }
 func (c *Canvas) Offset() image.Point       { return c.boundsPixels.Min }
 func (c *Canvas) SetImage(img image.Image) error {
 	if c == nil || c.bounds.Eq(image.Rectangle{}) {
-		return logx.Err(errors.New(`nil receiver or null value struct fields`), c.terminal, slog.LevelError)
+		return logx.Err(`nil receiver or null value struct fields`, c.terminal, slog.LevelError)
 	}
 	c.image = img
 	c.drawing = nil
@@ -185,17 +185,17 @@ func (c *Canvas) Draw(img image.Image) error {
 		}
 	}
 	if c.terminal == nil {
-		return logx.Err(errors.New(`no terminal`), c.terminal, slog.LevelError)
+		return logx.Err(`no terminal`, c.terminal, slog.LevelError)
 	}
 	drawers := c.terminal.Drawers()
 	if len(drawers) == 0 {
-		return logx.Err(errors.New(`no drawer`), c.terminal, slog.LevelError)
+		return logx.Err(`no drawer`, c.terminal, slog.LevelError)
 	}
 	if c.image == nil {
 		if c.drawing != nil {
 			c.image = c.drawing
 		} else {
-			return logx.Err(errors.New(`nothing to draw`), c.terminal, slog.LevelError)
+			return logx.Err(`nothing to draw`, c.terminal, slog.LevelError)
 		}
 	}
 	var errs []error
@@ -209,94 +209,162 @@ func (c *Canvas) Draw(img image.Image) error {
 successfulDraw:
 	return logx.Err(errors.Join(errs...), c.terminal, slog.LevelError)
 }
-func (c *Canvas) Video(ctx context.Context, dur time.Duration) chan<- image.Image {
-	if c == nil {
-		return nil
+func (c *Canvas) Video(ctx context.Context, vid <-chan image.Image, frameDur time.Duration) error {
+	if c == nil || c.terminal == nil {
+		return logx.Err(consts.ErrNilReceiver, c.terminal, slog.LevelError)
 	}
-	if c.vid != nil {
-		return c.vid
+	if ctx == nil || vid == nil {
+		return logx.Err(consts.ErrNilParam, c.terminal, slog.LevelError)
 	}
-	c.vid = make(chan image.Image)
 	_ = c.terminal.SetOptions(TUIMode)
 	// TODO count miss/success ratio, avg draw time, etc
-	go func() {
-		defer func() { close(c.vid) }()
-		var drawFnChans []<-chan func() error
-		for i := 0; i < runtime.NumCPU(); i++ {
-			// TODO order images
-			drawFn, err := c.prepImage(ctx, c.vid)
-			if !logx.IsErr(err, c.terminal, slog.LevelInfo) && drawFn != nil {
-				drawFnChans = append(drawFnChans, drawFn)
-			}
-		}
-		drawFnCombChan := make(chan func() error)
-		var wg sync.WaitGroup
-		wg.Add(len(drawFnChans))
-		for _, drawFnChan := range drawFnChans {
-			go func(drawFnChan <-chan func() error) {
-				for drawFn := range drawFnChan {
-					drawFnCombChan <- drawFn
-				}
-				wg.Done()
-			}(drawFnChan)
-		}
-		go func() {
-			wg.Wait()
-			close(drawFnCombChan)
-		}()
 
-		var tm time.Time
-		for {
-			select {
-			case drawFn := <-drawFnCombChan:
-				tm = time.Now()
-				err := logx.TimeIt(drawFn, `image drawing`, c.terminal, `drawer`, c.terminal.Drawers()[0].Name())
-				logx.IsErr(err, c.terminal, slog.LevelError)
-				if c.drawing != nil {
-					util.TryClose(c.drawing)
-					c.drawing = nil
-				}
-				drawTime := time.Since(tm)
-				if drawTime < dur {
-					time.Sleep(dur - drawTime)
-				}
-			case <-c.closed:
-				return
-			case <-ctx.Done():
-				return
+	drawFnChan, err := c.prepImagesParallelOrdered(ctx, vid, frameDur, runtime.NumCPU())
+	if err != nil {
+		return err
+	}
+
+	tm := time.Now()
+	var tmLast time.Time
+outer:
+	for {
+		select {
+		case drawFn, ok := <-drawFnChan:
+			if !ok {
+				break outer
 			}
+			tm, tmLast = time.Now(), tm
+			frameTime := tm.Sub(tmLast)
+			err := logx.TimeIt(drawFn.fn, `image drawing`, c.terminal, `drawer`, c.terminal.Drawers()[0].Name())
+			logx.IsErr(err, c.terminal, slog.LevelError)
+			if c.drawing != nil {
+				util.TryClose(c.drawing)
+				c.drawing = nil
+			}
+			drawTime := time.Since(tm)
+			logx.Debug("durations", c.terminal, "draw-duration", drawTime, "frame-time", frameTime)
+			if drawTime < frameDur {
+				time.Sleep(frameDur - drawTime)
+			}
+		case <-c.closed:
+			break outer
+		case <-ctx.Done():
+			break outer
+		}
+	}
+	return nil
+}
+
+type drawFn struct {
+	id int
+	fn func() error
+}
+
+type imgWithID struct {
+	id  int
+	img image.Image
+}
+
+func (c *Canvas) prepImagesParallelOrdered(ctx context.Context, vid <-chan image.Image, frameDur time.Duration, n int) (<-chan drawFn, error) {
+	drawFnUnorderedChan, err := c.prepImagesParallelUnordered(ctx, vid, runtime.NumCPU())
+	if err != nil {
+		return nil, err
+	}
+	drawFnChan := make(chan drawFn)
+	go func() {
+		defer close(drawFnChan)
+		tr := btree.NewG(2, func(a, b drawFn) bool { return a.id < b.id })
+		defer func() {
+			tr.Ascend(func(item drawFn) bool {
+				logx.Debug("remaining frame", c.terminal, "remaining-frame", item.id) // TODO rm
+				return true
+			})
+		}()
+		var drFnLast drawFn
+		for drFn := range drawFnUnorderedChan {
+			var isNext bool
+			if drFn.id == drFnLast.id+1 {
+				isNext = true
+			} else {
+				tr.DescendRange(drFn, drFnLast, func(item drawFn) bool {
+					if item.id == drFnLast.id+1 {
+						isNext = true
+						return false
+					}
+					return true
+				})
+			}
+			if isNext {
+				drawFnChan <- drFn
+				tr.Delete(drFnLast)
+				drFnLast = drFn
+			} else {
+				tr.ReplaceOrInsert(drFn)
+			}
+			logx.Debug("b-tree", c.terminal, "node-count", tr.Len())
 		}
 	}()
-	return c.vid
+	return drawFnChan, nil
 }
-func (c *Canvas) prepImage(ctx context.Context, imgChan <-chan image.Image) (<-chan func() error, error) {
-	if c == nil || c.terminal == nil {
-		return nil, logx.Err(errors.New(consts.ErrNilReceiver), c.terminal, slog.LevelError)
+func (c *Canvas) prepImagesParallelUnordered(ctx context.Context, vid <-chan image.Image, n int) (<-chan drawFn, error) {
+	vidwid := make(chan imgWithID)
+	go func() {
+		defer close(vidwid)
+		frame := 0
+		for img := range vid {
+			logx.Debug("frame", c.terminal, "frame", frame)
+			vidwid <- imgWithID{id: frame, img: img}
+			frame++
+		}
+	}()
+	var drawFnChans []<-chan drawFn
+	for i := 0; i < n; i++ {
+		// TODO order images
+		drawFnChan, err := c.prepImages(ctx, vidwid)
+		if !logx.IsErr(err, c.terminal, slog.LevelInfo) && drawFnChan != nil {
+			drawFnChans = append(drawFnChans, drawFnChan)
+		}
 	}
-	if ctx == nil {
-		return nil, logx.Err(errors.New(consts.ErrNilParam), c.terminal, slog.LevelError)
+	drawFnCombChan := make(chan drawFn)
+	var wg sync.WaitGroup
+	wg.Add(len(drawFnChans))
+	for i, drawFnChan := range drawFnChans {
+		go func(drawFnChan <-chan drawFn, workerID int) {
+			for drawFn := range drawFnChan {
+				logx.Debug("drawer func id", c.terminal, "worker-id", workerID, "frame", drawFn.id)
+				drawFnCombChan <- drawFn
+			}
+			wg.Done()
+		}(drawFnChan, i)
 	}
+	go func() {
+		wg.Wait()
+		close(drawFnCombChan)
+	}()
+	return drawFnCombChan, nil
+}
+func (c *Canvas) prepImages(ctx context.Context, imgChan <-chan imgWithID) (<-chan drawFn, error) {
 	var dr Drawer
 	if drawers := c.terminal.Drawers(); len(drawers) == 0 {
-		return nil, logx.Err(errors.New(`no drawer`), c.terminal, slog.LevelError)
+		return nil, logx.Err(`no drawer`, c.terminal, slog.LevelError)
 	} else {
 		dr = drawers[0]
 	}
-	drawFnChan := make(chan func() error)
+	drawFnChan := make(chan drawFn)
 	go func() {
 		defer close(drawFnChan)
 		for {
 			select {
-			case img, ok := <-imgChan:
+			case imgwid, ok := <-imgChan:
 				if !ok {
 					return
 				}
-				drawFn, err := dr.Prepare(ctx, img, c.bounds, c.terminal)
-				if !logx.IsErr(err, c.terminal, slog.LevelInfo) && drawFn != nil {
-					drawFnChan <- drawFn
+				drFn, err := dr.Prepare(ctx, imgwid.img, c.bounds, c.terminal)
+				if !logx.IsErr(err, c.terminal, slog.LevelInfo) && drFn != nil {
+					drawFnChan <- drawFn{id: imgwid.id, fn: drFn}
 				}
 				go func(imgLast image.Image) { util.TryClose(imgLast) }(c.image)
-				c.image = img
+				c.image = imgwid.img
 			case <-ctx.Done():
 				return
 			}

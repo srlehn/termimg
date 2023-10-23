@@ -91,11 +91,11 @@ func conf() (*config, error) {
 	ptyName := `/dev/tty`
 	rsz := &rdefault.Resizer{}
 
-	wm.SetImpl(wmimpl.Impl())
 	opts := []term.Option{
 		term.SetPTYName(ptyName),
 		term.SetTTYProvider(gotty.New, false),
 		term.SetQuerier(qdefault.NewQuerier(), true),
+		term.SetWindowProvider(wm.SetImpl(wmimpl.Impl()), true),
 		term.SetResizer(rsz),
 		term.TUIMode,
 	}

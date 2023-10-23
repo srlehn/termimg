@@ -17,9 +17,9 @@ import (
 
 var (
 	// chosen defaults
-	ttyDefault                    = internal.DefaultTTYDevice()
-	ttyProvider                   = gotty.New
-	windowProvider                = wm.NewWindow
+	ttyDefault  = internal.DefaultTTYDevice()
+	ttyProvider = gotty.New
+	// ttyProvider                = tcelltty.New // TODO change back to gotty
 	querier                       = qdefault.NewQuerier()
 	wmImplementation              = wmimpl.Impl()
 	resizer          term.Resizer = &rdefault.Resizer{}
@@ -30,7 +30,7 @@ var (
 		term.SetPTYName(ttyDefault),
 		term.SetTTYProvider(ttyProvider, false),
 		term.SetQuerier(querier, true),
-		term.SetWindowProvider(windowProvider, true),
+		term.SetWindowProvider(wm.SetImpl(wmImplementation), true),
 		term.SetResizer(resizer),
 	}
 )
@@ -48,7 +48,6 @@ func initTerm() error {
 	if termActive != nil {
 		return nil
 	}
-	wm.SetImpl(wmImplementation)
 	var err error
 	termActive, err = term.NewTerminal(DefaultConfig)
 	if err != nil {

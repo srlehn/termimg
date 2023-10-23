@@ -16,7 +16,7 @@ func sizeInCellsAndPixels(tty TTY) (widthCells, heightCells, widthPixels, height
 	// http://www.delorie.com/djgpp/doc/libc/libc_495.html
 	sizerInCellsAndPixels, ok := tty.(interface {
 		// ttyMattN github.com/mattn/go-tty
-		SizePixel() (cx int, cy int, px int, py int, e error)
+		SizePixel() (cw int, ch int, pw int, ph int, e error)
 	})
 	if !ok {
 		return 0, 0, 0, 0, errors.New(`SizePixel() not implemented`)

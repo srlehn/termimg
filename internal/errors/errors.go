@@ -43,7 +43,7 @@ func Errorf(format string, a ...interface{}) *Error { return errorsGo.Errorf(for
 
 func ParsePanic(text string) (*Error, error) { return errorsGo.ParsePanic(text) }
 
-func Wrap(e interface{}, skip int) *Error { return errorsGo.Wrap(e, skip) }
+func Wrap(e interface{}, skip int) *Error { return errorsGo.Wrap(e, skip+1) }
 
 func WrapPrefix(e interface{}, prefix string, skip int) *Error {
 	return errorsGo.WrapPrefix(e, prefix, skip)

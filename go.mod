@@ -8,13 +8,14 @@ require (
 	github.com/containerd/console v1.0.3
 	github.com/disintegration/gift v1.2.1
 	github.com/disintegration/imaging v1.6.2
-	github.com/esimov/caire v1.4.7-0.20230331122901-fc01f8e08e9e
+	github.com/esimov/caire v1.4.6
 	github.com/fogleman/gg v1.3.0
 	github.com/gdamore/tcell/v2 v2.6.1-0.20230827060410-08c7757cd1c9
 	github.com/gizak/termui/v3 v3.1.0
 	github.com/go-errors/errors v1.5.1
 	github.com/golang/freetype v0.0.0-20170609003504-e2365dfdc4a0
 	github.com/gonutz/w32/v2 v2.10.0
+	github.com/google/btree v1.1.2
 	github.com/iancoleman/strcase v0.3.0
 	github.com/jezek/xgb v1.1.0
 	github.com/lxn/win v0.0.0-20210218163916-a377121e959e

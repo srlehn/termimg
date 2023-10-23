@@ -5,17 +5,21 @@ import (
 	"image"
 	_ "image/png"
 	"log"
+	"log/slog"
 
 	"github.com/gdamore/tcell/v2"
 
 	"github.com/srlehn/termimg"
 	_ "github.com/srlehn/termimg/drawers/all"
 	"github.com/srlehn/termimg/internal"
+	"github.com/srlehn/termimg/internal/logx"
 	"github.com/srlehn/termimg/query/qdefault"
 	"github.com/srlehn/termimg/resize/rdefault"
 	"github.com/srlehn/termimg/term"
 	_ "github.com/srlehn/termimg/terminals"
 	"github.com/srlehn/termimg/tty/gotty"
+
+	// "github.com/srlehn/termimg/tty/tcelltty"
 	"github.com/srlehn/termimg/tui/tcellimg"
 	"github.com/srlehn/termimg/wm"
 	"github.com/srlehn/termimg/wm/wmimpl"
@@ -35,16 +39,14 @@ func main() {
 }
 
 func m() error {
-	wm.SetImpl(wmimpl.Impl())
 	qu := qdefault.NewQuerier()
 	opts := []term.Option{
-		termimg.DefaultConfig,
+		// termimg.DefaultConfig,
 		term.SetPTYName(internal.DefaultTTYDevice()),
-		// term.SetTTYProvider(tcelltty.New, false),
-		// term.SetTTYProvider(tcelltty.New, true),
 		term.SetTTYProvider(gotty.New, false),
+		// term.SetTTYProvider(tcelltty.New, false),
 		term.SetQuerier(qu, true),
-		term.SetWindowProvider(wm.NewWindow, true),
+		term.SetWindowProvider(wm.SetImpl(wmimpl.Impl()), true),
 		term.SetResizer(&rdefault.Resizer{}),
 		term.SetLogFile(`log.txt`, true),
 	}
@@ -54,9 +56,20 @@ func m() error {
 	}
 	defer tm.Close()
 
-	scr, err := tcell.NewScreen()
-	if err != nil {
-		return err
+	var scr tcell.Screen
+	if ttyTCell, ok := tm.TTY().(interface{ TCellScreen() (tcell.Screen, error) }); ok {
+		logx.Info("is tcell tty", tm)
+		s, err := ttyTCell.TCellScreen()
+		if !logx.IsErr(err, tm, slog.LevelInfo) {
+			scr = s
+		}
+	}
+	if scr == nil {
+		s, err := tcell.NewScreen()
+		if err != nil {
+			return err
+		}
+		scr = s
 	}
 	if err := scr.Init(); err != nil {
 		return err
