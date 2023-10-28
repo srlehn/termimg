@@ -14,7 +14,6 @@ import (
 	"github.com/jezek/xgb/xproto"
 	"github.com/shirou/gopsutil/process"
 
-	"github.com/srlehn/termimg/internal/consts"
 	"github.com/srlehn/termimg/internal/environ"
 	"github.com/srlehn/termimg/internal/errors"
 	"github.com/srlehn/termimg/wm"
@@ -180,7 +179,7 @@ waitForShell:
 
 func findShellProc(pr *process.Process) (*process.Process, error) {
 	if pr == nil {
-		return nil, errors.New(consts.ErrNilParam)
+		return nil, errors.NilParam()
 	}
 	children, err := pr.Children()
 	if err != nil {

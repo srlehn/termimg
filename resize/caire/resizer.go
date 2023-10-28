@@ -50,7 +50,7 @@ func NewResizer(blurRadius, sobelThreshold int, faceDetect bool, shapeType strin
 
 func (r *resizer) Resize(img image.Image, size image.Point) (image.Image, error) {
 	if r == nil {
-		return nil, errors.New(consts.ErrNilReceiver)
+		return nil, errors.NilReceiver()
 	}
 	r.proc.NewWidth = size.X
 	r.proc.NewHeight = size.Y

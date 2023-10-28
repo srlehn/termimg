@@ -4,8 +4,10 @@ go 1.21
 
 require (
 	github.com/anthonynsimon/bild v0.13.0
+	github.com/aymanbagabas/go-pty v0.2.0
 	github.com/bamiaux/rez v0.0.0-20170731184118-29f4463c688b
 	github.com/containerd/console v1.0.3
+	github.com/creack/pty v1.1.18
 	github.com/disintegration/gift v1.2.1
 	github.com/disintegration/imaging v1.6.2
 	github.com/esimov/caire v1.4.6
@@ -16,6 +18,7 @@ require (
 	github.com/golang/freetype v0.0.0-20170609003504-e2365dfdc4a0
 	github.com/gonutz/w32/v2 v2.10.0
 	github.com/google/btree v1.1.2
+	github.com/gopxl/beep v1.1.0
 	github.com/iancoleman/strcase v0.3.0
 	github.com/jezek/xgb v1.1.0
 	github.com/lxn/win v0.0.0-20210218163916-a377121e959e
@@ -23,13 +26,15 @@ require (
 	github.com/mattn/go-tty v0.0.5
 	github.com/mitchellh/go-ps v1.0.0
 	github.com/nfnt/resize v0.0.0-20180221191011-83c6a9932646
-	github.com/pkg/term v1.1.0
+	github.com/pkg/term v1.2.0-beta.2
 	github.com/rivo/tview v0.0.0-20230621164836-6cc0565babaf
 	github.com/rkoesters/xdg v0.0.1
 	github.com/shirou/gopsutil v3.21.11+incompatible
 	github.com/spf13/cobra v1.7.0
 	github.com/srlehn/thumbnails v0.0.0-20231004190311-5a9b465c0dd8
 	github.com/srlehn/xgbutil v0.0.0-20230718194130-098830f60574
+	github.com/stretchr/testify v1.8.1
+	github.com/u-root/u-root v0.11.0
 	golang.org/x/exp v0.0.0-20231006140011-7918f672742d
 	golang.org/x/image v0.13.0
 	golang.org/x/sys v0.13.0
@@ -42,6 +47,7 @@ require (
 	gioui.org/shader v1.0.8 // indirect
 	github.com/BurntSushi/freetype-go v0.0.0-20160129220410-b763ddbfe298 // indirect
 	github.com/BurntSushi/graphics-go v0.0.0-20160129215708-b43f31a4a966 // indirect
+	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dsoprea/go-exif/v3 v3.0.1 // indirect
 	github.com/dsoprea/go-logging v0.0.0-20200710184922-b02d349568dd // indirect
 	github.com/dsoprea/go-png-image-structure/v2 v2.0.0-20210512210324-29b889a6093d // indirect
@@ -59,6 +65,7 @@ require (
 	github.com/mattn/go-runewidth v0.0.15 // indirect
 	github.com/mitchellh/go-wordwrap v1.0.1 // indirect
 	github.com/nsf/termbox-go v1.1.1 // indirect
+	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/rivo/uniseg v0.4.4 // indirect
 	github.com/soniakeys/quant v1.0.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
@@ -72,4 +79,5 @@ require (
 	golang.org/x/term v0.13.0 // indirect
 	golang.org/x/text v0.13.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

@@ -245,7 +245,7 @@ func getTTYAndQuerier(tm *Terminal, tc *termCheckerCore) (TTY, Querier, error) {
 func findTermChecker(env environ.Properties, tty TTY, qu Querier) (tc TermChecker, _ environ.Properties, e error) {
 	var ttyTemp TTY
 	if tty == nil || qu == nil {
-		return RegisteredTermChecker(consts.TermGenericName), nil, errors.New(consts.ErrNilParam)
+		return RegisteredTermChecker(consts.TermGenericName), nil, errors.NilParam()
 	}
 	if env == nil {
 		return RegisteredTermChecker(consts.TermGenericName), nil, nil
@@ -452,15 +452,17 @@ func (t *Terminal) tempDir() string {
 
 func (t *Terminal) Query(qs string, p Parser) (string, error) {
 	repl, err := t.query(qs, p)
-	if t != nil && t.logger != nil {
-		t.logger.Info(`terminal query`, `query`, qs, `reply`, repl)
+	args := []any{`query`, qs, `reply`, repl}
+	if err != nil {
+		args = append(args, `error`, err)
 	}
+	logx.Info(`terminal query`, t, args...)
 	return repl, err
 }
 
 func (t *Terminal) query(qs string, p Parser) (_ string, err error) {
 	if t == nil {
-		return ``, errors.New(consts.ErrNilReceiver)
+		return ``, errors.NilReceiver()
 	}
 	if t.tty == nil {
 		return ``, errors.New(`nil tty`)
@@ -485,7 +487,7 @@ func (t *Terminal) query(qs string, p Parser) (_ string, err error) {
 // CreateTemp ...
 func (t *Terminal) CreateTemp(pattern string) (*os.File, error) {
 	if t == nil {
-		return nil, consts.ErrNilReceiver
+		return nil, errors.NilReceiver()
 	}
 	tempDir := t.tempDir()
 	if len(tempDir) == 0 {
@@ -557,7 +559,7 @@ func (t *Terminal) Drawers() []Drawer {
 
 func (t *Terminal) Printf(format string, a ...any) (int, error) {
 	if t == nil {
-		return 0, errors.New(consts.ErrNilReceiver)
+		return 0, errors.NilReceiver()
 	}
 	n, err := t.WriteString(t.passages.Wrap(fmt.Sprintf(format, a...)))
 	if logx.IsErr(err, t, slog.LevelInfo) {
@@ -568,7 +570,7 @@ func (t *Terminal) Printf(format string, a ...any) (int, error) {
 
 func (t *Terminal) Write(p []byte) (n int, err error) {
 	if t == nil {
-		return 0, errors.New(consts.ErrNilReceiver)
+		return 0, errors.NilReceiver()
 	}
 	if t.tty == nil {
 		return 0, errors.New(`nil tty`)
@@ -597,7 +599,7 @@ func (t *Terminal) Draw(img image.Image, bounds image.Rectangle) error {
 // With two passed 0 side length values, pixels in source and destination area at the same position correspond to each other.
 func (t *Terminal) CellScale(ptSrcPx, ptDstCl image.Point) (ptSrcCl image.Point, _ error) {
 	if t == nil {
-		return image.Point{}, errors.New(consts.ErrNilReceiver)
+		return image.Point{}, errors.NilReceiver()
 	}
 	cpw, cph, err := t.CellSize()
 	if logx.IsErr(err, t, slog.LevelInfo) {
@@ -635,7 +637,7 @@ func (t *Terminal) CellScale(ptSrcPx, ptDstCl image.Point) (ptSrcCl image.Point,
 
 func (t *Terminal) watchWINCHStart() error {
 	if t == nil || t.surveyor == nil {
-		return errors.New(consts.ErrNilReceiver)
+		return errors.NilReceiver()
 	}
 	winch, closeFunc, err := t.surveyor.WatchResizeEventsStart(t.tty, t.querier, t.window, t.properties)
 	if logx.IsErr(err, t, slog.LevelInfo) {
@@ -675,7 +677,7 @@ func (t *Terminal) watchWINCHStart() error {
 }
 func (t *Terminal) watchWINCHStop() error {
 	if t == nil || t.surveyor == nil {
-		return errors.New(consts.ErrNilReceiver)
+		return errors.NilReceiver()
 	}
 	return t.surveyor.WatchResizeEventsStop()
 }
@@ -723,7 +725,7 @@ func roundInf(f float64) int {
 // If lineCnt == 0 scroll until cursor is out of view.
 func (t *Terminal) Scroll(lineCnt int) error {
 	if t == nil {
-		return errors.New(consts.ErrNilParam)
+		return errors.NilParam()
 	}
 	_, tch, err := t.SizeInCells()
 	if logx.IsErr(err, t, slog.LevelInfo) {
@@ -772,7 +774,7 @@ func (t *Terminal) Scroll(lineCnt int) error {
 
 func (t *Terminal) CellSize() (width, height float64, _ error) {
 	if t == nil {
-		return 0, 0, errors.New(consts.ErrNilReceiver)
+		return 0, 0, errors.NilReceiver()
 	}
 	if t.surveyor == nil {
 		return 0, 0, errors.New(`nil surveyor`)
@@ -801,7 +803,7 @@ func (t *Terminal) CellSize() (width, height float64, _ error) {
 
 func (t *Terminal) SizeInCells() (width, height uint, err error) {
 	if t == nil {
-		return 0, 0, errors.New(consts.ErrNilReceiver)
+		return 0, 0, errors.NilReceiver()
 	}
 	if t.surveyor == nil {
 		return 0, 0, errors.New(`nil surveyor`)
@@ -821,7 +823,7 @@ func (t *Terminal) SizeInCells() (width, height uint, err error) {
 
 func (t *Terminal) SizeInPixels() (width, height uint, err error) {
 	if t == nil {
-		return 0, 0, errors.New(consts.ErrNilReceiver)
+		return 0, 0, errors.NilReceiver()
 	}
 	if t.surveyor == nil {
 		return 0, 0, errors.New(`nil surveyor`)
@@ -841,7 +843,7 @@ func (t *Terminal) SizeInPixels() (width, height uint, err error) {
 
 func (t *Terminal) Cursor() (xPosCells, yPosCells uint, err error) {
 	if t == nil {
-		return 0, 0, errors.New(consts.ErrNilReceiver)
+		return 0, 0, errors.NilReceiver()
 	}
 	if t.surveyor == nil {
 		return 0, 0, errors.New(`nil surveyor`)
@@ -851,7 +853,7 @@ func (t *Terminal) Cursor() (xPosCells, yPosCells uint, err error) {
 
 func (t *Terminal) SetCursor(xPosCells, yPosCells uint) (err error) {
 	if t == nil {
-		return errors.New(consts.ErrNilReceiver)
+		return errors.NilReceiver()
 	}
 	if t.surveyor == nil {
 		return errors.New(`nil surveyor`)
@@ -872,7 +874,7 @@ func (t *Terminal) Window() wm.Window {
 func (t *Terminal) Resizer() Resizer { return t.resizer }
 func (t *Terminal) NewCanvas(bounds image.Rectangle) (*Canvas, error) {
 	if t == nil {
-		return nil, errors.New(consts.ErrNilReceiver)
+		return nil, errors.NilReceiver()
 	}
 	cpw, cph, err := t.CellSize()
 	if logx.IsErr(err, t, slog.LevelInfo) {

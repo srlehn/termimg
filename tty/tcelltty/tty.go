@@ -4,7 +4,6 @@ import (
 	"github.com/gdamore/tcell/v2"
 
 	"github.com/srlehn/termimg/internal"
-	"github.com/srlehn/termimg/internal/consts"
 	"github.com/srlehn/termimg/internal/errors"
 	"github.com/srlehn/termimg/term"
 )
@@ -18,6 +17,7 @@ type ttyTCell struct {
 }
 
 var _ term.TTY = (*ttyTCell)(nil)
+var _ term.TTYProvider = New
 
 func New(ttyFile string) (term.TTY, error) {
 	ttyTC, err := tcell.NewDevTtyFromDev(ttyFile)
@@ -36,7 +36,7 @@ func New(ttyFile string) (term.TTY, error) {
 
 func (t *ttyTCell) TCellScreen() (tcell.Screen, error) {
 	if t == nil {
-		return nil, errors.New(consts.ErrNilReceiver)
+		return nil, errors.NilReceiver()
 	}
 	if t.screen != nil {
 		return t.screen, nil
@@ -52,14 +52,14 @@ func (t *ttyTCell) TCellScreen() (tcell.Screen, error) {
 
 func (t *ttyTCell) Write(b []byte) (n int, err error) {
 	if t == nil || t.Tty == nil {
-		return 0, errors.New(consts.ErrNilReceiver)
+		return 0, errors.NilReceiver()
 	}
 	return t.Tty.Write(b)
 }
 
 func (t *ttyTCell) Read(p []byte) (n int, err error) {
 	if t == nil || t.Tty == nil {
-		return 0, errors.New(consts.ErrNilReceiver)
+		return 0, errors.NilReceiver()
 	}
 	// TODO read key events instead?
 	return t.Tty.Read(p)
@@ -74,7 +74,7 @@ func (t *ttyTCell) TTYDevName() string {
 
 func (t *ttyTCell) SizePixel() (cw int, ch int, pw int, ph int, e error) {
 	if t == nil || t.Tty == nil {
-		return 0, 0, 0, 0, errors.New(consts.ErrNilReceiver)
+		return 0, 0, 0, 0, errors.NilReceiver()
 	}
 	if t.screen == nil {
 		if _, err := t.TCellScreen(); err != nil {

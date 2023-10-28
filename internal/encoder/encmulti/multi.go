@@ -12,7 +12,6 @@ import (
 	"golang.org/x/image/tiff"
 
 	"github.com/srlehn/termimg/internal"
-	"github.com/srlehn/termimg/internal/consts"
 	"github.com/srlehn/termimg/internal/errors"
 )
 
@@ -22,7 +21,7 @@ type MultiEncoder struct{}
 
 func (e *MultiEncoder) Encode(w io.Writer, img image.Image, fileExt string) error {
 	if img == nil {
-		return errors.New(consts.ErrNilParam)
+		return errors.NilParam()
 	}
 	// allow passing whole filename
 	fileExtParts := strings.Split(fileExt, `.`)

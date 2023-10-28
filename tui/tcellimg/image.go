@@ -10,7 +10,6 @@ import (
 	"github.com/gdamore/tcell/v2"
 	"github.com/gdamore/tcell/v2/views"
 
-	"github.com/srlehn/termimg/internal/consts"
 	"github.com/srlehn/termimg/internal/errors"
 	"github.com/srlehn/termimg/internal/logx"
 	"github.com/srlehn/termimg/term"
@@ -32,7 +31,7 @@ type Image struct {
 
 func NewImage(img *term.Image, bounds image.Rectangle, tm *term.Terminal, scr tcell.Screen) (*Image, error) {
 	if img == nil || tm == nil || scr == nil {
-		return nil, errors.New(consts.ErrNilParam)
+		return nil, errors.NilParam()
 	}
 	canvas, err := tm.NewCanvas(bounds)
 	if err != nil {

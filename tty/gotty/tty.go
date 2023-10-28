@@ -13,7 +13,6 @@ import (
 	ttymattn "github.com/mattn/go-tty"
 
 	"github.com/srlehn/termimg/internal"
-	"github.com/srlehn/termimg/internal/consts"
 	"github.com/srlehn/termimg/internal/errors"
 	"github.com/srlehn/termimg/term"
 )
@@ -41,7 +40,7 @@ func New(ttyFile string) (term.TTY, error) {
 
 func (t *ttyMattN) Write(b []byte) (n int, err error) {
 	if t == nil {
-		return 0, errors.New(consts.ErrNilReceiver)
+		return 0, errors.NilReceiver()
 	}
 	if t.TTY == nil {
 		return 0, errors.New(`nil tty`)
@@ -55,7 +54,7 @@ func (t *ttyMattN) Write(b []byte) (n int, err error) {
 
 func (t *ttyMattN) Read(p []byte) (n int, err error) {
 	if t == nil || t.TTY == nil {
-		return 0, errors.New(consts.ErrNilReceiver)
+		return 0, errors.NilReceiver()
 	}
 	p = p[:0]
 	i := len(t.buf)
@@ -91,7 +90,7 @@ func (t *ttyMattN) Read(p []byte) (n int, err error) {
 func (t *ttyMattN) ReadRune() (r rune, size int, err error) {
 	r = '\uFFFD'
 	if t == nil {
-		return r, len(string(r)), errors.New(consts.ErrNilReceiver)
+		return r, len(string(r)), errors.NilReceiver()
 	}
 	if t.TTY == nil {
 		return r, len(string(r)), errors.New(`nil tty`)
@@ -122,7 +121,7 @@ func (t *ttyMattN) Close() error {
 // ResizeEvents ...
 func (t *ttyMattN) ResizeEvents() (_ <-chan term.Resolution, closeFunc func() error, _ error) {
 	if t == nil || t.TTY == nil {
-		return nil, nil, errors.New(consts.ErrNilReceiver)
+		return nil, nil, errors.NilReceiver()
 	}
 	if t.winch != nil {
 		return t.winch, nil, nil

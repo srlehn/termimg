@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/google/btree"
-	"github.com/srlehn/termimg/internal/consts"
+
 	"github.com/srlehn/termimg/internal/environ"
 	"github.com/srlehn/termimg/internal/errors"
 	"github.com/srlehn/termimg/internal/logx"
@@ -39,8 +39,8 @@ type Drawer interface {
 // Draw draws an image on the terminal. bounds is the drawing area in cells.
 // if the passed drawer is nil, the Terminals drawer is used.
 func Draw(img image.Image, bounds image.Rectangle, term *Terminal, dr Drawer) error {
-	if img == nil || term == nil {
-		return errors.New(consts.ErrNilParam)
+	if err := errors.NilParam(img, term); err != nil {
+		return err
 	}
 	if dr == nil {
 		drawers := term.Drawers()
@@ -63,15 +63,14 @@ func Draw(img image.Image, bounds image.Rectangle, term *Terminal, dr Drawer) er
 
 func drawWith(img image.Image, bounds image.Rectangle, term *Terminal, dr Drawer) (err error) {
 	if img == nil || dr == nil || term == nil {
-		return errors.New(consts.ErrNilParam)
+		return errors.NilParam()
 	}
 	if term.resizer == nil {
 		term.resizer = &resizerFallback{}
 	}
 	defer func() {
 		if r := recover(); r != nil {
-			err = errors.New(r)
-			_ = logx.IsErr(err, term, slog.LevelError)
+			logx.Err(r, term, slog.LevelError)
 		}
 	}()
 	// TODO check if redraw is necessary
@@ -107,12 +106,16 @@ func (c *Canvas) Set(x, y int, col color.Color) {
 	if !(&image.Point{X: x, Y: y}).In(c.boundsPixels.Sub(c.boundsPixels.Min)) {
 		return
 	}
-	if c.drawing == nil || c.drawing.Bounds().Eq(c.boundsPixels) {
+	if c.drawing == nil ||
+		c.drawing.Bounds().Dx() != c.boundsPixels.Dx() ||
+		c.drawing.Bounds().Dy() != c.boundsPixels.Dy() {
 		c.lastSetX = -2
 		c.drawing = image.NewRGBA(image.Rect(0, 0, c.boundsPixels.Dx(), c.boundsPixels.Dy()))
 	}
 	if c.image != nil {
-		if c.lastSetX < -1 && c.drawing.Bounds().Eq(c.image.Bounds()) {
+		if c.lastSetX < -1 &&
+			c.drawing.Bounds().Dx() == c.image.Bounds().Dx() &&
+			c.drawing.Bounds().Dy() == c.image.Bounds().Dy() {
 			draw.Draw(c.drawing, c.drawing.Bounds(), c.image, c.image.Bounds().Min, draw.Src)
 		}
 		util.TryClose(c.image)
@@ -177,7 +180,7 @@ func (c *Canvas) SetImage(img image.Image) error {
 // Draw flushes stored image when img is nil
 func (c *Canvas) Draw(img image.Image) error {
 	if c == nil {
-		return errors.New(consts.ErrNilReceiver)
+		return errors.NilReceiver()
 	}
 	if img != nil {
 		if err := c.SetImage(img); err != nil {
@@ -211,10 +214,10 @@ successfulDraw:
 }
 func (c *Canvas) Video(ctx context.Context, vid <-chan image.Image, frameDur time.Duration) error {
 	if c == nil || c.terminal == nil {
-		return logx.Err(consts.ErrNilReceiver, c.terminal, slog.LevelError)
+		return logx.Err(errors.NilReceiver(), c.terminal, slog.LevelError)
 	}
 	if ctx == nil || vid == nil {
-		return logx.Err(consts.ErrNilParam, c.terminal, slog.LevelError)
+		return logx.Err(errors.NilParam(), c.terminal, slog.LevelError)
 	}
 	_ = c.terminal.SetOptions(TUIMode)
 	// TODO count miss/success ratio, avg draw time, etc
@@ -375,7 +378,7 @@ func (c *Canvas) prepImages(ctx context.Context, imgChan <-chan imgWithID) (<-ch
 }
 func (c *Canvas) Screenshot() (image.Image, error) {
 	if c == nil || c.terminal == nil {
-		return nil, errors.New(consts.ErrNilReceiver)
+		return nil, errors.NilReceiver()
 	}
 	if err := c.storeScreenshot(); logx.IsErr(err, c.terminal, slog.LevelInfo) {
 		return nil, err

@@ -28,7 +28,7 @@ func DrawFuncOnlyPicture(img image.Image, cellBounds image.Rectangle) DrawFunc {
 			return image.Rectangle{}, 0, 0, errors.New(consts.ErrNilImage)
 		}
 		if tm == nil || rsz == nil {
-			return image.Rectangle{}, 0, 0, errors.New(consts.ErrNilParam)
+			return image.Rectangle{}, 0, 0, errors.NilParam()
 		}
 		if cpw == 0 || cph == 0 {
 			return image.Rectangle{}, 0, 0, errors.New(`cell box side length of 0`)
@@ -160,7 +160,7 @@ func TakeScreenshotFunc(termProvider TermProviderFunc, termChecker term.TermChec
 			ximgCropped                                         *image.NRGBA
 		)
 		if termProvider == nil || termChecker == nil || drawFunc == nil || rsz == nil || imgChan == nil {
-			errRet = errors.New(consts.ErrNilParam)
+			errRet = errors.NilParam()
 			goto end
 		}
 

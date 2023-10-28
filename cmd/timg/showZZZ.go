@@ -36,6 +36,7 @@ var (
 	showCaire          bool
 	showCoords         bool
 	showGrid           bool
+	showFPS            uint
 	showResizerCaire   = func() term.Resizer { return nil }
 )
 
@@ -45,6 +46,7 @@ func init() {
 	showCmd.Flags().StringVarP(&showPosition, `position`, `p`, ``, `image position in cell coordinates <x>,<y>,<w>x<h>`)
 	showCmd.Flags().StringVarP(&showURL, `url`, `u`, ``, `image url`)
 	showCmd.Flags().StringVarP(&showFile, `file`, `f`, ``, `image path`)
+	showCmd.Flags().UintVarP(&showFPS, `fps`, `v`, 15, `fps`)
 	rootCmd.AddCommand(showCmd)
 }
 
@@ -134,6 +136,9 @@ func showFunc(cmd *cobra.Command, args []string) terminalSwapper {
 		if len(showImageLocalPath) > 0 {
 			switch guessMediaType(showImageLocalPath) {
 			case `video`:
+				if showFPS < 1 {
+					return errors.New(`invalid fps value`)
+				}
 				mediaType = `video`
 			default:
 				timg = termimg.NewImageFileName(showImageLocalPath)
@@ -195,7 +200,6 @@ func showFunc(cmd *cobra.Command, args []string) terminalSwapper {
 				return err
 			}
 		case `video`:
-			fps := 15
 			canvas, err := tm2.NewCanvas(bounds)
 			if logx.IsErr(err, tm2, slog.LevelError) {
 				return err
@@ -204,11 +208,11 @@ func showFunc(cmd *cobra.Command, args []string) terminalSwapper {
 			tm2.OnClose(func() error { _, err := tm2.WriteString(queries.DECTCEMShow); return err })
 			sizePixels := canvas.Bounds().Max.Sub(canvas.Bounds().Min)
 			ctx := context.Background()
-			vid, err := ffmpeg.StreamFrames(ctx, showImageLocalPath, sizePixels, fps)
+			vid, err := ffmpeg.StreamFrames(ctx, showImageLocalPath, sizePixels, int(showFPS))
 			if logx.IsErr(err, tm2, slog.LevelError) {
 				return err
 			}
-			err = canvas.Video(ctx, vid, time.Duration(1000/fps)*time.Millisecond)
+			err = canvas.Video(ctx, vid, time.Duration(1000/showFPS)*time.Millisecond)
 			if logx.IsErr(err, tm2, slog.LevelError) {
 				return err
 			}

@@ -1,7 +1,6 @@
 package term
 
 import (
-	"github.com/srlehn/termimg/internal/consts"
 	"github.com/srlehn/termimg/internal/environ"
 	"github.com/srlehn/termimg/internal/errors"
 )
@@ -14,7 +13,7 @@ func DrawersFor(inp DrawerCheckerInput) ([]Drawer, error) {
 
 func drawersFor(inp DrawerCheckerInput) ([]Drawer, environ.Properties, error) {
 	if inp == nil {
-		return nil, nil, errors.New(consts.ErrNilParam)
+		return nil, nil, errors.NilParam()
 	}
 	prs := environ.NewProperties()
 	var applDrawers []Drawer

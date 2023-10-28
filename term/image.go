@@ -96,7 +96,7 @@ func NewImageBytes(imgBytes []byte) *Image {
 // Decode requires registration of image decoders.
 func (i *Image) Decode() error {
 	if i == nil {
-		return errors.New(consts.ErrNilReceiver)
+		return errors.NilReceiver()
 	}
 	if i.Original != nil {
 		return nil
@@ -165,7 +165,7 @@ func (i *Image) At(x, y int) color.Color {
 // Image ...
 func (i *Image) Image() (image.Image, error) {
 	if i == nil {
-		return nil, errors.New(consts.ErrNilReceiver)
+		return nil, errors.NilReceiver()
 	}
 	if err := i.Decode(); err != nil {
 		return nil, err
@@ -185,7 +185,7 @@ type inBandString struct {
 // Inband ...
 func (i *Image) Inband(placementCells image.Rectangle, d Drawer, t *Terminal) (string, error) {
 	if i == nil {
-		return ``, errors.New(consts.ErrNilReceiver)
+		return ``, errors.NilReceiver()
 	}
 	if d == nil || t == nil {
 		return ``, errors.New(`nil parameter`)
@@ -233,7 +233,7 @@ func (i *Image) Inband(placementCells image.Rectangle, d Drawer, t *Terminal) (s
 func (i *Image) SetInband(placementCells image.Rectangle, inband string, d Drawer, t *Terminal) error {
 	// TODO save objects for a restricted count of past placements
 	if i == nil {
-		return errors.New(consts.ErrNilReceiver)
+		return errors.NilReceiver()
 	}
 	if d == nil || t == nil {
 		return errors.New(`nil parameter`)
@@ -283,7 +283,7 @@ type posObject struct {
 // PosObject ...
 func (i *Image) PosObject(placementCells image.Rectangle, d Drawer, t *Terminal) (any, error) {
 	if i == nil {
-		return ``, errors.New(consts.ErrNilReceiver)
+		return ``, errors.NilReceiver()
 	}
 	if d == nil || t == nil {
 		return ``, errors.New(`nil parameter`)
@@ -331,7 +331,7 @@ func (i *Image) PosObject(placementCells image.Rectangle, d Drawer, t *Terminal)
 func (i *Image) SetPosObject(placementCells image.Rectangle, obj any, d Drawer, t *Terminal) error {
 	// TODO save objects for a restricted count of past placements
 	if i == nil {
-		return errors.New(consts.ErrNilReceiver)
+		return errors.NilReceiver()
 	}
 	if d == nil || t == nil {
 		return errors.New(`nil parameter`)
@@ -407,7 +407,7 @@ func (i *Image) SetDrawerObject(obj any, d Drawer) error {
 func (i *Image) SaveAsFile(t *Terminal, fileExt string, enc ImageEncoder) (rm func() error, err error) {
 	// TODO allow creation of other file types
 	if i == nil {
-		return nil, errors.New(consts.ErrNilReceiver)
+		return nil, errors.NilReceiver()
 	}
 	if len(i.FileName) > 0 {
 		return nil, nil
@@ -450,12 +450,12 @@ type Resizer interface {
 // nil Resizer is allowed (default resizer crops instead of resize)
 func (i *Image) Fit(bounds image.Rectangle, rsz Resizer, sv Surveyor) error {
 	if i == nil {
-		return errors.New(consts.ErrNilReceiver)
+		return errors.NilReceiver()
 	}
 	if sv == nil {
 		i.Cropped = nil
 		i.termSize = image.Point{}
-		return errors.New(consts.ErrNilParam)
+		return errors.NilParam()
 	}
 	w := bounds.Dx()
 	h := bounds.Dy()

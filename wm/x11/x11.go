@@ -9,13 +9,12 @@ import (
 	"github.com/srlehn/xgbutil/xprop"
 	"github.com/srlehn/xgbutil/xwindow"
 
-	"github.com/srlehn/termimg/internal/consts"
 	"github.com/srlehn/termimg/internal/errors"
 )
 
 func AttachWindow(conn *xgbutil.XUtil, parent *xwindow.Window, pos image.Rectangle) (*xwindow.Window, error) {
 	if conn == nil || parent == nil {
-		return nil, errors.New(consts.ErrNilParam)
+		return nil, errors.NilParam()
 	}
 	w, err := xwindow.Generate(conn)
 	if err != nil {

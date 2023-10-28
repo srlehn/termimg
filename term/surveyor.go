@@ -5,7 +5,6 @@ import (
 	"image"
 	"sync"
 
-	"github.com/srlehn/termimg/internal/consts"
 	"github.com/srlehn/termimg/internal/environ"
 	"github.com/srlehn/termimg/internal/errors"
 	"github.com/srlehn/termimg/internal/propkeys"
@@ -82,6 +81,11 @@ func getSurveyor(s PartialSurveyor, p environ.Properties) SurveyorLight {
 		return nil
 	}
 	_, avoidANSI := p.Property(propkeys.AvoidANSI)
+	if !avoidANSI {
+		if _, ok := s.(*SurveyorNoANSI); ok {
+			avoidANSI = true
+		}
+	}
 	_, isRemote := p.Property(propkeys.IsRemote)
 	srv := &surveyor{
 		s:          s,
@@ -210,7 +214,7 @@ func getSurveyor(s PartialSurveyor, p environ.Properties) SurveyorLight {
 
 func (s *surveyor) CellSize(tty TTY, qu Querier, w wm.Window, pr environ.Properties) (width, height float64, err error) {
 	if s == nil {
-		return 0, 0, errors.New(consts.ErrNilReceiver)
+		return 0, 0, errors.NilReceiver()
 	}
 	var errs []error
 	for _, cellSizeFunc := range s.cellSizeFuncs {
@@ -318,7 +322,7 @@ func (s *surveyor) CellSize(tty TTY, qu Querier, w wm.Window, pr environ.Propert
 }
 func (s *surveyor) SizeInCells(tty TTY, qu Querier, w wm.Window, pr environ.Properties) (width, height uint, err error) {
 	if s == nil {
-		return 0, 0, errors.New(consts.ErrNilReceiver)
+		return 0, 0, errors.NilReceiver()
 	}
 	var errs []error
 	for _, SizeInCellsFunc := range s.SizeInCellsFuncs {
@@ -403,7 +407,7 @@ func (s *surveyor) SizeInCells(tty TTY, qu Querier, w wm.Window, pr environ.Prop
 }
 func (s *surveyor) SizeInPixels(tty TTY, qu Querier, w wm.Window, pr environ.Properties) (width, height uint, err error) {
 	if s == nil {
-		return 0, 0, errors.New(consts.ErrNilReceiver)
+		return 0, 0, errors.NilReceiver()
 	}
 	var errs []error
 	for _, SizeInPixelsFunc := range s.SizeInPixelsFuncs {
@@ -500,7 +504,7 @@ func (s *surveyor) SizeInPixels(tty TTY, qu Querier, w wm.Window, pr environ.Pro
 }
 func (s *surveyor) Cursor(tty TTY, qu Querier, _ wm.Window, _ environ.Properties) (xPosCells, yPosCells uint, err error) {
 	if s == nil {
-		return 0, 0, errors.New(consts.ErrNilReceiver)
+		return 0, 0, errors.NilReceiver()
 	}
 	var errs []error
 	for _, posGetFunc := range s.posGetFuncs {
@@ -526,7 +530,7 @@ func (s *surveyor) Cursor(tty TTY, qu Querier, _ wm.Window, _ environ.Properties
 }
 func (s *surveyor) SetCursor(xPosCells, yPosCells uint, tty TTY, qu Querier, w wm.Window, pr environ.Properties) (err error) {
 	if s == nil {
-		return errors.New(consts.ErrNilReceiver)
+		return errors.NilReceiver()
 	}
 	var errs []error
 	for _, posSetFunc := range s.posSetFuncs {

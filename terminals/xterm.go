@@ -151,7 +151,7 @@ func (s *surveyorXTerm) CellSizeQuery(qu term.Querier, tty term.TTY) (width, hei
 func queryCellSize16t(qu term.Querier, tty term.TTY) (width, heigth uint, e error) {
 	// TODO xterm doesn't reply to this on some systems. why?
 	if qu == nil || tty == nil {
-		return 0, 0, errors.New(consts.ErrNilParam)
+		return 0, 0, errors.NilParam()
 	}
 	qsXTermCellSize := "\033[16t"
 	qs := qsXTermCellSize + queries.DA1

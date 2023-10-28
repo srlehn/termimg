@@ -161,7 +161,7 @@ func queryCellSize776(qu term.Querier, tty term.TTY) (width, heigth uint, _ erro
 	// urxvt: "\033]776;?\033\\" -> "\033]776;%d;%d;%d%s" (font (width, height, ascent (baseline)))
 	// urxvt: "\033]776;?\033\\"+DA1 -> assumed response: \033]776;%d;%d;%d(\033(\\|)|\a)(\033|)[?%d;%d;...c" - use parser.StopOnAlpha
 	if qu == nil || tty == nil {
-		return 0, 0, errors.New(consts.ErrNilParam)
+		return 0, 0, errors.NilParam()
 	}
 	qsURXVTCellSize := "\033]776;?\033\\"
 	qs := qsURXVTCellSize + queries.DA1

@@ -42,7 +42,7 @@ func (d *drawerSixel) IsApplicable(inp term.DrawerCheckerInput) (bool, environ.P
 		return false, nil
 	}
 	sixelCapable, isSixelCapable := inp.Property(propkeys.SixelCapable)
-	if !isSixelCapable && sixelCapable == `true` {
+	if !isSixelCapable || sixelCapable != `true` {
 		return false, nil
 	}
 

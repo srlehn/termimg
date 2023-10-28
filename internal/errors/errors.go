@@ -2,6 +2,7 @@ package errors
 
 import (
 	"errors"
+	"runtime"
 
 	errorsGo "github.com/go-errors/errors"
 )
@@ -15,7 +16,10 @@ func Is(err, target error) bool { return errorsGo.Is(err, target) }
 func Join(errs ...error) error {
 	// not implemented by github.com/go-errors/errors
 	if err := errorsGo.Join(errs...); err != nil {
-		return New(err)
+		if errGo, okErrGo := err.(*errorsGo.Error); okErrGo {
+			return errGo
+		}
+		return errorsGo.Wrap(err, 1)
 	} else {
 		return nil
 	}
@@ -52,3 +56,37 @@ func WrapPrefix(e interface{}, prefix string, skip int) *Error {
 type StackFrame = errorsGo.StackFrame
 
 func NewStackFrame(pc uintptr) (frame StackFrame) { return errorsGo.NewStackFrame(pc) }
+
+// NilReceiver returns an error with the function name if any of the arguments are nil
+func NilReceiver(args ...any) error {
+	return errMsgNilTester(`nil receiver or struct field`, 3, args...)
+}
+
+// NilParam returns an error with the function name if any of the arguments are nil
+func NilParam(args ...any) error {
+	return errMsgNilTester(`nil parameter`, 3, args...)
+}
+
+// NotImplemented returns an error with the function name
+func NotImplemented() error {
+	return errMsgNilTester(`not implemented`, 3)
+}
+
+func errMsgNilTester(msg string, skip int, args ...any) error {
+	for i := range args {
+		if args[i] == nil {
+			goto anyNil
+		}
+	}
+	return nil
+anyNil:
+	return errMsg(msg, skip)
+}
+
+func errMsg(msg string, skip int) error {
+	pc, _, _, ok := runtime.Caller(skip)
+	if !ok {
+		return Wrap(msg, skip)
+	}
+	return Wrap(msg+`: `+runtime.FuncForPC(pc).Name()+`()`, skip)
+}

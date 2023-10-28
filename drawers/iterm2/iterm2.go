@@ -59,6 +59,11 @@ func (d *drawerITerm2) IsApplicable(inp term.DrawerCheckerInput) (bool, environ.
 		verMin, err := strconv.ParseUint(verMinStr, 10, 64)
 		return err == nil && verMin >= 4, nil
 	case `vscode`:
+		// VSCode sets image support as a whole together with dimension reporting
+		sixelCapable, isSixelCapable := inp.Property(propkeys.SixelCapable)
+		if !isSixelCapable || sixelCapable != `true` {
+			return false, nil
+		}
 		// VSCode v1.80.0 required
 		// https://code.visualstudio.com/updates/v1_80#_image-supportm
 		verMajStr, okMaj := inp.Property(propkeys.VSCodeVersionMajor)
@@ -74,7 +79,7 @@ func (d *drawerITerm2) IsApplicable(inp term.DrawerCheckerInput) (bool, environ.
 			return true, nil
 		}
 		verMin, err := strconv.ParseUint(verMinStr, 10, 64)
-		return err == nil && verMin >= 80, nil
+		return err == nil && verMin >= 79, nil
 	case `hyper`:
 		// Hyper v4.0.0-canary.4 required
 		// https://github.com/vercel/hyper/releases/tag/v4.0.0-canary.4

@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/srlehn/termimg/internal"
-	"github.com/srlehn/termimg/internal/consts"
 	"github.com/srlehn/termimg/internal/errors"
 )
 
@@ -17,7 +16,7 @@ type PngEncoder struct{}
 
 func (e *PngEncoder) Encode(w io.Writer, img image.Image, fileExt string) error {
 	if w == nil || img == nil {
-		return errors.New(consts.ErrNilParam)
+		return errors.NilParam()
 	}
 	// allow passing whole filename
 	fileExtParts := strings.Split(fileExt, `.`)

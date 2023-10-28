@@ -8,7 +8,7 @@ import (
 // optional methods:
 //   - ResizeEvents() (_ <-chan Resolution, closeFunc func() error, _ error)
 //   - SizePixel() (cw int, ch int, pw int, ph int, e error)
-//   - ReadRune() (r rune, size int, err error)
+//   - ReadRune() (r rune, size int, err error)  // io.RuneReader
 type TTY interface {
 	io.ReadWriteCloser
 	TTYDevName() string

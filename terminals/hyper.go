@@ -89,7 +89,7 @@ func (s *surveyorHyperWrong14t) SizeInPixelsQuery(qu term.Querier, tty term.TTY)
 
 func (s *surveyorHyperWrong14t) CellSizeQuery(qu term.Querier, tty term.TTY) (width, height float64, err error) {
 	if s == nil {
-		return 0, 0, errors.New(consts.ErrNilReceiver)
+		return 0, 0, errors.NilReceiver()
 	}
 	// likely also wrong
 	return 0, 0, errors.New(consts.ErrNotImplemented)

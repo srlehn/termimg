@@ -120,7 +120,7 @@ type Frame struct {
 
 func (f *Frame) Err() error {
 	if f == nil {
-		return errors.New(consts.ErrNilReceiver)
+		return errors.NilReceiver()
 	}
 	return f.error
 }

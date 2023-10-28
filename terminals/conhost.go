@@ -110,7 +110,7 @@ type surveyorConhost struct {
 // CellSize - cell size in pixels
 func (s *surveyorConhost) CellSize(term.TTY) (width, height float64, err error) {
 	if s == nil {
-		return 0, 0, errors.New(consts.ErrNilReceiver)
+		return 0, 0, errors.NilReceiver()
 	}
 	if err := s.init(); err != nil {
 		return 0, 0, err
@@ -149,7 +149,7 @@ func (s *surveyorConhost) SizeInCells(tty term.TTY) (widthCells, heightCells uin
 
 func (s *surveyorConhost) init() error {
 	if s == nil {
-		return errors.New(consts.ErrNilReceiver)
+		return errors.NilReceiver()
 	}
 	if s.Closer == nil {
 		s.Closer = internal.NewCloser()

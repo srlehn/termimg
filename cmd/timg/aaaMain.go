@@ -10,7 +10,6 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/srlehn/termimg/internal/consts"
 	"github.com/srlehn/termimg/internal/errors"
 	"github.com/srlehn/termimg/internal/exc"
 	"github.com/srlehn/termimg/internal/logx"
@@ -56,7 +55,7 @@ type terminalSwapper func(tm **term.Terminal) error
 func run(fn terminalSwapper) {
 	var err error
 	if fn == nil {
-		err = errors.New(consts.ErrNilParam)
+		err = errors.NilParam()
 	}
 	var tm *term.Terminal
 	var exitCode int

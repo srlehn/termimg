@@ -46,6 +46,9 @@ dev-caire: ${SRC}
 
 
 
+.PHONY: test
+test:
+	@go test -count=1 -timeout=30s ./... | grep -v '^? '
 
 .PHONY: clean
 clean:

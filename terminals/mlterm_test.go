@@ -28,7 +28,7 @@ func TestTermCheckerMltermCheckExclude(t *testing.T) {
 	}
 }
 
-func TestTermCheckerMlermCheckIsWindow(t *testing.T) {
+func TestTermCheckerMltermCheckIsWindow(t *testing.T) {
 	wm.SetImpl(wmimpl.Impl())
 	w := wm.CreateWindow(`mlterm`, `mlterm`, `xterm`)
 

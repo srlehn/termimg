@@ -89,7 +89,7 @@ func (s *surveyorTerminology) CellSizeQuery(qu term.Querier, tty term.TTY) (widt
 func queryTerminalAndCellSizeTerminology(qu term.Querier, tty term.TTY) (tpw, tph, cpw, cph uint, _ error) {
 	// TODO xterm doesn't reply to this on some systems. why?
 	if qu == nil || tty == nil {
-		return 0, 0, 0, 0, errors.New(consts.ErrNilParam)
+		return 0, 0, 0, 0, errors.NilParam()
 	}
 	qs := queries.TerminologySize + queries.DA1
 	var p term.ParserFunc = func(r rune) bool { return r == 'c' }
@@ -130,7 +130,7 @@ func queryTerminalAndCellSizeTerminology(qu term.Querier, tty term.TTY) (tpw, tp
 // CursorQuery
 func (s *surveyorTerminology) CursorQuery(qu term.Querier, tty term.TTY) (widthCells, heightCells uint, err error) {
 	if s == nil {
-		return 0, 0, errors.New(consts.ErrNilReceiver)
+		return 0, 0, errors.NilReceiver()
 	}
 	return s.surveyorDefault.CursorQuery(qu, tty)
 }
@@ -138,7 +138,7 @@ func (s *surveyorTerminology) CursorQuery(qu term.Querier, tty term.TTY) (widthC
 // SetCursorQuery
 func (s *surveyorTerminology) SetCursorQuery(xPosCells, yPosCells uint, qu term.Querier, tty term.TTY) (err error) {
 	if s == nil {
-		return errors.New(consts.ErrNilReceiver)
+		return errors.NilReceiver()
 	}
 	return s.surveyorDefault.SetCursorQuery(xPosCells, yPosCells, qu, tty)
 }

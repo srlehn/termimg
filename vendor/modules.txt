@@ -69,12 +69,21 @@ github.com/anthonynsimon/bild/clone
 github.com/anthonynsimon/bild/math/f64
 github.com/anthonynsimon/bild/parallel
 github.com/anthonynsimon/bild/transform
+# github.com/aymanbagabas/go-pty v0.2.0
+## explicit; go 1.20
+github.com/aymanbagabas/go-pty
 # github.com/bamiaux/rez v0.0.0-20170731184118-29f4463c688b
 ## explicit
 github.com/bamiaux/rez
 # github.com/containerd/console v1.0.3
 ## explicit; go 1.13
 github.com/containerd/console
+# github.com/creack/pty v1.1.18
+## explicit; go 1.13
+github.com/creack/pty
+# github.com/davecgh/go-spew v1.1.1
+## explicit
+github.com/davecgh/go-spew/spew
 # github.com/disintegration/gift v1.2.1
 ## explicit
 github.com/disintegration/gift
@@ -204,6 +213,9 @@ github.com/gonutz/w32/v2
 # github.com/google/btree v1.1.2
 ## explicit; go 1.18
 github.com/google/btree
+# github.com/gopxl/beep v1.1.0
+## explicit; go 1.14
+github.com/gopxl/beep
 # github.com/iancoleman/strcase v0.3.0
 ## explicit; go 1.16
 github.com/iancoleman/strcase
@@ -251,10 +263,13 @@ github.com/nfnt/resize
 # github.com/nsf/termbox-go v1.1.1
 ## explicit; go 1.15
 github.com/nsf/termbox-go
-# github.com/pkg/term v1.1.0
+# github.com/pkg/term v1.2.0-beta.2
 ## explicit; go 1.14
 github.com/pkg/term
 github.com/pkg/term/termios
+# github.com/pmezard/go-difflib v1.0.0
+## explicit
+github.com/pmezard/go-difflib/difflib
 # github.com/rivo/tview v0.0.0-20230621164836-6cc0565babaf
 ## explicit; go 1.18
 github.com/rivo/tview
@@ -298,17 +313,31 @@ github.com/srlehn/xgbutil/xgraphics
 github.com/srlehn/xgbutil/xprop
 github.com/srlehn/xgbutil/xrect
 github.com/srlehn/xgbutil/xwindow
+# github.com/stretchr/testify v1.8.1
+## explicit; go 1.13
+github.com/stretchr/testify/assert
 # github.com/tklauser/go-sysconf v0.3.12
 ## explicit; go 1.13
 github.com/tklauser/go-sysconf
 # github.com/tklauser/numcpus v0.6.1
 ## explicit; go 1.13
 github.com/tklauser/numcpus
+# github.com/u-root/u-root v0.11.0
+## explicit; go 1.19
+github.com/u-root/u-root/pkg/termios
 # github.com/yusufpapurcu/wmi v1.2.3
 ## explicit; go 1.16
 github.com/yusufpapurcu/wmi
 # golang.org/x/crypto v0.14.0
 ## explicit; go 1.17
+golang.org/x/crypto/blowfish
+golang.org/x/crypto/chacha20
+golang.org/x/crypto/curve25519
+golang.org/x/crypto/curve25519/internal/field
+golang.org/x/crypto/internal/alias
+golang.org/x/crypto/internal/poly1305
+golang.org/x/crypto/ssh
+golang.org/x/crypto/ssh/internal/bcrypt_pbkdf
 golang.org/x/crypto/ssh/terminal
 # golang.org/x/exp v0.0.0-20231006140011-7918f672742d
 ## explicit; go 1.20
@@ -359,6 +388,7 @@ golang.org/x/net/html/atom
 golang.org/x/sync/errgroup
 # golang.org/x/sys v0.13.0
 ## explicit; go 1.17
+golang.org/x/sys/cpu
 golang.org/x/sys/plan9
 golang.org/x/sys/unix
 golang.org/x/sys/windows
@@ -375,6 +405,9 @@ golang.org/x/text/unicode/bidi
 # gopkg.in/yaml.v2 v2.4.0
 ## explicit; go 1.15
 gopkg.in/yaml.v2
+# gopkg.in/yaml.v3 v3.0.1
+## explicit
+gopkg.in/yaml.v3
 # mvdan.cc/sh v2.6.4+incompatible
 ## explicit
 mvdan.cc/sh/expand

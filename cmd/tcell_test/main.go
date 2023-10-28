@@ -58,7 +58,7 @@ func m() error {
 
 	var scr tcell.Screen
 	if ttyTCell, ok := tm.TTY().(interface{ TCellScreen() (tcell.Screen, error) }); ok {
-		logx.Info("is tcell tty", tm)
+		logx.Info("using tcell.Tty", tm)
 		s, err := ttyTCell.TCellScreen()
 		if !logx.IsErr(err, tm, slog.LevelInfo) {
 			scr = s

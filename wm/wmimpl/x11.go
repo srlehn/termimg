@@ -19,7 +19,6 @@ import (
 	"github.com/srlehn/xgbutil/xgraphics"
 	"github.com/srlehn/xgbutil/xwindow"
 
-	"github.com/srlehn/termimg/internal/consts"
 	"github.com/srlehn/termimg/internal/environ"
 	"github.com/srlehn/termimg/internal/errors"
 	"github.com/srlehn/termimg/internal/propkeys"
@@ -311,7 +310,7 @@ func (w *windowX11) WindowConn() wm.Connection {
 }
 func (w *windowX11) WindowFind() error {
 	if w == nil {
-		return errors.New(consts.ErrNilReceiver)
+		return errors.NilReceiver()
 	}
 	if w.isInit {
 		return w.errFind
@@ -469,7 +468,7 @@ func (w *windowX11) WindowFind() error {
 }
 func (w *windowX11) Screenshot() (image.Image, error) {
 	if w == nil {
-		return nil, errors.New(consts.ErrNilReceiver)
+		return nil, errors.NilReceiver()
 	}
 	if err := w.WindowFind(); err != nil {
 		return nil, err

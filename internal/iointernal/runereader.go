@@ -4,7 +4,6 @@ import (
 	"io"
 	"unicode/utf8"
 
-	"github.com/srlehn/termimg/internal/consts"
 	"github.com/srlehn/termimg/internal/errors"
 )
 
@@ -39,7 +38,7 @@ func (r *runeReader) ReadRune() (rn rune, size int, err error) {
 	defer func() {
 	}()
 	if r == nil {
-		return rn, len(string(rn)), errors.New(consts.ErrNilReceiver)
+		return rn, len(string(rn)), errors.NilReceiver()
 	}
 	if r.readRuneFunc != nil {
 		return r.readRuneFunc()

@@ -29,7 +29,7 @@ type CachedQuerier interface {
 func CachedQuery(qu Querier, qs string, tty TTY, p Parser, prIn, prOut environ.Properties) (string, error) {
 	// TODO bug same value for different parsers
 	if prIn == nil {
-		return ``, errors.New(consts.ErrNilParam)
+		return ``, errors.NilParam()
 	}
 	if prOut == nil {
 		prOut = environ.NewProperties()
@@ -55,7 +55,7 @@ func NewCachedQuerier(qu Querier) CachedQuerier { return &queryCacher{Querier: q
 
 func (q *queryCacher) CachedQuery(qs string, tty TTY, p Parser, pr environ.Properties) (string, error) {
 	if q == nil {
-		return ``, errors.New(consts.ErrNilReceiver)
+		return ``, errors.NilReceiver()
 	}
 	if q.Querier == nil {
 		return ``, errors.New(`nil querier`)
@@ -119,7 +119,7 @@ func (t *ttyDummy) TTYDevName() string {
 func QueryDeviceAttributes(qu Querier, tty TTY, prIn, prOut environ.Properties) error {
 	// TODO add mux.Wrap()
 	if qu == nil || tty == nil || prIn == nil {
-		return errors.New(consts.ErrNilParam)
+		return errors.NilParam()
 	}
 
 	// only run once

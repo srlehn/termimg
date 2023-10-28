@@ -37,7 +37,7 @@ func (d *drawerGDI) IsApplicable(inp term.DrawerCheckerInput) (bool, environ.Pro
 }
 func (d *drawerGDI) init() error {
 	if d == nil {
-		return errors.New(consts.ErrNilReceiver)
+		return errors.NilReceiver()
 	}
 	var si win.GdiplusStartupInput
 	si.GdiplusVersion = 1

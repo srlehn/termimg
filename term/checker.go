@@ -133,7 +133,7 @@ func (c *termCheckerCore) Init(tc TermChecker) {
 
 func (c *termCheckerCore) NewTerminal(opts ...Option) (*Terminal, error) {
 	if c == nil {
-		return nil, errors.New(consts.ErrNilReceiver)
+		return nil, errors.NilReceiver()
 	}
 	tm := newDummyTerminal()
 	overwriteEnv := false // likely already set by caller function (NewTerminal())
@@ -435,7 +435,7 @@ func (in *drawerCheckerInput) WindowConn() wm.Connection {
 }
 func (in *drawerCheckerInput) WindowFind() error {
 	if in == nil {
-		return errors.New(consts.ErrNilReceiver)
+		return errors.NilReceiver()
 	}
 	return in.w.WindowFind()
 }
@@ -483,7 +483,7 @@ func (in *drawerCheckerInput) DeviceContext() uintptr {
 }
 func (in *drawerCheckerInput) Screenshot() (image.Image, error) {
 	if in == nil {
-		return nil, errors.New(consts.ErrNilReceiver)
+		return nil, errors.NilReceiver()
 	}
 	return in.w.Screenshot()
 }
