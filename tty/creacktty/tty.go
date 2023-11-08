@@ -12,16 +12,15 @@ import (
 	"github.com/srlehn/termimg/term"
 )
 
-type ttyCreack struct {
+type TTYCreack struct {
 	master   *os.File
 	slave    *os.File
 	fileName string
 }
 
-var _ term.TTY = (*ttyCreack)(nil)
-var _ term.TTYProvider = New
+var _ term.TTY = (*TTYCreack)(nil)
 
-func New(ttyFile string) (term.TTY, error) {
+func New(ttyFile string) (*TTYCreack, error) {
 	if !internal.IsDefaultTTY(ttyFile) {
 		return nil, errors.New(`only default tty supported`)
 	}
@@ -29,14 +28,14 @@ func New(ttyFile string) (term.TTY, error) {
 	if err != nil {
 		return nil, errors.New(err)
 	}
-	return &ttyCreack{
+	return &TTYCreack{
 		master:   p,
 		slave:    t,
 		fileName: ttyFile,
 	}, nil
 }
 
-func (t *ttyCreack) Write(b []byte) (n int, err error) {
+func (t *TTYCreack) Write(b []byte) (n int, err error) {
 	if t == nil {
 		return 0, errors.NilReceiver()
 	}
@@ -46,20 +45,20 @@ func (t *ttyCreack) Write(b []byte) (n int, err error) {
 	return t.master.Write(b)
 }
 
-func (t *ttyCreack) Read(p []byte) (n int, err error) {
+func (t *TTYCreack) Read(p []byte) (n int, err error) {
 	if t == nil || t.master == nil {
 		return 0, errors.NilReceiver()
 	}
 	return t.master.Read(p)
 }
-func (t *ttyCreack) TTYDevName() string {
+func (t *TTYCreack) TTYDevName() string {
 	if t == nil {
 		return internal.DefaultTTYDevice()
 	}
 	return t.fileName
 }
 
-func (t *ttyCreack) SizePixel() (cw int, ch int, pw int, ph int, e error) {
+func (t *TTYCreack) SizePixel() (cw int, ch int, pw int, ph int, e error) {
 	if t == nil || t.master == nil {
 		return 0, 0, 0, 0, errors.NilReceiver()
 	}
@@ -71,7 +70,7 @@ func (t *ttyCreack) SizePixel() (cw int, ch int, pw int, ph int, e error) {
 }
 
 // Close ...
-func (t *ttyCreack) Close() error {
+func (t *TTYCreack) Close() error {
 	if t == nil {
 		return nil
 	}

@@ -16,5 +16,14 @@ func DefaultTTYDevice() string {
 	return ptyName
 }
 func IsDefaultTTY(ptyName string) bool {
-	return len(ptyName) == 0 || ptyName == `/dev/tty` || ptyName == `/dev/stdin` || ptyName == `CON` // TODO
+	// TODO add stdout?
+	if len(ptyName) == 0 {
+		return true
+	}
+	switch runtime.GOOS {
+	case `windows`:
+		return ptyName == `CON` || ptyName == `CONIN$`
+	default:
+		return ptyName == `/dev/tty` || ptyName == `/dev/stdin`
+	}
 }

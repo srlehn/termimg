@@ -9,31 +9,30 @@ import (
 	"github.com/srlehn/termimg/term"
 )
 
-type ttyDummy struct {
+type TTYDummy struct {
 	rdr      *strings.Reader
 	fileName string
 }
 
-var _ term.TTY = (*ttyDummy)(nil)
-var _ term.TTYProvider = New
+var _ term.TTY = (*TTYDummy)(nil)
 
-func New(buf string) (term.TTY, error) {
+func New(buf string) (*TTYDummy, error) {
 	rdr := strings.NewReader(buf)
-	return &ttyDummy{
+	return &TTYDummy{
 		rdr:      rdr,
 		fileName: internal.DefaultTTYDevice(),
 	}, nil
 }
 
-func (t *ttyDummy) Write(b []byte) (n int, err error) { return io.Discard.Write(b) }
+func (t *TTYDummy) Write(b []byte) (n int, err error) { return io.Discard.Write(b) }
 
-func (t *ttyDummy) Read(p []byte) (n int, err error) {
+func (t *TTYDummy) Read(p []byte) (n int, err error) {
 	if t == nil || t.rdr == nil {
 		return 0, errors.NilReceiver()
 	}
 	return t.rdr.Read(p)
 }
-func (t *ttyDummy) TTYDevName() string {
+func (t *TTYDummy) TTYDevName() string {
 	if t == nil {
 		return internal.DefaultTTYDevice()
 	}
@@ -41,4 +40,4 @@ func (t *ttyDummy) TTYDevName() string {
 }
 
 // Close ...
-func (t *ttyDummy) Close() error { return nil }
+func (t *TTYDummy) Close() error { return nil }

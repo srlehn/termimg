@@ -8,15 +8,14 @@ import (
 	"github.com/srlehn/termimg/term"
 )
 
-type ttyPkgTerm struct {
+type TTYPkgTerm struct {
 	*pkgTerm.Term
 	fileName string
 }
 
-var _ term.TTY = (*ttyPkgTerm)(nil)
-var _ term.TTYProvider = New
+var _ term.TTY = (*TTYPkgTerm)(nil)
 
-func New(ttyFile string) (term.TTY, error) {
+func New(ttyFile string) (*TTYPkgTerm, error) {
 	opts := []func(*pkgTerm.Term) error{
 		pkgTerm.CBreakMode,
 		// pkgTerm.RawMode,
@@ -28,23 +27,23 @@ func New(ttyFile string) (term.TTY, error) {
 	if t == nil {
 		return nil, errors.New(`nil tty`)
 	}
-	return &ttyPkgTerm{Term: t, fileName: ttyFile}, nil
+	return &TTYPkgTerm{Term: t, fileName: ttyFile}, nil
 }
 
-func (t *ttyPkgTerm) Write(b []byte) (n int, err error) {
+func (t *TTYPkgTerm) Write(b []byte) (n int, err error) {
 	if t == nil || t.Term == nil {
 		return 0, errors.NilReceiver()
 	}
 	return t.Term.Write(b)
 }
 
-func (t *ttyPkgTerm) Read(p []byte) (n int, err error) {
+func (t *TTYPkgTerm) Read(p []byte) (n int, err error) {
 	if t == nil || t.Term == nil {
 		return 0, errors.NilReceiver()
 	}
 	return t.Term.Read(p)
 }
-func (t *ttyPkgTerm) TTYDevName() string {
+func (t *TTYPkgTerm) TTYDevName() string {
 	if t == nil {
 		return internal.DefaultTTYDevice()
 	}
@@ -52,7 +51,7 @@ func (t *ttyPkgTerm) TTYDevName() string {
 }
 
 // Close ...
-func (t *ttyPkgTerm) Close() error {
+func (t *TTYPkgTerm) Close() error {
 	if t == nil || t.Term == nil {
 		return nil
 	}

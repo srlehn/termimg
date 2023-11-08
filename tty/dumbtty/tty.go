@@ -8,42 +8,41 @@ import (
 	"github.com/srlehn/termimg/term"
 )
 
-type ttyDumb struct {
-	*os.File
+type TTYDumb struct {
+	f        *os.File
 	fileName string
 }
 
-var _ term.TTY = (*ttyDumb)(nil)
-var _ term.TTYProvider = New
+var _ term.TTY = (*TTYDumb)(nil)
 
-func New(ttyFile string) (term.TTY, error) {
+func New(ttyFile string) (*TTYDumb, error) {
 	f, err := os.OpenFile(ttyFile, os.O_RDWR, 0)
 	if err != nil {
 		return nil, errors.New(err)
 	}
-	return &ttyDumb{
-		File:     f,
+	return &TTYDumb{
+		f:        f,
 		fileName: ttyFile,
 	}, nil
 }
 
-func (t *ttyDumb) Write(b []byte) (n int, err error) {
+func (t *TTYDumb) Write(b []byte) (n int, err error) {
 	if t == nil {
 		return 0, errors.NilReceiver()
 	}
-	if t.File == nil {
+	if t.f == nil {
 		return 0, errors.New(`nil tty`)
 	}
-	return t.File.Write(b)
+	return t.f.Write(b)
 }
 
-func (t *ttyDumb) Read(p []byte) (n int, err error) {
-	if t == nil || t.File == nil {
+func (t *TTYDumb) Read(p []byte) (n int, err error) {
+	if t == nil || t.f == nil {
 		return 0, errors.NilReceiver()
 	}
-	return t.File.Read(p)
+	return t.f.Read(p)
 }
-func (t *ttyDumb) TTYDevName() string {
+func (t *TTYDumb) TTYDevName() string {
 	if t == nil {
 		return internal.DefaultTTYDevice()
 	}
@@ -51,9 +50,9 @@ func (t *ttyDumb) TTYDevName() string {
 }
 
 // Close ...
-func (t *ttyDumb) Close() error {
-	if t == nil || t.File == nil {
+func (t *TTYDumb) Close() error {
+	if t == nil || t.f == nil {
 		return nil
 	}
-	return t.File.Close()
+	return t.f.Close()
 }

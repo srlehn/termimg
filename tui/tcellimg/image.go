@@ -29,7 +29,8 @@ type Image struct {
 	mdl  linesModel
 }
 
-func NewImage(img *term.Image, bounds image.Rectangle, tm *term.Terminal, scr tcell.Screen) (*Image, error) {
+func NewImage(img image.Image, bounds image.Rectangle, tm *term.Terminal, scr tcell.Screen) (*Image, error) {
+	// TODO accept
 	if img == nil || tm == nil || scr == nil {
 		return nil, errors.NilParam()
 	}

@@ -8,16 +8,15 @@ import (
 	"github.com/srlehn/termimg/term"
 )
 
-type ttyURoot struct {
+type TTYURoot struct {
 	*termios.TTYIO
-	*termios.Termios
+	termios  *termios.Termios
 	fileName string
 }
 
-var _ term.TTY = (*ttyURoot)(nil)
-var _ term.TTYProvider = New
+var _ term.TTY = (*TTYURoot)(nil)
 
-func New(ttyFile string) (term.TTY, error) {
+func New(ttyFile string) (*TTYURoot, error) {
 	t, err := termios.NewWithDev(ttyFile)
 	if err != nil {
 		return nil, errors.New(err)
@@ -26,14 +25,14 @@ func New(ttyFile string) (term.TTY, error) {
 	if err != nil {
 		return nil, errors.New(err)
 	}
-	return &ttyURoot{
+	return &TTYURoot{
 		TTYIO:    t,
-		Termios:  cfg,
+		termios:  cfg,
 		fileName: ttyFile,
 	}, nil
 }
 
-func (t *ttyURoot) Write(b []byte) (n int, err error) {
+func (t *TTYURoot) Write(b []byte) (n int, err error) {
 	if t == nil {
 		return 0, errors.NilReceiver()
 	}
@@ -43,19 +42,19 @@ func (t *ttyURoot) Write(b []byte) (n int, err error) {
 	return t.TTYIO.Write(b)
 }
 
-func (t *ttyURoot) Read(p []byte) (n int, err error) {
+func (t *TTYURoot) Read(p []byte) (n int, err error) {
 	if t == nil || t.TTYIO == nil {
 		return 0, errors.NilReceiver()
 	}
 	return t.TTYIO.Read(p)
 }
-func (t *ttyURoot) TTYDevName() string {
+func (t *TTYURoot) TTYDevName() string {
 	if t == nil {
 		return internal.DefaultTTYDevice()
 	}
 	return t.fileName
 }
-func (t *ttyURoot) SizePixel() (cw int, ch int, pw int, ph int, e error) {
+func (t *TTYURoot) SizePixel() (cw int, ch int, pw int, ph int, e error) {
 	if t == nil || t.TTYIO == nil {
 		return 0, 0, 0, 0, errors.NilReceiver()
 	}
@@ -67,12 +66,12 @@ func (t *ttyURoot) SizePixel() (cw int, ch int, pw int, ph int, e error) {
 }
 
 // Close ...
-func (t *ttyURoot) Close() error {
+func (t *TTYURoot) Close() error {
 	if t == nil || t.TTYIO == nil {
 		return nil
 	}
-	err := errors.New(t.Set(t.Termios))
-	t.Termios = nil
+	err := errors.New(t.Set(t.termios))
+	t.termios = nil
 	t.TTYIO = nil
 	t = nil
 	return err

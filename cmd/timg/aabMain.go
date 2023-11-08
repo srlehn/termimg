@@ -44,10 +44,12 @@ func main() {
 
 var (
 	// TODO debug flag should also set log level
-	debugFlag     bool
-	silentFlag    bool
-	logFileFlag   string
-	logFileOption term.Option
+	debugFlag      bool
+	silentFlag     bool
+	logFileFlag    string
+	logFileOption  term.Option
+	cpuProfileFlag string
+	cpuProfilefunc func(profileFile string) func()
 )
 
 type terminalSwapper func(tm **term.Terminal) error
@@ -80,6 +82,9 @@ func run(fn terminalSwapper) {
 		}
 		os.Exit(exitCode)
 	}()
+	if len(cpuProfileFlag) > 0 && cpuProfilefunc != nil {
+		defer cpuProfilefunc(cpuProfileFlag)()
+	}
 	if len(logFileFlag) > 0 {
 		logFileOption = term.SetLogFile(logFileFlag, true)
 	}

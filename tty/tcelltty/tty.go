@@ -10,16 +10,15 @@ import (
 
 // TODO set ONLCR so that no \r is needed at line end
 
-type ttyTCell struct {
+type TTYTCell struct {
 	tcell.Tty
 	screen   tcell.Screen
 	fileName string
 }
 
-var _ term.TTY = (*ttyTCell)(nil)
-var _ term.TTYProvider = New
+var _ term.TTY = (*TTYTCell)(nil)
 
-func New(ttyFile string) (term.TTY, error) {
+func New(ttyFile string) (*TTYTCell, error) {
 	ttyTC, err := tcell.NewDevTtyFromDev(ttyFile)
 	if err != nil {
 		return nil, err
@@ -27,14 +26,14 @@ func New(ttyFile string) (term.TTY, error) {
 	if err := ttyTC.Start(); err != nil {
 		return nil, err
 	}
-	tty := &ttyTCell{
+	tty := &TTYTCell{
 		Tty:      ttyTC,
 		fileName: ttyFile,
 	}
 	return tty, nil
 }
 
-func (t *ttyTCell) TCellScreen() (tcell.Screen, error) {
+func (t *TTYTCell) TCellScreen() (tcell.Screen, error) {
 	if t == nil {
 		return nil, errors.NilReceiver()
 	}
@@ -50,14 +49,14 @@ func (t *ttyTCell) TCellScreen() (tcell.Screen, error) {
 	return scr, nil
 }
 
-func (t *ttyTCell) Write(b []byte) (n int, err error) {
+func (t *TTYTCell) Write(b []byte) (n int, err error) {
 	if t == nil || t.Tty == nil {
 		return 0, errors.NilReceiver()
 	}
 	return t.Tty.Write(b)
 }
 
-func (t *ttyTCell) Read(p []byte) (n int, err error) {
+func (t *TTYTCell) Read(p []byte) (n int, err error) {
 	if t == nil || t.Tty == nil {
 		return 0, errors.NilReceiver()
 	}
@@ -65,14 +64,14 @@ func (t *ttyTCell) Read(p []byte) (n int, err error) {
 	return t.Tty.Read(p)
 }
 
-func (t *ttyTCell) TTYDevName() string {
+func (t *TTYTCell) TTYDevName() string {
 	if t == nil {
 		return internal.DefaultTTYDevice()
 	}
 	return t.fileName
 }
 
-func (t *ttyTCell) SizePixel() (cw int, ch int, pw int, ph int, e error) {
+func (t *TTYTCell) SizePixel() (cw int, ch int, pw int, ph int, e error) {
 	if t == nil || t.Tty == nil {
 		return 0, 0, 0, 0, errors.NilReceiver()
 	}
@@ -86,7 +85,7 @@ func (t *ttyTCell) SizePixel() (cw int, ch int, pw int, ph int, e error) {
 }
 
 // Close ...
-func (t *ttyTCell) Close() error {
+func (t *TTYTCell) Close() error {
 	if t == nil || t.Tty == nil {
 		return nil
 	}

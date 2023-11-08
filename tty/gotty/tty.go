@@ -17,7 +17,7 @@ import (
 	"github.com/srlehn/termimg/term"
 )
 
-type ttyMattN struct {
+type TTYMattN struct {
 	*ttymattn.TTY
 	fileName       string
 	winch          chan term.Resolution
@@ -25,9 +25,9 @@ type ttyMattN struct {
 	buf            []byte
 }
 
-var _ term.TTY = (*ttyMattN)(nil)
+var _ term.TTY = (*TTYMattN)(nil)
 
-func New(ttyFile string) (term.TTY, error) {
+func New(ttyFile string) (*TTYMattN, error) {
 	t, err := ttymattn.OpenDevice(ttyFile)
 	if err != nil {
 		return nil, err
@@ -35,10 +35,10 @@ func New(ttyFile string) (term.TTY, error) {
 	if t == nil {
 		return nil, errors.New(`nil tty`)
 	}
-	return &ttyMattN{TTY: t, fileName: ttyFile}, nil
+	return &TTYMattN{TTY: t, fileName: ttyFile}, nil
 }
 
-func (t *ttyMattN) Write(b []byte) (n int, err error) {
+func (t *TTYMattN) Write(b []byte) (n int, err error) {
 	if t == nil {
 		return 0, errors.NilReceiver()
 	}
@@ -52,7 +52,7 @@ func (t *ttyMattN) Write(b []byte) (n int, err error) {
 	return f.Write(b)
 }
 
-func (t *ttyMattN) Read(p []byte) (n int, err error) {
+func (t *TTYMattN) Read(p []byte) (n int, err error) {
 	if t == nil || t.TTY == nil {
 		return 0, errors.NilReceiver()
 	}
@@ -87,7 +87,7 @@ func (t *ttyMattN) Read(p []byte) (n int, err error) {
 	return len(p), nil
 }
 
-func (t *ttyMattN) ReadRune() (r rune, size int, err error) {
+func (t *TTYMattN) ReadRune() (r rune, size int, err error) {
 	r = '\uFFFD'
 	if t == nil {
 		return r, len(string(r)), errors.NilReceiver()
@@ -102,7 +102,7 @@ func (t *ttyMattN) ReadRune() (r rune, size int, err error) {
 	return r, len(string(r)), err
 }
 
-func (t *ttyMattN) TTYDevName() string {
+func (t *TTYMattN) TTYDevName() string {
 	if t == nil {
 		return internal.DefaultTTYDevice()
 	}
@@ -110,7 +110,7 @@ func (t *ttyMattN) TTYDevName() string {
 }
 
 // Close ...
-func (t *ttyMattN) Close() error {
+func (t *TTYMattN) Close() error {
 	if t == nil || t.TTY == nil {
 		return nil
 	}
@@ -119,7 +119,7 @@ func (t *ttyMattN) Close() error {
 }
 
 // ResizeEvents ...
-func (t *ttyMattN) ResizeEvents() (_ <-chan term.Resolution, closeFunc func() error, _ error) {
+func (t *TTYMattN) ResizeEvents() (_ <-chan term.Resolution, closeFunc func() error, _ error) {
 	if t == nil || t.TTY == nil {
 		return nil, nil, errors.NilReceiver()
 	}

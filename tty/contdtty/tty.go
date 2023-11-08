@@ -10,17 +10,16 @@ import (
 	"github.com/srlehn/termimg/term"
 )
 
-type ttyContD struct {
+type TTYContD struct {
 	console.Console
 	fileName string
 }
 
-var _ term.TTY = (*ttyContD)(nil)
-var _ term.TTYProvider = New
+var _ term.TTY = (*TTYContD)(nil)
 
-func New(ttyFile string) (term.TTY, error) { return newTTY(ttyFile) }
+func New(ttyFile string) (*TTYContD, error) { return newTTY(ttyFile) }
 
-func newTTY(ttyFile string) (_ term.TTY, err error) {
+func newTTY(ttyFile string) (_ *TTYContD, err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			// err, e = errors.ParsePanic(string(debug.Stack()))
@@ -41,13 +40,13 @@ func newTTY(ttyFile string) (_ term.TTY, err error) {
 	if err := c.SetRaw(); err != nil {
 		return nil, errors.New(err)
 	}
-	return &ttyContD{
+	return &TTYContD{
 		Console:  c,
 		fileName: ttyFile,
 	}, nil
 }
 
-func (t *ttyContD) Write(b []byte) (n int, err error) {
+func (t *TTYContD) Write(b []byte) (n int, err error) {
 	if t == nil {
 		return 0, errors.NilReceiver()
 	}
@@ -57,13 +56,13 @@ func (t *ttyContD) Write(b []byte) (n int, err error) {
 	return t.Console.Write(b)
 }
 
-func (t *ttyContD) Read(p []byte) (n int, err error) {
+func (t *TTYContD) Read(p []byte) (n int, err error) {
 	if t == nil || t.Console == nil {
 		return 0, errors.NilReceiver()
 	}
 	return t.Console.Read(p)
 }
-func (t *ttyContD) TTYDevName() string {
+func (t *TTYContD) TTYDevName() string {
 	if t == nil {
 		return internal.DefaultTTYDevice()
 	}
@@ -71,7 +70,7 @@ func (t *ttyContD) TTYDevName() string {
 }
 
 // Close ...
-func (t *ttyContD) Close() error {
+func (t *TTYContD) Close() error {
 	if t == nil || t.Console == nil {
 		return nil
 	}

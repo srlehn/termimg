@@ -61,6 +61,7 @@ func SetPTYName(ptyName string) Option {
 		return nil
 	})
 }
+
 func SetTTY(tty TTY, enforce bool) Option {
 	return OptFunc(func(t *Terminal) error {
 		if enforce {
@@ -71,16 +72,20 @@ func SetTTY(tty TTY, enforce bool) Option {
 		return nil
 	})
 }
-func SetTTYProvider(ttyProv TTYProvider, enforce bool) Option {
+
+// ttyProv is implemented by the New constructors in the subpackages of the tty package
+func SetTTYProvider[T TTY, F func(ptyName string) (T, error)](ttyProv F, enforce bool) Option {
 	return OptFunc(func(t *Terminal) error {
+		tp := newTTYProvider(ttyProv)
 		if enforce {
-			t.ttyProv = ttyProv // TODO
+			t.ttyProv = tp
 		} else {
-			t.ttyProvDefault = ttyProv
+			t.ttyProvDefault = tp
 		}
 		return nil
 	})
 }
+
 func SetQuerier(qu Querier, enforce bool) Option {
 	return OptFunc(func(t *Terminal) error {
 		if enforce {
@@ -91,6 +96,7 @@ func SetQuerier(qu Querier, enforce bool) Option {
 		return nil
 	})
 }
+
 func SetSurveyor(ps PartialSurveyor, enforce bool) Option {
 	return OptFunc(func(t *Terminal) error {
 		if enforce {
@@ -101,6 +107,7 @@ func SetSurveyor(ps PartialSurveyor, enforce bool) Option {
 		return nil
 	})
 }
+
 func SetWindowProvider(wProv wm.WindowProvider, enforce bool) Option {
 	return OptFunc(func(t *Terminal) error {
 		if enforce {
@@ -111,9 +118,11 @@ func SetWindowProvider(wProv wm.WindowProvider, enforce bool) Option {
 		return nil
 	})
 }
+
 func SetResizer(rsz Resizer) Option {
 	return OptFunc(func(t *Terminal) error { t.resizer = rsz; return nil })
 }
+
 func SetProprietor(pr environ.Properties, merge bool) Option {
 	return OptFunc(func(t *Terminal) error {
 		if merge && t.properties != nil {
@@ -124,6 +133,7 @@ func SetProprietor(pr environ.Properties, merge bool) Option {
 		return nil
 	})
 }
+
 func SetTerminalName(termName string) Option {
 	return OptFunc(func(t *Terminal) error {
 		if t.properties == nil {
@@ -133,6 +143,7 @@ func SetTerminalName(termName string) Option {
 		return nil
 	})
 }
+
 func SetExe(exe string) Option {
 	return OptFunc(func(t *Terminal) error {
 		if t.properties == nil {
@@ -145,15 +156,19 @@ func SetExe(exe string) Option {
 		return nil
 	})
 }
+
 func SetArgs(args []string) Option {
 	return OptFunc(func(t *Terminal) error { t.arger = newArger(args); return nil })
 }
+
 func SetDrawers(drs []Drawer) Option {
 	return OptFunc(func(t *Terminal) error { t.drawers = drs; return nil })
 }
+
 func SetWindow(w wm.Window) Option {
 	return OptFunc(func(t *Terminal) error { t.window = w; return nil })
 }
+
 func SetSLogHandler(h slog.Handler, enable bool) Option {
 	return OptFunc(func(t *Terminal) error {
 		if enable {
@@ -168,6 +183,7 @@ func SetSLogHandler(h slog.Handler, enable bool) Option {
 		return nil
 	})
 }
+
 func SetLogFile(filename string, enable bool) Option {
 	return OptFunc(func(t *Terminal) error {
 		if enable {
@@ -194,6 +210,7 @@ func SetLogFile(filename string, enable bool) Option {
 		return nil
 	})
 }
+
 func logBuildInfo(loggerProv logx.LoggerProvider) {
 	if loggerProv == nil {
 		return

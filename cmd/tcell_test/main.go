@@ -1,7 +1,6 @@
 package main
 
 import (
-	_ "embed"
 	"image"
 	_ "image/png"
 	"log"
@@ -12,6 +11,7 @@ import (
 	"github.com/srlehn/termimg"
 	_ "github.com/srlehn/termimg/drawers/all"
 	"github.com/srlehn/termimg/internal"
+	"github.com/srlehn/termimg/internal/assets"
 	"github.com/srlehn/termimg/internal/logx"
 	"github.com/srlehn/termimg/query/qdefault"
 	"github.com/srlehn/termimg/resize/rdefault"
@@ -24,9 +24,6 @@ import (
 	"github.com/srlehn/termimg/wm"
 	"github.com/srlehn/termimg/wm/wmimpl"
 )
-
-//go:embed snake.png
-var imgBytes []byte
 
 func main() {
 	// call os.Exit() after m and its deferred close functions
@@ -87,7 +84,7 @@ func m() error {
 	scr.SetContent(x+w, y+h, '#', nil, tcell.StyleDefault)
 	scr.Sync()
 
-	img, err := tcellimg.NewImage(termimg.NewImageBytes(imgBytes), bounds, tm, scr)
+	img, err := tcellimg.NewImage(termimg.NewImageBytes(assets.SnakePic), bounds, tm, scr)
 	if err != nil {
 		return err
 	}

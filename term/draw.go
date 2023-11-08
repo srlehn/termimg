@@ -125,7 +125,8 @@ func (c *Canvas) Set(x, y int, col color.Color) {
 	if ((x == 0 && y == 0) ||
 		(x == c.boundsPixels.Dx()-1 && y == c.boundsPixels.Dy()-1)) &&
 		(x-c.lastSetX == 1 || x-c.lastSetX == -1) {
-		logx.IsErr(c.terminal.Draw(c.drawing, c.bounds), c.terminal, slog.LevelError)
+		err := c.terminal.Draw(c.drawing, c.bounds)
+		logx.IsErr(err, c.terminal, slog.LevelError)
 	}
 	c.lastSetX = x
 }
@@ -166,6 +167,34 @@ func (c *Canvas) storeScreenshot() error {
 	return nil
 }
 
+func (c *Canvas) SetCellArea(bounds image.Rectangle) error {
+	err := errors.NilReceiver(c, c.terminal)
+	if logx.IsErr(err, c.terminal, slog.LevelInfo) {
+		return err
+	}
+	if err := errors.NilReceiver(c, c.terminal); err != nil {
+		return err
+	}
+	cpw, cph, err := c.terminal.CellSize()
+	if logx.IsErr(err, c.terminal, slog.LevelError) {
+		return err
+	}
+	boundsPixels := image.Rectangle{
+		Min: image.Point{
+			X: int(float64(bounds.Min.X) * cpw),
+			Y: int(float64(bounds.Min.Y) * cph),
+		},
+		Max: image.Point{
+			X: int(float64(bounds.Max.X) * cpw),
+			Y: int(float64(bounds.Max.Y) * cph),
+		},
+	}
+	c.bounds = bounds
+	c.boundsPixels = boundsPixels
+	c.drawing = image.NewRGBA(image.Rect(0, 0, boundsPixels.Dx(), boundsPixels.Dy()))
+	c.lastSetX = -2
+	return nil
+}
 func (c *Canvas) CellArea() image.Rectangle { return c.bounds }
 func (c *Canvas) Offset() image.Point       { return c.boundsPixels.Min }
 func (c *Canvas) SetImage(img image.Image) error {

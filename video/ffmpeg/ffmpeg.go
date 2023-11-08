@@ -71,19 +71,33 @@ func StreamFrames(ctx context.Context, vidFilename string, sizePixels image.Poin
 	if err := cmd.Start(); err != nil {
 		return nil, err
 	}
+
 	vid := make(chan image.Image)
+	done := make(chan struct{}, 1)
 	go func() {
-		defer close(vid)
-		defer pw.Close()
-		defer cmd.Wait()
-		i := 0
-		for ; ; i++ {
+		defer func() {
+			close(vid)
+			if cmd != nil && cmd.ProcessState != nil && !cmd.ProcessState.Exited() && cmd.Process != nil {
+				_ = cmd.Process.Kill()
+			}
+		}()
+		for {
+			select {
+			case <-done:
+				return
+			default:
+			}
 			img, err := png.Decode(pr)
 			if err == io.EOF {
 				break
 			}
 			vid <- img
 		}
+	}()
+	go func() {
+		_ = cmd.Wait()
+		done <- struct{}{}
+		_ = pw.Close()
 	}()
 
 	return vid, nil

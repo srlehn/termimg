@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	_ "embed"
 	"image"
 	_ "image/png"
 	"log"
@@ -10,11 +9,9 @@ import (
 	"github.com/gizak/termui/v3"
 	"github.com/gizak/termui/v3/widgets"
 
+	"github.com/srlehn/termimg/internal/assets"
 	"github.com/srlehn/termimg/tui/termuiimg"
 )
-
-//go:embed snake.png
-var b []byte
 
 var (
 	imgTermui  = widgets.NewImage
@@ -28,7 +25,7 @@ func main() {
 	}
 	defer termui.Close()
 
-	m, _, _ := image.Decode(bytes.NewReader(b))
+	m, _, _ := image.Decode(bytes.NewReader(assets.SnakePic))
 
 	var p termui.Drawable = imfn(m)
 	p.SetRect(10, 8, 50, 30)

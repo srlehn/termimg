@@ -82,7 +82,7 @@ type Terminal struct {
 
 	ttyDefault                              TTY
 	querierDefault                          Querier
-	ttyProv, ttyProvDefault                 TTYProvider
+	ttyProv, ttyProvDefault                 ttyProvider
 	partialSurveyor, partialSurveyorDefault PartialSurveyor
 	windowProvider, windowProviderDefault   wm.WindowProvider
 
@@ -158,7 +158,7 @@ func getTTYAndQuerier(tm *Terminal, tc *termCheckerCore) (TTY, Querier, error) {
 	// tty order: tm.tty, tm.ttyProv, tc.TTY, tm.ttyDefault, tm.ttyProvDefault
 	// querier order: tm.querier, tc.Querier, tm.querierDefault
 
-	setDefaultTTY := func(t TTY, ttyProv TTYProvider) (TTY, error) {
+	setDefaultTTY := func(t TTY, ttyProv ttyProvider) (TTY, error) {
 		if t != nil {
 			return t, nil
 		}
@@ -873,29 +873,17 @@ func (t *Terminal) Window() wm.Window {
 
 func (t *Terminal) Resizer() Resizer { return t.resizer }
 func (t *Terminal) NewCanvas(bounds image.Rectangle) (*Canvas, error) {
-	if t == nil {
-		return nil, errors.NilReceiver()
-	}
-	cpw, cph, err := t.CellSize()
+	err := errors.NilReceiver(t)
 	if logx.IsErr(err, t, slog.LevelInfo) {
 		return nil, err
 	}
-	boundsPixels := image.Rectangle{
-		Min: image.Point{
-			X: int(float64(bounds.Min.X) * cpw),
-			Y: int(float64(bounds.Min.Y) * cph),
-		},
-		Max: image.Point{
-			X: int(float64(bounds.Max.X) * cpw),
-			Y: int(float64(bounds.Max.Y) * cph),
-		}}
 	c := &Canvas{
-		terminal:     t,
-		bounds:       bounds,
-		boundsPixels: boundsPixels,
-		lastSetX:     -2,
-		drawing:      image.NewRGBA(image.Rect(0, 0, boundsPixels.Dx(), boundsPixels.Dy())),
-		closed:       make(chan struct{}),
+		terminal: t,
+		closed:   make(chan struct{}),
+	}
+	err = c.SetCellArea(bounds)
+	if logx.IsErr(err, t, slog.LevelInfo) {
+		return nil, err
 	}
 	t.AddClosers(c)
 	return c, nil
@@ -903,7 +891,14 @@ func (t *Terminal) NewCanvas(bounds image.Rectangle) (*Canvas, error) {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-type TTYProvider func(ptyName string) (TTY, error)
+type ttyProvider func(ptyName string) (TTY, error)
+
+func newTTYProvider[T TTY, F func(ptyName string) (T, error)](ttyProv F) ttyProvider {
+	if ttyProv == nil {
+		return nil
+	}
+	return func(ptyName string) (TTY, error) { return ttyProv(ptyName) }
+}
 
 var _ internal.Arger = (*arguments)(nil)
 

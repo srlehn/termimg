@@ -10,15 +10,14 @@ import (
 	"github.com/srlehn/termimg/term"
 )
 
-type ttyBagabas struct {
+type TTYBagabas struct {
 	pty.Pty
 	fileName string
 }
 
-var _ term.TTY = (*ttyBagabas)(nil)
-var _ term.TTYProvider = New
+var _ term.TTY = (*TTYBagabas)(nil)
 
-func New(ttyFile string) (term.TTY, error) {
+func New(ttyFile string) (*TTYBagabas, error) {
 	if !internal.IsDefaultTTY(ttyFile) {
 		return nil, errors.New(`only default tty supported`)
 	}
@@ -26,33 +25,33 @@ func New(ttyFile string) (term.TTY, error) {
 	if err != nil {
 		return nil, errors.New(err)
 	}
-	return &ttyBagabas{
+	return &TTYBagabas{
 		Pty:      p,
 		fileName: ttyFile,
 	}, nil
 }
 
-func (t *ttyBagabas) Write(b []byte) (n int, err error) {
+func (t *TTYBagabas) Write(b []byte) (n int, err error) {
 	if t == nil || t.Pty == nil {
 		return 0, errors.NilReceiver()
 	}
 	return t.Pty.Write(b)
 }
 
-func (t *ttyBagabas) Read(p []byte) (n int, err error) {
+func (t *TTYBagabas) Read(p []byte) (n int, err error) {
 	if t == nil || t.Pty == nil {
 		return 0, errors.NilReceiver()
 	}
 	return t.Pty.Read(p)
 }
-func (t *ttyBagabas) TTYDevName() string {
+func (t *TTYBagabas) TTYDevName() string {
 	if t == nil {
 		return internal.DefaultTTYDevice()
 	}
 	return t.fileName
 }
 
-func (t *ttyBagabas) SizePixel() (cw int, ch int, pw int, ph int, e error) {
+func (t *TTYBagabas) SizePixel() (cw int, ch int, pw int, ph int, e error) {
 	if t == nil || t.Pty == nil {
 		return 0, 0, 0, 0, errors.NilReceiver()
 	}
@@ -72,7 +71,7 @@ func (t *ttyBagabas) SizePixel() (cw int, ch int, pw int, ph int, e error) {
 }
 
 // Close ...
-func (t *ttyBagabas) Close() error {
+func (t *TTYBagabas) Close() error {
 	if t == nil || t.Pty == nil {
 		return nil
 	}
