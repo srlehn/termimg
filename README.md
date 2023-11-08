@@ -18,8 +18,6 @@ Most parts need more testing on platforms other than my own (Debian stable, X11)
 The API of some unfinished packages will change.
 There are still many small issues to be fixed. Please report them.
 
----
-
 Images are being placed by using **cell** not pixel **coordinates**.
 (The origin is the upper left terminal corner just like with image.Image.)
 The latter doesn't make sense in the context of a terminal.
@@ -48,10 +46,6 @@ Direct usage of the core package **"/term"** is recommended
 for more control and nearly no external dependencies.
 The **"/drawers/sane"** drawer collection will only use actual drawing methods,
 **"/drawers/all"** will try to produce an image by any means.
-
----
-
----
 
 <details open><summary><h2>timg - tool for the CLI</h2></summary>
 

@@ -19,7 +19,7 @@ require (
 	github.com/gizak/termui/v3 v3.1.0
 	github.com/go-errors/errors v1.5.1
 	github.com/golang/freetype v0.0.0-20170609003504-e2365dfdc4a0
-	github.com/gonutz/w32/v2 v2.10.0
+	github.com/gonutz/w32/v2 v2.11.1
 	github.com/google/btree v1.1.2
 	github.com/gopxl/beep v1.1.0
 	github.com/iancoleman/strcase v0.3.0
@@ -33,14 +33,14 @@ require (
 	github.com/rivo/tview v0.0.0-20230621164836-6cc0565babaf
 	github.com/rkoesters/xdg v0.0.1
 	github.com/shirou/gopsutil v3.21.11+incompatible
-	github.com/spf13/cobra v1.7.0
+	github.com/spf13/cobra v1.8.0
 	github.com/srlehn/thumbnails v0.0.0-20231004190311-5a9b465c0dd8
 	github.com/srlehn/xgbutil v0.0.0-20230718194130-098830f60574
 	github.com/stretchr/testify v1.8.1
 	github.com/u-root/u-root v0.11.0
-	golang.org/x/exp v0.0.0-20231006140011-7918f672742d
-	golang.org/x/image v0.13.0
-	golang.org/x/sys v0.13.0
+	golang.org/x/exp v0.0.0-20231108232855-2478ac86f678
+	golang.org/x/image v0.14.0
+	golang.org/x/sys v0.14.0
 	mvdan.cc/sh v2.6.4+incompatible
 )
 
@@ -81,12 +81,12 @@ require (
 	github.com/tklauser/go-sysconf v0.3.12 // indirect
 	github.com/tklauser/numcpus v0.6.1 // indirect
 	github.com/yusufpapurcu/wmi v1.2.3 // indirect
-	golang.org/x/crypto v0.14.0 // indirect
-	golang.org/x/exp/shiny v0.0.0-20231006140011-7918f672742d // indirect
-	golang.org/x/net v0.17.0 // indirect
-	golang.org/x/sync v0.4.0 // indirect
-	golang.org/x/term v0.13.0 // indirect
-	golang.org/x/text v0.13.0 // indirect
+	golang.org/x/crypto v0.15.0 // indirect
+	golang.org/x/exp/shiny v0.0.0-20231108232855-2478ac86f678 // indirect
+	golang.org/x/net v0.18.0 // indirect
+	golang.org/x/sync v0.5.0 // indirect
+	golang.org/x/term v0.14.0 // indirect
+	golang.org/x/text v0.14.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
