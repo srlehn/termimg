@@ -9,6 +9,7 @@ package gotty
 
 import (
 	"sync"
+	"time"
 
 	ttymattn "github.com/mattn/go-tty"
 
@@ -25,6 +26,8 @@ type TTYMattN struct {
 	buf            []byte
 }
 
+const ioDeadLine = 500 * time.Millisecond
+
 var _ term.TTY = (*TTYMattN)(nil)
 
 func New(ttyFile string) (*TTYMattN, error) {
@@ -39,22 +42,22 @@ func New(ttyFile string) (*TTYMattN, error) {
 }
 
 func (t *TTYMattN) Write(b []byte) (n int, err error) {
-	if t == nil {
-		return 0, errors.NilReceiver()
-	}
-	if t.TTY == nil {
-		return 0, errors.New(`nil tty`)
+	if err := errors.NilReceiver(t, t.TTY); err != nil {
+		return 0, err
 	}
 	f := t.Output()
 	if f == nil {
 		return 0, errors.New(`nil file`)
 	}
+	if err := f.SetReadDeadline(time.Now().Add(ioDeadLine)); err == nil {
+		defer f.SetReadDeadline(time.Time{})
+	}
 	return f.Write(b)
 }
 
 func (t *TTYMattN) Read(p []byte) (n int, err error) {
-	if t == nil || t.TTY == nil {
-		return 0, errors.NilReceiver()
+	if err := errors.NilReceiver(t, t.TTY); err != nil {
+		return 0, err
 	}
 	p = p[:0]
 	i := len(t.buf)
@@ -68,7 +71,7 @@ func (t *TTYMattN) Read(p []byte) (n int, err error) {
 		copy(p, t.buf)
 	}
 	for ; i < cap(p); i++ {
-		r, err := t.TTY.ReadRune()
+		r, _, err := t.ReadRune()
 		if err != nil {
 			return len(p), errors.New(err)
 		}
@@ -89,11 +92,15 @@ func (t *TTYMattN) Read(p []byte) (n int, err error) {
 
 func (t *TTYMattN) ReadRune() (r rune, size int, err error) {
 	r = '\uFFFD'
-	if t == nil {
-		return r, len(string(r)), errors.NilReceiver()
+	if err := errors.NilReceiver(t, t.TTY); err != nil {
+		return r, len(string(r)), err
 	}
-	if t.TTY == nil {
-		return r, len(string(r)), errors.New(`nil tty`)
+	f := t.Input()
+	if f == nil {
+		return r, len(string(r)), errors.New(`nil file`)
+	}
+	if err := f.SetReadDeadline(time.Now().Add(ioDeadLine)); err == nil {
+		defer f.SetReadDeadline(time.Time{})
 	}
 	r, err = t.TTY.ReadRune()
 	if err != nil {

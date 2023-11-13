@@ -73,6 +73,10 @@ func NotImplemented() error {
 }
 
 func errMsgNilTester(msg string, skip int, args ...any) error {
+	if len(args) == 0 {
+		// assume intention of func call
+		goto anyNil
+	}
 	for i := range args {
 		if args[i] == nil {
 			goto anyNil

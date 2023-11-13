@@ -6,11 +6,11 @@ require (
 	github.com/anthonynsimon/bild v0.13.0
 	github.com/aymanbagabas/go-pty v0.2.0
 	github.com/bamiaux/rez v0.0.0-20170731184118-29f4463c688b
-	github.com/charmbracelet/bubbles v0.16.1
 	github.com/charmbracelet/bubbletea v0.24.2
 	github.com/charmbracelet/lipgloss v0.9.1
 	github.com/containerd/console v1.0.4-0.20230313162750-1ae8d489ac81
 	github.com/creack/pty v1.1.20
+	github.com/creack/pty/v2 v2.0.1
 	github.com/disintegration/gift v1.2.1
 	github.com/disintegration/imaging v1.6.2
 	github.com/esimov/caire v1.4.6
@@ -36,9 +36,9 @@ require (
 	github.com/spf13/cobra v1.8.0
 	github.com/srlehn/thumbnails v0.0.0-20231004190311-5a9b465c0dd8
 	github.com/srlehn/xgbutil v0.0.0-20230718194130-098830f60574
-	github.com/stretchr/testify v1.8.1
+	github.com/stretchr/testify v1.8.4
 	github.com/u-root/u-root v0.11.0
-	golang.org/x/exp v0.0.0-20231108232855-2478ac86f678
+	golang.org/x/exp v0.0.0-20231110203233-9a3e6036ecaa
 	golang.org/x/image v0.14.0
 	golang.org/x/sys v0.14.0
 	mvdan.cc/sh v2.6.4+incompatible
@@ -60,7 +60,7 @@ require (
 	github.com/gabriel-vasile/mimetype v1.4.3 // indirect
 	github.com/gdamore/encoding v1.0.0 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
-	github.com/go-text/typesetting v0.0.0-20231101082850-a36c1d9288f6 // indirect
+	github.com/go-text/typesetting v0.0.0-20231113130822-cf4b5dada737 // indirect
 	github.com/golang/geo v0.0.0-20230421003525-6adc56603217 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/kr/pretty v0.3.1 // indirect
@@ -82,7 +82,7 @@ require (
 	github.com/tklauser/numcpus v0.6.1 // indirect
 	github.com/yusufpapurcu/wmi v1.2.3 // indirect
 	golang.org/x/crypto v0.15.0 // indirect
-	golang.org/x/exp/shiny v0.0.0-20231108232855-2478ac86f678 // indirect
+	golang.org/x/exp/shiny v0.0.0-20231110203233-9a3e6036ecaa // indirect
 	golang.org/x/net v0.18.0 // indirect
 	golang.org/x/sync v0.5.0 // indirect
 	golang.org/x/term v0.14.0 // indirect

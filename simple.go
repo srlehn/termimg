@@ -17,9 +17,8 @@ import (
 
 var (
 	// chosen defaults
-	ttyDefault  = internal.DefaultTTYDevice()
-	ttyProvider = gotty.New
-	// ttyProvider                = tcelltty.New // TODO change back to gotty
+	ttyDefault                    = internal.DefaultTTYDevice()
+	ttyProvider                   = gotty.New
 	querier                       = qdefault.NewQuerier()
 	wmImplementation              = wmimpl.Impl()
 	resizer          term.Resizer = &rdefault.Resizer{}

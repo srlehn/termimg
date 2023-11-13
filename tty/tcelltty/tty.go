@@ -30,22 +30,29 @@ func New(ttyFile string) (*TTYTCell, error) {
 		Tty:      ttyTC,
 		fileName: ttyFile,
 	}
+	/* if _, err := tty.TCellScreen(); err != nil {
+		tty.Close()
+		return nil, err
+	} */
 	return tty, nil
 }
 
+// tcell.Screen requires calling .Fini() at end of usage
 func (t *TTYTCell) TCellScreen() (tcell.Screen, error) {
-	if t == nil {
-		return nil, errors.NilReceiver()
+	if err := errors.NilReceiver(t, t.Tty); err != nil {
+		return nil, err
 	}
 	if t.screen != nil {
 		return t.screen, nil
 	}
 	scr, err := tcell.NewTerminfoScreenFromTty(t.Tty)
 	if err != nil {
-		return nil, err
+		return nil, errors.New(err)
 	}
 	t.screen = scr
-
+	if err := t.screen.Init(); err != nil {
+		return nil, errors.New(err)
+	}
 	return scr, nil
 }
 
@@ -71,14 +78,14 @@ func (t *TTYTCell) TTYDevName() string {
 	return t.fileName
 }
 
+// SizePixel() requires initiating the tcell.Screen via .TCellScreen() first.
 func (t *TTYTCell) SizePixel() (cw int, ch int, pw int, ph int, e error) {
-	if t == nil || t.Tty == nil {
-		return 0, 0, 0, 0, errors.NilReceiver()
+	// TODO work with initiated tcell.Screen
+	if err := errors.NilReceiver(t, t.Tty, t.screen); err != nil {
+		return 0, 0, 0, 0, err
 	}
 	if t.screen == nil {
-		if _, err := t.TCellScreen(); err != nil {
-			return 0, 0, 0, 0, err
-		}
+		return 0, 0, 0, 0, errors.New(`nil tcell screen`)
 	}
 	cw, ch = t.screen.Size()
 	return
@@ -89,7 +96,11 @@ func (t *TTYTCell) Close() error {
 	if t == nil || t.Tty == nil {
 		return nil
 	}
-	defer func() { t.Tty = nil }()
+	defer func() { t.Tty = nil; t.screen = nil; t = nil }()
+	/*if t.screen != nil {
+		// TODO Fini crashes if screen.Init wasn't called
+		t.screen.Fini()
+	}*/
 	errStop := t.Tty.Stop()
 	errClose := t.Tty.Close()
 	err := errors.Join(errStop, errClose)

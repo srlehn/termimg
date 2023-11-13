@@ -78,9 +78,6 @@ github.com/aymanbagabas/go-pty
 # github.com/bamiaux/rez v0.0.0-20170731184118-29f4463c688b
 ## explicit
 github.com/bamiaux/rez
-# github.com/charmbracelet/bubbles v0.16.1
-## explicit; go 1.17
-github.com/charmbracelet/bubbles/key
 # github.com/charmbracelet/bubbletea v0.24.2
 ## explicit; go 1.17
 github.com/charmbracelet/bubbletea
@@ -93,6 +90,9 @@ github.com/containerd/console
 # github.com/creack/pty v1.1.20
 ## explicit; go 1.13
 github.com/creack/pty
+# github.com/creack/pty/v2 v2.0.1
+## explicit; go 1.13
+github.com/creack/pty/v2
 # github.com/davecgh/go-spew v1.1.1
 ## explicit
 github.com/davecgh/go-spew/spew
@@ -191,7 +191,7 @@ github.com/go-errors/errors
 ## explicit; go 1.12
 github.com/go-ole/go-ole
 github.com/go-ole/go-ole/oleutil
-# github.com/go-text/typesetting v0.0.0-20231101082850-a36c1d9288f6
+# github.com/go-text/typesetting v0.0.0-20231113130822-cf4b5dada737
 ## explicit; go 1.17
 github.com/go-text/typesetting/di
 github.com/go-text/typesetting/font
@@ -344,8 +344,8 @@ github.com/srlehn/xgbutil/xgraphics
 github.com/srlehn/xgbutil/xprop
 github.com/srlehn/xgbutil/xrect
 github.com/srlehn/xgbutil/xwindow
-# github.com/stretchr/testify v1.8.1
-## explicit; go 1.13
+# github.com/stretchr/testify v1.8.4
+## explicit; go 1.20
 github.com/stretchr/testify/assert
 # github.com/tklauser/go-sysconf v0.3.12
 ## explicit; go 1.13
@@ -370,12 +370,12 @@ golang.org/x/crypto/internal/poly1305
 golang.org/x/crypto/ssh
 golang.org/x/crypto/ssh/internal/bcrypt_pbkdf
 golang.org/x/crypto/ssh/terminal
-# golang.org/x/exp v0.0.0-20231108232855-2478ac86f678
+# golang.org/x/exp v0.0.0-20231110203233-9a3e6036ecaa
 ## explicit; go 1.20
 golang.org/x/exp/constraints
 golang.org/x/exp/maps
 golang.org/x/exp/slices
-# golang.org/x/exp/shiny v0.0.0-20231108232855-2478ac86f678
+# golang.org/x/exp/shiny v0.0.0-20231110203233-9a3e6036ecaa
 ## explicit; go 1.18
 golang.org/x/exp/shiny/iconvg
 golang.org/x/exp/shiny/iconvg/internal/gradient

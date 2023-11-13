@@ -91,7 +91,8 @@ type Terminal struct {
 	resTermInPxlsW, resTermInPxlsH   uint
 	resCellInPxlsW, resCellInPxlsH   float64
 	// last window change
-	timeLastWINCH time.Time
+	// timeLastSizeCheck time.Time
+	timeLastSizeCheck time.Time
 	// window change directly prior to last resolution query
 	timeResTermInCells time.Time
 	timeResTermInPxls  time.Time
@@ -593,13 +594,14 @@ func (t *Terminal) Draw(img image.Image, bounds image.Rectangle) error {
 	return Draw(img, bounds, t, nil)
 }
 
-// CellScale returns a cell size for pixel size <ptPx> to the cell size <ptDest> while maintaining the scale.
+// CellScale returns a cell size for pixel size <ptSrcPx> to
+// the cell size <ptDstCl> while maintaining the scale.
 // With no passed 0 side length values, the largest subarea is returned.
 // With one passed 0 side length value, the other side length will be fixed.
 // With two passed 0 side length values, pixels in source and destination area at the same position correspond to each other.
 func (t *Terminal) CellScale(ptSrcPx, ptDstCl image.Point) (ptSrcCl image.Point, _ error) {
-	if t == nil {
-		return image.Point{}, errors.NilReceiver()
+	if err := errors.NilReceiver(t); err != nil {
+		return image.Point{}, err
 	}
 	cpw, cph, err := t.CellSize()
 	if logx.IsErr(err, t, slog.LevelInfo) {
@@ -654,7 +656,7 @@ func (t *Terminal) watchWINCHStart() error {
 				return
 			}
 			tmNow := time.Now()
-			t.timeLastWINCH = tmNow
+			t.timeLastSizeCheck = tmNow
 			if res.TermInCellsW > 0 && res.TermInCellsH > 0 {
 				t.resTermInCellsW = res.TermInCellsW
 				t.resTermInCellsH = res.TermInCellsH
@@ -779,24 +781,40 @@ func (t *Terminal) CellSize() (width, height float64, _ error) {
 	if t.surveyor == nil {
 		return 0, 0, errors.New(`nil surveyor`)
 	}
+	logMsg := `(*term.Terminal).CellSize()`
+	logArgs := []any{`last-sigwinch`, t.timeLastSizeCheck}
 	var cpw, cph float64
+	var query bool
 	var err error
 	// TODO add prop key for disabling cache
-	if !t.timeResCellInPxls.IsZero() && t.timeResCellInPxls.Equal(t.timeLastWINCH) {
+	if !t.timeResCellInPxls.IsZero() && t.timeResCellInPxls.Equal(t.timeLastSizeCheck) {
 		cpw, cph = t.resCellInPxlsW, t.resCellInPxlsH
 	} else {
 		cpw, cph, err = t.surveyor.CellSize(t.tty, t.querier, t.window, t.properties)
-		if logx.IsErr(err, t, slog.LevelInfo) {
+		query = true
+		if logx.IsErr(err, t, slog.LevelInfo, logArgs...) {
+			logArgs = append(logArgs, []any{"cpw", cpw, "cph", cph, "query", query, "err", err}...)
+			t.logError(logMsg, logArgs...)
 			return 0, 0, err
 		}
+		tmNow := time.Now()
+		t.timeLastSizeCheck = tmNow
+		t.timeResCellInPxls = tmNow
 	}
+	logArgs = append(logArgs, []any{"cpw", cpw, "cph", cph, "query", query}...)
 	if cpw < 1 || cph < 1 {
-		return 0, 0, errors.New(`CellSize failed`)
+		err := errors.New(`CellSize failed`)
+		logArgs = append(logArgs, []any{"err", err}...)
+		t.logError(logMsg, logArgs...)
+		return 0, 0, err
 	}
-	if !t.timeLastWINCH.IsZero() {
+	if !t.timeLastSizeCheck.IsZero() {
 		t.resCellInPxlsW = cpw
 		t.resCellInPxlsH = cph
-		t.timeResCellInPxls = t.timeLastWINCH
+		t.timeResCellInPxls = t.timeLastSizeCheck
+	}
+	if query {
+		t.logInfo(logMsg, logArgs...)
 	}
 	return cpw, cph, nil
 }
@@ -809,14 +827,14 @@ func (t *Terminal) SizeInCells() (width, height uint, err error) {
 		return 0, 0, errors.New(`nil surveyor`)
 	}
 	// TODO add prop key for disabling cache
-	if !t.timeResTermInCells.IsZero() && t.timeResTermInCells.Equal(t.timeLastWINCH) {
+	if !t.timeResTermInCells.IsZero() && t.timeResTermInCells.Equal(t.timeLastSizeCheck) {
 		return t.resTermInCellsW, t.resTermInCellsH, nil
 	}
 	w, h, err := t.surveyor.SizeInCells(t.tty, t.querier, t.window, t.properties)
-	if !t.timeLastWINCH.IsZero() && err == nil && w > 0 && h > 0 {
+	if !t.timeLastSizeCheck.IsZero() && err == nil && w > 0 && h > 0 {
 		t.resTermInCellsW = w
 		t.resTermInCellsH = h
-		t.timeResTermInCells = t.timeLastWINCH
+		t.timeResTermInCells = t.timeLastSizeCheck
 	}
 	return w, h, err
 }
@@ -829,14 +847,14 @@ func (t *Terminal) SizeInPixels() (width, height uint, err error) {
 		return 0, 0, errors.New(`nil surveyor`)
 	}
 	// TODO add prop key for disabling cache
-	if !t.timeResTermInPxls.IsZero() && t.timeResTermInPxls.Equal(t.timeLastWINCH) {
+	if !t.timeResTermInPxls.IsZero() && t.timeResTermInPxls.Equal(t.timeLastSizeCheck) {
 		return t.resTermInPxlsW, t.resTermInPxlsH, nil
 	}
 	w, h, err := t.surveyor.SizeInPixels(t.tty, t.querier, t.window, t.properties)
-	if !t.timeLastWINCH.IsZero() && err == nil && w > 0 && h > 0 {
+	if !t.timeLastSizeCheck.IsZero() && err == nil && w > 0 && h > 0 {
 		t.resTermInPxlsW = w
 		t.resTermInPxlsH = h
-		t.timeResTermInPxls = t.timeLastWINCH
+		t.timeResTermInPxls = t.timeLastSizeCheck
 	}
 	return w, h, err
 }

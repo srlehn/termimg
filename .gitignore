@@ -18,3 +18,5 @@
 /log*
 # TODO temp
 /cmd/timg/default.pgo
+# https://github.com/muesli/reflow/pull/65
+/reflow/

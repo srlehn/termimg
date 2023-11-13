@@ -213,8 +213,8 @@ func getSurveyor(s PartialSurveyor, p environ.Properties) SurveyorLight {
 }
 
 func (s *surveyor) CellSize(tty TTY, qu Querier, w wm.Window, pr environ.Properties) (width, height float64, err error) {
-	if s == nil {
-		return 0, 0, errors.NilReceiver()
+	if err := errors.NilReceiver(s); err != nil {
+		return 0, 0, err
 	}
 	var errs []error
 	for _, cellSizeFunc := range s.cellSizeFuncs {

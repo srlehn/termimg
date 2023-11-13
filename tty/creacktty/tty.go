@@ -5,7 +5,7 @@ package creacktty
 import (
 	"os"
 
-	"github.com/creack/pty"
+	"github.com/creack/pty/v2"
 
 	"github.com/srlehn/termimg/internal"
 	"github.com/srlehn/termimg/internal/errors"
@@ -36,21 +36,19 @@ func New(ttyFile string) (*TTYCreack, error) {
 }
 
 func (t *TTYCreack) Write(b []byte) (n int, err error) {
-	if t == nil {
-		return 0, errors.NilReceiver()
-	}
-	if t.master == nil {
-		return 0, errors.New(`nil tty`)
+	if err := errors.NilReceiver(t, t.master); err != nil {
+		return 0, err
 	}
 	return t.master.Write(b)
 }
 
 func (t *TTYCreack) Read(p []byte) (n int, err error) {
-	if t == nil || t.master == nil {
-		return 0, errors.NilReceiver()
+	if err := errors.NilReceiver(t, t.master); err != nil {
+		return 0, err
 	}
 	return t.master.Read(p)
 }
+
 func (t *TTYCreack) TTYDevName() string {
 	if t == nil {
 		return internal.DefaultTTYDevice()
@@ -59,6 +57,7 @@ func (t *TTYCreack) TTYDevName() string {
 }
 
 func (t *TTYCreack) SizePixel() (cw int, ch int, pw int, ph int, e error) {
+	// TODO bugged
 	if t == nil || t.master == nil {
 		return 0, 0, 0, 0, errors.NilReceiver()
 	}
