@@ -6,10 +6,11 @@ require (
 	github.com/anthonynsimon/bild v0.13.0
 	github.com/aymanbagabas/go-pty v0.2.0
 	github.com/bamiaux/rez v0.0.0-20170731184118-29f4463c688b
+	github.com/charmbracelet/bubbles v0.16.1
 	github.com/charmbracelet/bubbletea v0.24.2
 	github.com/charmbracelet/lipgloss v0.9.1
 	github.com/containerd/console v1.0.4-0.20230313162750-1ae8d489ac81
-	github.com/creack/pty v1.1.20
+	github.com/creack/pty v1.1.21
 	github.com/creack/pty/v2 v2.0.1
 	github.com/disintegration/gift v1.2.1
 	github.com/disintegration/imaging v1.6.2
@@ -28,6 +29,8 @@ require (
 	github.com/mattn/go-sixel v0.0.5
 	github.com/mattn/go-tty v0.0.5
 	github.com/mitchellh/go-ps v1.0.0
+	github.com/muesli/reflow v0.3.0
+	github.com/muesli/termenv v0.15.2
 	github.com/nfnt/resize v0.0.0-20180221191011-83c6a9932646
 	github.com/pkg/term v1.2.0-beta.2
 	github.com/rivo/tview v0.0.0-20230621164836-6cc0565babaf
@@ -56,11 +59,12 @@ require (
 	github.com/dsoprea/go-logging v0.0.0-20200710184922-b02d349568dd // indirect
 	github.com/dsoprea/go-png-image-structure/v2 v2.0.0-20210512210324-29b889a6093d // indirect
 	github.com/dsoprea/go-utility/v2 v2.0.0-20221003172846-a3e1774ef349 // indirect
+	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/esimov/pigo v1.4.6 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.3 // indirect
 	github.com/gdamore/encoding v1.0.0 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
-	github.com/go-text/typesetting v0.0.0-20231113130822-cf4b5dada737 // indirect
+	github.com/go-text/typesetting v0.0.0-20231120180320-af78120ccb13 // indirect
 	github.com/golang/geo v0.0.0-20230421003525-6adc56603217 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/kr/pretty v0.3.1 // indirect
@@ -71,8 +75,6 @@ require (
 	github.com/mitchellh/go-wordwrap v1.0.1 // indirect
 	github.com/muesli/ansi v0.0.0-20230316100256-276c6243b2f6 // indirect
 	github.com/muesli/cancelreader v0.2.2 // indirect
-	github.com/muesli/reflow v0.3.0 // indirect
-	github.com/muesli/termenv v0.15.2 // indirect
 	github.com/nsf/termbox-go v1.1.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/rivo/uniseg v0.4.4 // indirect

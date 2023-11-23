@@ -332,6 +332,13 @@ func (c *termCheckerCore) NewTerminal(opts ...Option) (*Terminal, error) {
 		}
 	}
 
+	for _, f := range tm.afterSetupFuncs {
+		if f == nil {
+			continue
+		}
+		f(tm)
+	}
+
 	return tm, nil
 }
 

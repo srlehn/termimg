@@ -102,7 +102,7 @@ func (p *parser) Parse(r rune) bool {
 			ret = true
 		}
 	case csi: // [0x40-0x7E]
-		if r >= 0x40 && r <= 0x7E {
+		if r <= 0x7E && r >= 0x40 {
 			p.state = ``
 			seqType = csi
 			ret = true

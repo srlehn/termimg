@@ -75,10 +75,11 @@ type Terminal struct {
 	arger
 	window wm.Window
 	closer
-	drawers  []Drawer
-	resizer  Resizer
-	passages mux.Muxers
-	printMu  *sync.Mutex
+	drawers         []Drawer
+	resizer         Resizer
+	passages        mux.Muxers
+	printMu         *sync.Mutex
+	afterSetupFuncs []func(*Terminal)
 
 	ttyDefault                              TTY
 	querierDefault                          Querier
@@ -877,6 +878,13 @@ func (t *Terminal) SetCursor(xPosCells, yPosCells uint) (err error) {
 		return errors.New(`nil surveyor`)
 	}
 	return t.surveyor.SetCursor(xPosCells, yPosCells, t.tty, t.querier, t.window, t.properties)
+}
+
+func (t *Terminal) Env() environ.Enver {
+	if t == nil || t.properties == nil {
+		return nil
+	}
+	return environ.EnvToProperties(t.properties.Environ())
 }
 
 // default

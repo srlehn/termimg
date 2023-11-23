@@ -1,11 +1,14 @@
+//go:build dev
+
 package bubbleteaimg
 
 import (
 	"fmt"
 	"image"
 	"log/slog"
-	"slices"
+	"strconv"
 	"time"
+	"unsafe"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -19,86 +22,147 @@ import (
 var _ tea.Model = (*Image)(nil)
 
 type Image struct {
-	Style *lipgloss.Style
+	style *lipgloss.Style
 	*term.Canvas
 	term       *term.Terminal
 	tty        *bubbleteatty.TTYBubbleTea
+	renderer   *lipgloss.Renderer
+	scanner    *scanner
 	sizeImgPxl image.Point
 	id         string
 }
 
-func NewImage(style *lipgloss.Style) (*Image, error) {
-	mdl := &Image{
-		Style: style,
+func NewImage(tm *term.Terminal, img image.Image, style *lipgloss.Style) (*Image, error) {
+	m := &Image{
+		style: style,
 	}
-	mdl.initStyle()
-	mdl.id = fmt.Sprintf(`img_wdg_%p`, mdl)
-	return mdl, nil
-}
-
-func (m *Image) Setup(tm *term.Terminal, img image.Image) error {
-	if err := errors.NilReceiver(m, m.Style); err != nil {
-		return err
-	}
+	m.initStyle()
+	m.id = strconv.FormatUint(uint64(uintptr(unsafe.Pointer(m))), 10)
 	if m.term == nil {
 		if err := errors.NilParam(tm, img); err != nil {
-			return err
+			return nil, err
 		}
 		m.term = tm
 	} else {
 		if tm != nil {
-			return errors.New(`*term.Terminal can only be set once`)
+			return nil, errors.New(`*term.Terminal can only be set once`)
 		}
 		if err := errors.NilParam(img); err != nil {
-			return err
+			return nil, err
 		}
 	}
 	m.sizeImgPxl = img.Bounds().Size()
-	bounds, err := m.cellBounds()
+	bounds, err := m.cellBoundsFromStyle()
 	if err != nil {
-		return err
+		return nil, err
 	}
 	canvas, err := tm.NewCanvas(bounds)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if t := tm.TTY(); t != nil {
 		if tb, ok := t.(*bubbleteatty.TTYBubbleTea); ok {
 			m.tty = tb
+			if tb.Scanner != nil {
+				if sc, ok := tb.Scanner.(*scanner); ok {
+					m.scanner = sc
+				} else {
+					return nil, errors.New(`tty already has a scanner of unknown type registered`)
+				}
+			} else {
+				m.scanner = newScanner()
+				tb.Scanner = m.scanner
+			}
 		}
 	}
 	if logx.IsErr(canvas.SetImage(term.NewImage(img)), tm, slog.LevelError) {
-		return err
+		return nil, err
 	}
 	if m.Canvas != nil {
 		m.Canvas.Close()
 	}
 	m.Canvas = canvas
-	return nil
+	return m, nil
 }
-func (m *Image) cellBounds() (image.Rectangle, error) {
-	offset, err := m.cellOffset()
+
+func (m *Image) Style() *lipgloss.Style {
+	if m == nil {
+		return nil
+	}
+	return m.style
+}
+
+func (m *Image) initRenderer() {
+	if m == nil || m.tty == nil || m.term == nil || m.renderer != nil {
+		return
+	}
+	// *term.Terminal has to be initiated
+	m.renderer = m.tty.LipGlossRenderer()
+}
+
+func (m *Image) SetStyle(style *lipgloss.Style) {
+	if m == nil {
+		return
+	}
+	m.initRenderer()
+	s := style.Copy().Renderer(m.renderer)
+	m.style = &s
+}
+
+func (m *Image) fitImage(bounds image.Rectangle) (image.Rectangle, error) {
+	if err := errors.NilReceiver(m, m.scanner, m.scanner.rects); err != nil {
+		return image.Rectangle{}, err
+	}
+	bounds, ok := m.scanner.rects[m.id]
+	if !ok {
+		return image.Rectangle{}, errors.New(`unknown image widget boundary`)
+	}
+	// remove frame
+	wFr, hFr := m.style.GetFrameSize()
+	x := m.style.GetBorderLeftSize() + m.style.GetMarginLeft() + m.style.GetPaddingLeft()
+	y := m.style.GetBorderTopSize() + m.style.GetMarginTop() + m.style.GetPaddingTop()
+	bounds = image.Rect(bounds.Min.X+x, bounds.Min.Y+y, bounds.Max.X+x-wFr, bounds.Max.Y+y-hFr)
+	// fit image
+	szSc, err := m.term.CellScale(m.sizeImgPxl, image.Pt(bounds.Dx(), 0))
 	if err != nil {
 		return image.Rectangle{}, err
 	}
-	size, err := m.cellSize()
+	if szSc.Y <= bounds.Dy() {
+		d := (bounds.Dy() - szSc.Y) / 2
+		return image.Rect(bounds.Min.X, bounds.Min.Y+d, bounds.Max.X, bounds.Max.Y-d), nil
+	}
+	szSc, err = m.term.CellScale(m.sizeImgPxl, image.Pt(0, bounds.Dy()))
 	if err != nil {
 		return image.Rectangle{}, err
 	}
+	if szSc.X <= bounds.Dx() {
+		d := (bounds.Dx() - szSc.X) / 2
+		return image.Rect(bounds.Min.X+d, bounds.Min.Y, bounds.Max.X-d, bounds.Max.Y), nil
+	}
+	return bounds, nil
+}
+
+func (m *Image) cellBoundsFromStyle() (image.Rectangle, error) {
+	size, err := m.sizeInCellsFromStyle()
+	if err != nil {
+		return image.Rectangle{}, err
+	}
+	offset := image.Point{} // TODO
 	bounds := image.Rect(offset.X, offset.Y, offset.X+size.X, offset.Y+size.Y)
 	if bounds.Empty() {
 		return image.Rectangle{}, errors.New(`unable to determine widget bounds`)
 	}
 	return bounds, nil
 }
-func (m *Image) cellSize() (image.Point, error) {
-	if err := errors.NilReceiver(m, m.Style); err != nil {
+
+func (m *Image) sizeInCellsFromStyle() (image.Point, error) {
+	if err := errors.NilReceiver(m, m.style); err != nil {
 		return image.Point{}, err
 	}
 	m.initStyle()
 	// TODO subtract widget offset and frame
-	w := m.Style.GetWidth()
-	h := m.Style.GetHeight()
+	w := m.style.GetWidth()
+	h := m.style.GetHeight()
 	var size image.Point
 	if w > 0 {
 		if h > 0 {
@@ -111,7 +175,7 @@ func (m *Image) cellSize() (image.Point, error) {
 			if err != nil {
 				return image.Point{}, err
 			}
-			hMax := m.Style.GetMaxHeight()
+			hMax := m.style.GetMaxHeight()
 			_, tch, err := m.term.SizeInCells()
 			if err != nil {
 				return image.Point{}, err
@@ -137,7 +201,7 @@ func (m *Image) cellSize() (image.Point, error) {
 			if err != nil {
 				return image.Point{}, err
 			}
-			wMax := m.Style.GetMaxWidth()
+			wMax := m.style.GetMaxWidth()
 			tcw, _, err := m.term.SizeInCells()
 			if err != nil {
 				return image.Point{}, err
@@ -154,8 +218,8 @@ func (m *Image) cellSize() (image.Point, error) {
 			}
 			size = szSc
 		} else {
-			wMax := m.Style.GetMaxWidth()
-			hMax := m.Style.GetMaxHeight()
+			wMax := m.style.GetMaxWidth()
+			hMax := m.style.GetMaxHeight()
 			tcw, tch, err := m.term.SizeInCells()
 			if err != nil {
 				return image.Point{}, err
@@ -181,116 +245,86 @@ func (m *Image) cellSize() (image.Point, error) {
 	}
 	return size, nil
 }
-func (m *Image) cellOffset() (image.Point, error) {
-	return image.Point{}, nil // TODO
-	// return image.Point{}, errors.New(`unable to determine widget size`)
-}
 
-func (m *Image) Init() tea.Cmd {
-	return nil
-}
+func (m *Image) Init() tea.Cmd { return nil }
 
-func (m *Image) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	cmd := func() tea.Msg { return msg }
-	return m, cmd
-}
+func (m *Image) Update(msg tea.Msg) (tea.Model, tea.Cmd) { return m, nil }
 
 func (m *Image) initStyle() {
 	if m == nil {
 		return
 	}
-	if m.Style == nil {
+	var mod bool
+	if m.style == nil {
 		style := lipgloss.NewStyle()
-		m.Style = &style
+		m.style = &style
+		mod = true
+	}
+	if m.renderer == nil {
+		m.initRenderer()
+		mod = true
+	}
+	if mod {
+		style := m.style.Copy().Renderer(m.renderer)
+		m.style = &style
 	}
 }
+
+var wrapFmt = string(csi) + `%s` + string(csiTerm) + `%s` + string(csi) + `%[1]s` + string(csiTerm)
 
 func (m *Image) View() string {
 	if m == nil {
 		return `<nil bubbletea.Model>`
 	}
 	m.initStyle()
-	s := fmt.Sprintf("%+#v", m.Style) // TODO rm
-	// APC needs https://github.com/muesli/reflow/pull/65
-	// s := "\033_TEST\033\\" // APC ... ST // TODO rm
-	// s := "\033[34m" // TODO rm
-	ret := m.Style.Render(fmt.Sprintf("%s\nlen %q: %d\n", m.id, s, lipgloss.Width(s))) // TODO rm
-	cellBounds, err := m.cellBounds()
-	if logx.IsErr(err, m.term, slog.LevelError) {
-		return ret
-	}
-	x, y, err := m.term.Cursor()
-	if !logx.IsErr(err, m.term, slog.LevelError) {
-		cellBounds = cellBounds.Add(image.Pt(int(x), int(y)))
-	}
-	err = m.Canvas.SetCellArea(cellBounds)
-	if logx.IsErr(err, m.term, slog.LevelError) {
-		return ret
-	}
-	if m.tty != nil {
-		// TODO prepare here, draw after render
-		m.tty.SetAfterWriteFunc(m.id, func() {
-			m.draw()
-		})
-		// m.tty.Program.Send(tea.WindowSizeMsg{})
+	ret := fmt.Sprintf(wrapFmt, m.id, m.style.Render(``))
+	if m.scanner != nil {
+		m.scanner.setAfterWriteFunc(m.id, m.draw)
 	} else {
 		if m.term != nil {
 			logx.Error(`bubbleteaimg.Image reqires a bubbleteatty.TTYBubbleTea`, m.term, `tty-type`, fmt.Sprintf(`%T`, m.term.TTY()))
 		}
-		// term.Terminal is using wrong tty implementation
 		// fallback, might become spammy & move cursor
 		go func() {
 			time.Sleep(1000 / 30 * time.Millisecond)
-			m.draw()
+			m.draw(image.Rectangle{})
 		}()
 	}
 	return ret
 }
 
-func (m *Image) draw() {
+func (m *Image) draw(bounds image.Rectangle) {
 	if m == nil || m.term == nil || m.Canvas == nil {
 		return
 	}
 	x, y, errCursor := m.term.Cursor()
-	logx.IsErr(errCursor, m.term, slog.LevelError)
-	errDraw := m.Canvas.Draw(nil)
-	logx.IsErr(errDraw, m.term, slog.LevelError)
-	if errCursor == nil {
-		errCursor = m.term.SetCursor(x, y)
-		logx.IsErr(errCursor, m.term, slog.LevelError)
-	}
-}
-
-type ImageDrawMsg struct {
-	id     string
-	drFn   func()
-	bounds image.Rectangle
-}
-
-func (m ImageDrawMsg) ID() string { return m.id }
-
-func (m ImageDrawMsg) Draw() {
-	if m.drFn == nil {
+	if !logx.IsErr(errCursor, m.term, slog.LevelError) {
+		defer func() {
+			errCursor = m.term.SetCursor(x, y)
+			logx.IsErr(errCursor, m.term, slog.LevelError)
+		}()
+		if bounds.Empty() {
+			// fallback
+			w := m.style.GetWidth()
+			h := m.style.GetHeight()
+			if w == 0 || h == 0 {
+				return
+			}
+			x, y, err := m.term.Cursor()
+			if err != nil {
+				return
+			}
+			bounds = image.Rect(int(x), int(y), int(x)+w, int(y)+h)
+		}
+	} else if bounds.Empty() {
 		return
 	}
-	m.drFn()
-}
-
-func (m ImageDrawMsg) Bounds() image.Rectangle { return m.bounds }
-
-func DrawImagesFrom(msgs ...ImageDrawMsg) {
-	var msgsCleaned []ImageDrawMsg
-	for i := range msgs {
-		if msgs[i].drFn == nil {
-			continue
-		}
-		if len(msgs[i].id) > 0 {
-			msgsCleaned = append(slices.DeleteFunc(msgsCleaned, func(msg ImageDrawMsg) bool { return msg.id == msgs[i].id }), msgs[i])
-		} else {
-			msgsCleaned = append(msgsCleaned, msgs[i])
-		}
+	bounds, err := m.fitImage(bounds)
+	_ = logx.IsErr(err, m.term, slog.LevelInfo)
+	errPos := m.Canvas.SetCellArea(bounds)
+	if logx.IsErr(errPos, m.term, slog.LevelError) {
+		return
 	}
-	for i := range msgsCleaned {
-		msgsCleaned[i].drFn()
-	}
+	errDraw := m.Canvas.Draw(nil)
+	logx.IsErr(errDraw, m.term, slog.LevelError)
 }

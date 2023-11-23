@@ -178,7 +178,7 @@ read:
 			}()
 		case <-time.After(q.timeOutMax):
 			q.prevQueryFailed.Store(true)
-			return ``, errors.New("time out")
+			return ``, errors.New(`time out`)
 		case <-timeoutChan:
 			if p == nil {
 				break read

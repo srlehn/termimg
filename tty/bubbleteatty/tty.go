@@ -1,118 +1,184 @@
+//go:build dev
+
 package bubbleteatty
 
 import (
-	"bufio"
-	"bytes"
-	"context"
 	"io"
 	"os"
-	"slices"
+	"sync"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
+	"github.com/muesli/termenv"
 
 	"github.com/srlehn/termimg/internal"
+	"github.com/srlehn/termimg/internal/environ"
 	"github.com/srlehn/termimg/internal/errors"
 	"github.com/srlehn/termimg/term"
 	"github.com/srlehn/termimg/tty/contdtty"
 )
 
 const ioDeadLine = 100 * time.Millisecond
-const maxSizeBuf = 1024 * 1024
 
 type TTYBubbleTea struct {
-	program        *tea.Program
-	ttyContD       *contdtty.TTYContD
-	f              *os.File
-	bw             io.Writer
-	postWriteFuncs []struct { // ordered list of image widget draw funcs, etc
-		id string
-		f  func()
-	}
-	fileName string
-	inputRdr io.Reader
-	inputBuf bytes.Buffer
-	runeBuf  []rune
+	Program          *tea.Program
+	ttyContD         *contdtty.TTYContD
+	file             *os.File
+	wrappedWriter    io.Writer
+	fileName         string
+	reader           *teaReader
+	subReader        io.Reader
+	lipGlossRenderer *lipgloss.Renderer
+	Scanner          Scanner
+	enver            environ.Enver
+	initOnce         sync.Once
+	initFunc         func()
 }
 
 var _ term.TTY = (*TTYBubbleTea)(nil)
 
 func New(ttyFile string) (*TTYBubbleTea, error) {
-	ttyContD, err := contdtty.New(ttyFile)
-	if err != nil {
-		return nil, err
-	}
-	f := os.NewFile(ttyContD.Fd(), ttyFile)
-	t := &TTYBubbleTea{
-		ttyContD: ttyContD,
-		f:        f,
-		fileName: ttyFile,
-	}
-	return t, nil
+	return newWithProgram(nil, nil)(ttyFile)
 }
 
-func (t *TTYBubbleTea) SetProgram(ctx context.Context, model tea.Model, opts ...tea.ProgramOption) (*tea.Program, error) {
-	if err := errors.NilReceiver(t); err != nil {
-		return nil, err
+func newWithProgram(model tea.Model, prog **tea.Program, opts ...tea.ProgramOption) func(string) (*TTYBubbleTea, error) {
+	return func(ttyFile string) (*TTYBubbleTea, error) {
+		ttyContD, err := contdtty.New(ttyFile)
+		if err != nil {
+			return nil, err
+		}
+		r := newTeaReader(ttyContD)
+		t := &TTYBubbleTea{
+			ttyContD:  ttyContD,
+			file:      os.NewFile(ttyContD.Fd(), ttyFile),
+			fileName:  ttyFile,
+			reader:    r,
+			subReader: r.NewSubReader(),
+		}
+		if prog != nil {
+			t.initFunc = func() {
+				opts = append(opts, t.BubbleTeaOptions()...)
+				t.Program = tea.NewProgram(model, opts...)
+				if t.Program == nil {
+					return
+				}
+				*prog = t.Program
+			}
+		}
+		return t, nil
 	}
-	if err := errors.NilParam(model); err != nil {
-		return nil, err
+}
+
+func (t *TTYBubbleTea) init() {
+	if t == nil || t.initFunc == nil {
+		return
 	}
-	if ctx == nil {
-		ctx = context.Background()
+	t.initOnce.Do(t.initFunc)
+}
+
+func BubbleTeaProgram(model tea.Model, prog **tea.Program, opts ...tea.ProgramOption) term.Option {
+	enforceBubbleTeaTTY := true
+	return term.Options{
+		term.SetTTYProvider(newWithProgram(model, prog, opts...), enforceBubbleTeaTTY),
+		term.TUIMode,
+		term.OptFunc(func(tm *term.Terminal) error {
+			onClose := func() error {
+				if tm == nil {
+					return nil
+				}
+				t, ok := tm.TTY().(*TTYBubbleTea)
+				if !ok || t == nil {
+					return nil
+				}
+				if t.Program == nil {
+					return nil
+				}
+				go t.Program.Quit()
+				time.Sleep(1000 / 3 * time.Millisecond)
+				t.Program.Kill()
+				return nil
+			}
+			tm.OnClose(onClose)
+			return nil
+		}),
+		term.AfterSetup(func(tm *term.Terminal) {
+			t, ok := tm.TTY().(*TTYBubbleTea)
+			if !ok || t == nil {
+			}
+			t.enver = tm.Env()
+		}),
 	}
-	t.inputRdr = bufio.NewReader(io.TeeReader(t.ttyContD, &t.inputBuf))
-	opts = append(opts, []tea.ProgramOption{
-		tea.WithContext(ctx),
-		// tea.WithFilter(t.filterMessage),
-		// tea.WithInput(&t.inputBuf),
-		tea.WithInput(&t.inputBuf),
+}
+
+func (t *TTYBubbleTea) TermEnvOptions() []termenv.OutputOption {
+	if t == nil || t.enver == nil {
+		return nil
+	}
+	termenvOpts := []termenv.OutputOption{
+		termenv.WithUnsafe(), // termimg requires a tty
+		termenv.WithColorCache(true),
+		termenv.WithEnvironment(t.enver),
+		termenv.WithProfile(termenv.EnvColorProfile()),
+	}
+	return termenvOpts
+}
+
+func (t *TTYBubbleTea) LipGlossRenderer() *lipgloss.Renderer {
+	if t == nil || t.enver == nil {
+		return nil
+	}
+	if t.lipGlossRenderer != nil {
+		return t.lipGlossRenderer
+	}
+	termenvOpts := t.TermEnvOptions()
+	t.lipGlossRenderer = lipgloss.NewRenderer(t.bubblyWriter(), termenvOpts...)
+	return t.lipGlossRenderer
+}
+
+func (t *TTYBubbleTea) BubbleTeaOptions() []tea.ProgramOption {
+	if t == nil {
+		return nil
+	}
+	return []tea.ProgramOption{
+		tea.WithInput(t.reader.NewSubReader()),
+		// tea.WithInput(t.ttyContD),
 		tea.WithOutput(t.bubblyWriter()),
-	}...)
-	t.program = tea.NewProgram(model, opts...)
-	if t.program == nil {
-		return nil, errors.New(`nil bubbletea Program`)
+		// tea.WithOutput(t.ttyContD),
 	}
-	return t.program, nil
 }
 
 func (t *TTYBubbleTea) Read(p []byte) (n int, err error) {
-	if err := errors.NilReceiver(t, t.ttyContD, t.f); err != nil {
+	if err := errors.NilReceiver(t, t.ttyContD, t.file); err != nil {
 		return 0, err
 	}
-	if err := t.f.SetReadDeadline(time.Now().Add(ioDeadLine)); err == nil {
-		defer t.f.SetReadDeadline(time.Time{})
+	t.init()
+	if err := t.file.SetReadDeadline(time.Now().Add(ioDeadLine)); err == nil {
+		defer t.file.SetReadDeadline(time.Time{})
 	}
-	// TODO read t.runeBuf?
-	// return t.ttyContD.Read(p)
-	if t.inputRdr == nil { // not yet inititated?
-		return t.ttyContD.Read(p)
-	} else {
-		return t.inputRdr.Read(p)
-	}
-	// return t.inputBuf.Read(p)
-	// return t.inputRdr.Read(p)
+	return t.subReader.Read(p)
 }
 
 func (t *TTYBubbleTea) Write(b []byte) (n int, err error) {
-	if err := errors.NilReceiver(t, t.ttyContD, t.f); err != nil {
+	if err := errors.NilReceiver(t, t.ttyContD, t.file); err != nil {
 		return 0, err
 	}
-	if err := t.f.SetWriteDeadline(time.Now().Add(ioDeadLine)); err == nil {
-		defer t.f.SetWriteDeadline(time.Time{})
+	t.init()
+	if err := t.file.SetWriteDeadline(time.Now().Add(ioDeadLine)); err == nil {
+		defer t.file.SetWriteDeadline(time.Time{})
 	}
 	return t.ttyContD.Write(b)
 }
 
 func (t *TTYBubbleTea) bubblyWriter() io.Writer {
+	// called from t.init() - don't call t.init() here
 	if t == nil {
 		return nil
 	}
-	if t.bw != nil {
-		return t.bw
+	if t.wrappedWriter == nil {
+		t.wrappedWriter = &bubblyWriter{TTYBubbleTea: t}
 	}
-	t.bw = &bubblyWriter{t}
-	return t.bw
+	return t.wrappedWriter
 }
 
 type bubblyWriter struct{ *TTYBubbleTea }
@@ -121,52 +187,35 @@ func (t *bubblyWriter) Write(b []byte) (n int, err error) {
 	if err := errors.NilReceiver(t, t.TTYBubbleTea); err != nil {
 		return 0, err
 	}
-	n, err = t.TTYBubbleTea.Write(b)
-	for _, r := range t.TTYBubbleTea.postWriteFuncs {
-		r.f() // draw images, etc
+	// return os.Stdout.Write(b)
+	if t.Scanner != nil {
+		b = t.Scanner.Scan(b)
 	}
-	//reset
-	t.TTYBubbleTea.postWriteFuncs = nil
+	n, err = t.TTYBubbleTea.Write(b)
+	if t.Scanner != nil {
+		t.Scanner.PostWrite()
+	}
 	return n, err
 }
 
-// SetAfterWriteFunc sets a temporary functions that will be called once after the next Write.
-func (t *TTYBubbleTea) SetAfterWriteFunc(id string, f func()) {
+type Scanner interface {
+	Scan(b []byte) []byte
+	PostWrite()
+}
+
+func (t *TTYBubbleTea) SetScanner(scanner Scanner) {
 	if t == nil {
 		return
 	}
-	t.postWriteFuncs = append(
-		// remove previously planned draws for this widget id
-		slices.DeleteFunc(t.postWriteFuncs, func(r struct {
-			id string
-			f  func()
-		}) bool {
-			return r.id == id
-		}),
-		struct {
-			id string
-			f  func()
-		}{id: id, f: f},
-	)
+	t.Scanner = scanner
 }
 
 func (t *TTYBubbleTea) TTYDevName() string {
 	if t == nil {
 		return internal.DefaultTTYDevice()
 	}
+	t.init()
 	return t.fileName
-}
-
-func (t *TTYBubbleTea) filterMessage(mdl tea.Model, msg tea.Msg) tea.Msg {
-	switch msg := msg.(type) {
-	case tea.KeyMsg:
-		t.runeBuf = append(t.runeBuf, msg.Runes...)
-		if len(t.runeBuf) > maxSizeBuf {
-			// truncate
-			t.runeBuf = t.runeBuf[len(t.runeBuf)-maxSizeBuf:]
-		}
-	}
-	return msg
 }
 
 // Close ...
@@ -174,44 +223,19 @@ func (t *TTYBubbleTea) Close() error {
 	if t == nil {
 		return nil
 	}
-	if t.program != nil {
-		t.program.Quit()
-		t.program = nil
+	if t.Program != nil {
+		t.Program.Quit()
+		t.Program = nil
 	}
 	var errs []error
 	if t.ttyContD != nil {
 		errs = append(errs, t.ttyContD.Close())
 		t.ttyContD = nil
 	}
-	if t.f != nil {
-		errs = append(errs, t.f.Close())
-		t.f = nil
+	if t.file != nil {
+		errs = append(errs, t.file.Close())
+		t.file = nil
 	}
 	t = nil
 	return errors.Join(errs...)
-}
-
-func TTYOf(tm *term.Terminal) (*TTYBubbleTea, error) {
-	if err := errors.NilParam(tm); err != nil {
-		return nil, err
-	}
-	tty, ok := tm.TTY().(*TTYBubbleTea)
-	if !ok {
-		return nil, errors.New(`wrong tty implementation`)
-	}
-	if tty == nil {
-		return nil, errors.New(`nil bubbletea tty`)
-	}
-	return tty, nil
-}
-
-func ProgramOf(tm *term.Terminal) (*tea.Program, *TTYBubbleTea, error) {
-	tty, err := TTYOf(tm)
-	if err != nil {
-		return nil, nil, err
-	}
-	if tty.program == nil {
-		return nil, tty, errors.New(`nil bubbletea Program`)
-	}
-	return tty.program, tty, nil
 }

@@ -58,8 +58,15 @@ type StackFrame = errorsGo.StackFrame
 func NewStackFrame(pc uintptr) (frame StackFrame) { return errorsGo.NewStackFrame(pc) }
 
 // NilReceiver returns an error with the function name if any of the arguments are nil
-func NilReceiver(args ...any) error {
+// func NilReceiver(arg any) error {
+func NilReceiver(args ...any) error { // TODO
+	// return errMsgNilTester(`nil receiver`, 3, arg)
 	return errMsgNilTester(`nil receiver or struct field`, 3, args...)
+}
+
+// NilReceiver returns an error with the function name if any of the arguments are nil
+func NilReceiverField(args ...any) error {
+	return errMsgNilTester(`nil receiver struct field`, 3, args...)
 }
 
 // NilParam returns an error with the function name if any of the arguments are nil

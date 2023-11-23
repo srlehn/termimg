@@ -246,6 +246,19 @@ func logBuildInfo(loggerProv logx.LoggerProvider) {
 	logx.Info(`build info`, loggerProv, args...)
 }
 
+func AfterSetup(f func(*Terminal)) Option {
+	return OptFunc(func(tm *Terminal) error {
+		if err := errors.NilReceiver(tm); err != nil {
+			return err
+		}
+		if f == nil {
+			return nil
+		}
+		tm.afterSetupFuncs = append(tm.afterSetupFuncs, f)
+		return nil
+	})
+}
+
 var (
 	TUIMode              Option = tuiMode
 	CLIMode              Option = cliMode
@@ -260,12 +273,12 @@ var noCleanUpOnInterrupt Option = OptFunc(func(t *Terminal) error { t.SetPropert
 
 // replaceTerminal is for injecting an already set up *terminal.Terminal into *termCheckerCore.NewTerminal()
 // replacing its dummy one.
-func replaceTerminal(t *Terminal) Option {
+func replaceTerminal(tm *Terminal) Option {
 	return OptFunc(func(tOld *Terminal) error {
-		if t == nil || tOld == nil {
+		if tm == nil || tOld == nil {
 			return errors.New(`cannot swap nil terminals`)
 		}
-		*tOld = *t
+		*tOld = *tm
 		return nil
 	})
 }

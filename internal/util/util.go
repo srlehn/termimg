@@ -8,6 +8,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"unsafe"
 
 	"golang.org/x/exp/constraints"
 	"golang.org/x/exp/maps"
@@ -127,6 +128,9 @@ func fileLinePrefix(skip int) string {
 	}
 	return strings.TrimPrefix(filename, modulePath+`/`) + `:` + strconv.Itoa(line) + `: `
 }
+
+func StringToBytes(s string) []byte { return unsafe.Slice(unsafe.StringData(s), len(s)) }
+func BytesToString(b []byte) string { return unsafe.String(unsafe.SliceData(b), len(b)) }
 
 func storePosAndJumpToPosStr(x, y uint) string { return fmt.Sprintf("\033[s\033[%d;%dH", y, x) }
 

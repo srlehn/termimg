@@ -22,7 +22,16 @@ type Properties interface {
 type Enver interface {
 	Environ() []string
 	LookupEnv(v string) (string, bool)
+	Getenv(string) string
 }
+
+// https://pkg.go.dev/github.com/muesli/termenv#Environ
+type müsliTermEnvEnviron interface {
+	Environ() []string
+	Getenv(string) string
+}
+
+var _ müsliTermEnvEnviron = (Enver)(nil)
 
 type PropertyExporter interface {
 	ExportProperties() map[string]string
@@ -93,6 +102,14 @@ func (p *propertiesGeneric) ExportProperties() map[string]string {
 
 func (p *propertiesGeneric) LookupEnv(v string) (string, bool) {
 	return p.Property(propkeys.EnvPrefix + v)
+}
+
+func (p *propertiesGeneric) Getenv(v string) string {
+	s, ok := p.Property(propkeys.EnvPrefix + v)
+	if ok {
+		return s
+	}
+	return ``
 }
 
 func (p *propertiesGeneric) Environ() []string {
