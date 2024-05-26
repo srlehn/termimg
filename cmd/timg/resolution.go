@@ -40,9 +40,7 @@ var resolutionCmd = &cobra.Command{
                                 %b    terminal cell resolution in pixels (height) (floating number)`,
 	Args:             cobra.NoArgs,
 	TraverseChildren: true,
-	Run: func(cmd *cobra.Command, args []string) {
-		run(resolutionFunc(cmd, args))
-	},
+	Run:              cmdRunFunc(resolutionFunc),
 }
 
 var (

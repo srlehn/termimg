@@ -40,9 +40,7 @@ var listCmd = &cobra.Command{
 	Short:            `list images`,
 	Long:             `list images and other previewable files`,
 	TraverseChildren: true,
-	Run: func(cmd *cobra.Command, args []string) {
-		run(listFunc(cmd, args))
-	},
+	Run:              cmdRunFunc(listFunc),
 }
 
 var (

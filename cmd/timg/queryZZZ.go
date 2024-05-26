@@ -39,9 +39,7 @@ var queryCmd = &cobra.Command{
 	Short:            `query terminal`,
 	Long:             `query terminal`,
 	TraverseChildren: true,
-	Run: func(cmd *cobra.Command, args []string) {
-		run(queryFunc(cmd, args))
-	},
+	Run:              cmdRunFunc(queryFunc),
 }
 
 var (

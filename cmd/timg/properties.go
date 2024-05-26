@@ -78,9 +78,7 @@ var propCmd = &cobra.Command{
 	Long:             "list terminal properties",
 	Args:             cobra.NoArgs,
 	TraverseChildren: true,
-	Run: func(cmd *cobra.Command, args []string) {
-		run(propFunc(cmd, args))
-	},
+	Run:              cmdRunFunc(propFunc),
 }
 
 func propFunc(cmd *cobra.Command, args []string) terminalSwapper {

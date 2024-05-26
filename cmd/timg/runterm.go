@@ -37,9 +37,7 @@ var runTermCmd = &cobra.Command{
 	Long:             `open image in new terminal and screenshot`,
 	Args:             cobra.ExactArgs(1),
 	TraverseChildren: true,
-	Run: func(cmd *cobra.Command, args []string) {
-		run(runTermFunc(cmd, args))
-	},
+	Run:              cmdRunFunc(runTermFunc),
 }
 
 var runTermCmdStr = "runterm"

@@ -61,9 +61,7 @@ Image position is given in cell coordinates.
 If width or height is missing the image will be scaled while preserving its aspect ratio.`,
 	// Args: cobra.MaximumNArgs(1),
 	TraverseChildren: true,
-	Run: func(cmd *cobra.Command, args []string) {
-		run(showFunc(cmd, args))
-	},
+	Run:              cmdRunFunc(showFunc),
 }
 
 var (

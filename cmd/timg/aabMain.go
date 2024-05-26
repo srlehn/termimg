@@ -54,6 +54,12 @@ var (
 
 type terminalSwapper func(tm **term.Terminal) error
 
+type cmdFunc func(cmd *cobra.Command, args []string) terminalSwapper // TODO rm?
+
+func cmdRunFunc(fn cmdFunc) func(cmd *cobra.Command, args []string) {
+	return func(cmd *cobra.Command, args []string) { run(fn(cmd, args)) }
+}
+
 func run(fn terminalSwapper) {
 	var err error
 	if fn == nil {

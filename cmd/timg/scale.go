@@ -30,9 +30,7 @@ With one passed 0 side length value, the other side length will be fixed.
 With two passed 0 side length values, pixels in source and destination area at the same position correspond to each other.`,
 	Args:             cobra.ExactArgs(2),
 	TraverseChildren: true,
-	Run: func(cmd *cobra.Command, args []string) {
-		run(scaleFunc(cmd, args))
-	},
+	Run:              cmdRunFunc(scaleFunc),
 }
 
 var (
