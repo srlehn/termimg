@@ -143,7 +143,7 @@ func getCursorQuery(qu Querier, tty TTY) (widthCells, heightCells uint, err erro
 	return x, y, nil
 }
 
-func setCursorQuery(widthCells, heightCells uint, qu Querier, tty TTY) (err error) {
+func setCursorQuery(widthCells, heightCells uint, tty TTY) (err error) {
 	// set terminal position in cells
 	// empty answer
 	// alternatively \033[%d;%df // TODO
@@ -151,7 +151,6 @@ func setCursorQuery(widthCells, heightCells uint, qu Querier, tty TTY) (err erro
 	/*if needsWrap {
 		qs = mux.Wrap(qs)
 	}*/
-	// _, err := qu.Query(qs, tty, nil) // empty answer
 	_, err = tty.Write([]byte(qs))
 
 	if err != nil {
@@ -225,7 +224,7 @@ func (s *SurveyorDefault) CursorQuery(qu Querier, tty TTY) (widthCells, heightCe
 
 // SetCursorQuery
 func (s *SurveyorDefault) SetCursorQuery(xPosCells, yPosCells uint, qu Querier, tty TTY) (err error) {
-	return setCursorQuery(xPosCells, yPosCells, qu, tty)
+	return setCursorQuery(xPosCells, yPosCells, tty)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
