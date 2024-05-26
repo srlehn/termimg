@@ -13,36 +13,36 @@ all: timg termui tcell
 
 
 timg: ${SRC}
-	@env GOWORK=off CGO_ENABLED=0 go build -mod=vendor -trimpath -ldflags '-w -s' -o timg${EXT} ./cmd/timg
+	@env GOWORK=off CGO_ENABLED=0 GOEXPERIMENT=rangefunc go build -mod=vendor -trimpath -ldflags '-w -s' -o timg${EXT} ./cmd/timg
 
 .PHONY: timg-caire
 timg-caire: ${SRC}
-	@env GOWORK=off CGO_ENABLED=1 go build -tags 'caire' -trimpath -ldflags '-w -s' -o timg${EXT} ./cmd/timg
+	@env GOWORK=off CGO_ENABLED=1 GOEXPERIMENT=rangefunc go build -tags 'caire' -trimpath -ldflags '-w -s' -o timg${EXT} ./cmd/timg
 
 .PHONY: timg-tiny
 timg-tiny: ${SRC}
-	@env GOWORK=off CGO_ENABLED=0 garble -tiny build -mod=vendor -trimpath -ldflags '-w -s' -o timg${EXT} ./cmd/timg || \
-	env GOWORK=off CGO_ENABLED=0 go build -mod=vendor -trimpath -ldflags '-w -s' -o timg${EXT} ./cmd/timg
+	@env GOWORK=off CGO_ENABLED=0 GOEXPERIMENT=rangefunc garble -tiny build -mod=vendor -trimpath -ldflags '-w -s' -o timg${EXT} ./cmd/timg || \
+	env GOWORK=off CGO_ENABLED=0 GOEXPERIMENT=rangefunc go build -mod=vendor -trimpath -ldflags '-w -s' -o timg${EXT} ./cmd/timg
 	@sstrip timg${EXT} || :
 	@upx --ultra-brute --overlay=strip --strip-relocs=0 timg${EXT}
 
 
 # termui: *.go cmd/termui_test/main.go
 termui: ${SRC}
-	@env GOWORK=off CGO_ENABLED=0 go build -mod=vendor -trimpath -ldflags '-w -s' -o termui${EXT} cmd/termui_test/main.go
+	@env GOWORK=off CGO_ENABLED=0 GOEXPERIMENT=rangefunc go build -mod=vendor -trimpath -ldflags '-w -s' -o termui${EXT} cmd/termui_test/main.go
 
 # tcell: *.go cmd/tcell_test/main.go
 tcell: ${SRC}
-	@env GOWORK=off CGO_ENABLED=0 go build -mod=vendor -trimpath -ldflags '-w -s' -o tcell${EXT} cmd/tcell_test/main.go
+	@env GOWORK=off CGO_ENABLED=0 GOEXPERIMENT=rangefunc go build -mod=vendor -trimpath -ldflags '-w -s' -o tcell${EXT} cmd/tcell_test/main.go
 
 
 .PHONY: dev
 dev: ${SRC}
-	@CGO_ENABLED=0 go build -tags 'dev' -trimpath -ldflags '-w -s' -o timg${EXT} ./cmd/timg
+	@CGO_ENABLED=0 GOEXPERIMENT=rangefunc go build -tags 'dev' -trimpath -ldflags '-w -s' -o timg${EXT} ./cmd/timg
 
 .PHONY: dev-caire
 dev-caire: ${SRC}
-	@env GOWORK=off CGO_ENABLED=1 go build -tags 'dev,caire' -trimpath -ldflags '-w -s' -o timg${EXT} ./cmd/timg
+	@env GOWORK=off CGO_ENABLED=1 GOEXPERIMENT=rangefunc go build -tags 'dev,caire' -trimpath -ldflags '-w -s' -o timg${EXT} ./cmd/timg
 
 
 

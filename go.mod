@@ -1,22 +1,22 @@
 module github.com/srlehn/termimg
 
-go 1.21
+go 1.22
 
 require (
 	github.com/anthonynsimon/bild v0.13.0
-	github.com/aymanbagabas/go-pty v0.2.0
+	github.com/aymanbagabas/go-pty v0.2.2
 	github.com/bamiaux/rez v0.0.0-20170731184118-29f4463c688b
 	github.com/charmbracelet/bubbles v0.16.1
 	github.com/charmbracelet/bubbletea v0.24.2
 	github.com/charmbracelet/lipgloss v0.9.1
-	github.com/containerd/console v1.0.4-0.20230313162750-1ae8d489ac81
+	github.com/containerd/console v1.0.4
 	github.com/creack/pty v1.1.21
 	github.com/creack/pty/v2 v2.0.1
 	github.com/disintegration/gift v1.2.1
 	github.com/disintegration/imaging v1.6.2
 	github.com/esimov/caire v1.4.6
 	github.com/fogleman/gg v1.3.0
-	github.com/gdamore/tcell/v2 v2.6.1-0.20230827060410-08c7757cd1c9
+	github.com/gdamore/tcell/v2 v2.7.4
 	github.com/gizak/termui/v3 v3.1.0
 	github.com/go-errors/errors v1.5.1
 	github.com/golang/freetype v0.0.0-20170609003504-e2365dfdc4a0
@@ -24,7 +24,7 @@ require (
 	github.com/google/btree v1.1.2
 	github.com/gopxl/beep v1.1.0
 	github.com/iancoleman/strcase v0.3.0
-	github.com/jezek/xgb v1.1.0
+	github.com/jezek/xgb v1.1.1
 	github.com/lxn/win v0.0.0-20210218163916-a377121e959e
 	github.com/mattn/go-sixel v0.0.5
 	github.com/mattn/go-tty v0.0.5
@@ -36,19 +36,20 @@ require (
 	github.com/rivo/tview v0.0.0-20230621164836-6cc0565babaf
 	github.com/rkoesters/xdg v0.0.1
 	github.com/shirou/gopsutil v3.21.11+incompatible
+	github.com/shirou/gopsutil/v3 v3.24.4
 	github.com/spf13/cobra v1.8.0
 	github.com/srlehn/thumbnails v0.0.0-20231004190311-5a9b465c0dd8
 	github.com/srlehn/xgbutil v0.0.0-20230718194130-098830f60574
-	github.com/stretchr/testify v1.8.4
-	github.com/u-root/u-root v0.11.0
-	golang.org/x/exp v0.0.0-20231110203233-9a3e6036ecaa
-	golang.org/x/image v0.14.0
-	golang.org/x/sys v0.14.0
+	github.com/stretchr/testify v1.9.0
+	github.com/u-root/u-root v0.14.0
+	golang.org/x/exp v0.0.0-20240506185415-9bf2ced13842
+	golang.org/x/image v0.16.0
+	golang.org/x/sys v0.20.0
 	mvdan.cc/sh v2.6.4+incompatible
 )
 
 require (
-	gioui.org v0.3.1 // indirect
+	gioui.org v0.6.0 // indirect
 	gioui.org/cpu v0.0.0-20220412190645-f1e9e8c3b1f7 // indirect
 	gioui.org/shader v1.0.8 // indirect
 	github.com/BurntSushi/freetype-go v0.0.0-20160129220410-b763ddbfe298 // indirect
@@ -62,13 +63,14 @@ require (
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/esimov/pigo v1.4.6 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.3 // indirect
-	github.com/gdamore/encoding v1.0.0 // indirect
+	github.com/gdamore/encoding v1.0.1 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
-	github.com/go-text/typesetting v0.0.0-20231120180320-af78120ccb13 // indirect
+	github.com/go-text/typesetting v0.1.1 // indirect
 	github.com/golang/geo v0.0.0-20230421003525-6adc56603217 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/kr/pretty v0.3.1 // indirect
 	github.com/lucasb-eyer/go-colorful v1.2.0 // indirect
+	github.com/lufia/plan9stats v0.0.0-20240513124658-fba389f38bae // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mattn/go-localereader v0.0.1 // indirect
 	github.com/mattn/go-runewidth v0.0.15 // indirect
@@ -77,18 +79,20 @@ require (
 	github.com/muesli/cancelreader v0.2.2 // indirect
 	github.com/nsf/termbox-go v1.1.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
-	github.com/rivo/uniseg v0.4.4 // indirect
+	github.com/power-devops/perfstat v0.0.0-20240221224432-82ca36839d55 // indirect
+	github.com/rivo/uniseg v0.4.7 // indirect
+	github.com/shoenig/go-m1cpu v0.1.6 // indirect
 	github.com/soniakeys/quant v1.0.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
-	github.com/tklauser/go-sysconf v0.3.12 // indirect
-	github.com/tklauser/numcpus v0.6.1 // indirect
-	github.com/yusufpapurcu/wmi v1.2.3 // indirect
-	golang.org/x/crypto v0.15.0 // indirect
-	golang.org/x/exp/shiny v0.0.0-20231110203233-9a3e6036ecaa // indirect
-	golang.org/x/net v0.18.0 // indirect
-	golang.org/x/sync v0.5.0 // indirect
-	golang.org/x/term v0.14.0 // indirect
-	golang.org/x/text v0.14.0 // indirect
+	github.com/tklauser/go-sysconf v0.3.14 // indirect
+	github.com/tklauser/numcpus v0.8.0 // indirect
+	github.com/yusufpapurcu/wmi v1.2.4 // indirect
+	golang.org/x/crypto v0.23.0 // indirect
+	golang.org/x/exp/shiny v0.0.0-20240506185415-9bf2ced13842 // indirect
+	golang.org/x/net v0.25.0 // indirect
+	golang.org/x/sync v0.7.0 // indirect
+	golang.org/x/term v0.20.0 // indirect
+	golang.org/x/text v0.15.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

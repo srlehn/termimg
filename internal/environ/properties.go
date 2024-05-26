@@ -6,6 +6,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/srlehn/termimg/internal/errors"
 	"github.com/srlehn/termimg/internal/propkeys"
 	"github.com/srlehn/termimg/internal/util"
 )
@@ -53,9 +54,6 @@ func CloneProperties(pr PropertyExporter) Properties {
 		return nil
 	}
 	p := &propertiesGeneric{Locker: &sync.Mutex{}, properties: make(map[string]string)}
-	if pr == nil {
-		return nil
-	}
 	p.MergeProperties(pr)
 	return p
 }
@@ -77,7 +75,7 @@ func (p *propertiesGeneric) Property(key string) (string, bool) {
 // SetProperty ...
 func (p *propertiesGeneric) SetProperty(key, value string) {
 	if p == nil {
-		*p = propertiesGeneric{Locker: &sync.Mutex{}, properties: make(map[string]string)}
+		panic(errors.NilReceiver())
 	}
 	if p.Locker != nil {
 		p.Lock()
@@ -91,7 +89,7 @@ func (p *propertiesGeneric) SetProperty(key, value string) {
 
 func (p *propertiesGeneric) ExportProperties() map[string]string {
 	if p == nil {
-		*p = propertiesGeneric{Locker: &sync.Mutex{}, properties: make(map[string]string)}
+		panic(errors.NilReceiver())
 	}
 	if p.Locker != nil {
 		p.Lock()
@@ -114,7 +112,7 @@ func (p *propertiesGeneric) Getenv(v string) string {
 
 func (p *propertiesGeneric) Environ() []string {
 	if p == nil {
-		*p = propertiesGeneric{Locker: &sync.Mutex{}, properties: make(map[string]string)}
+		panic(errors.NilReceiver())
 	}
 	if p.Locker != nil {
 		p.Lock()

@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/shirou/gopsutil/process"
+	"github.com/shirou/gopsutil/v3/process"
 
 	"github.com/srlehn/termimg/internal"
 	"github.com/srlehn/termimg/internal/environ"
