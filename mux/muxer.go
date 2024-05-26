@@ -14,11 +14,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/shirou/gopsutil/net"
-	"github.com/shirou/gopsutil/process"
+	"github.com/shirou/gopsutil/v3/net"
+	"github.com/shirou/gopsutil/v3/process"
 
 	"github.com/srlehn/termimg/internal/environ"
 	"github.com/srlehn/termimg/internal/errors"
+	"github.com/srlehn/termimg/internal/procextra"
 	"github.com/srlehn/termimg/internal/propkeys"
 )
 
@@ -67,7 +68,7 @@ func (m Muxers) Wrap(s string) string {
 			continue
 		}
 		// skip muxer clients
-		tty, err := m[i].procServer.Terminal()
+		tty, err := procextra.TTYOfProc(m[i].procServer)
 		if err != nil || len(tty) == 0 {
 			continue
 		}
@@ -119,6 +120,8 @@ func Wrap(s string, pr environ.Properties) string {
 	return s
 }
 
+// ps -ewwo pid=,ppid=,tty=,comm=
+
 func FindTerminalProcess(pid int32) (procTerm *process.Process, ttyInner string, envInner environ.Properties, passages Muxers, e error) {
 	// TODO handle errors
 	// TODO make this testable...
@@ -133,7 +136,7 @@ Outer:
 	for {
 		for {
 			ttyLast = tty
-			tty, err = proc.Terminal()
+			tty, err = procextra.TTYOfProc(proc)
 			if err != nil {
 				break Outer
 			}
@@ -142,7 +145,7 @@ Outer:
 			}
 			procLast = proc
 
-			p, err = proc.Parent()
+			p, err = procextra.ParentOfProc(proc)
 			if err != nil || p == nil || p.Pid < 2 {
 				// break Outer
 				break
@@ -150,7 +153,7 @@ Outer:
 			proc = p
 		}
 		if proc != nil && proc.Pid == pid {
-			tty, _ := proc.Terminal()
+			tty, _ := procextra.TTYOfProc(proc)
 			children, err := proc.Children()
 			if err == nil {
 				shellVar, okShell := os.LookupEnv(`SHELL`)
@@ -183,7 +186,7 @@ Outer:
 					if child == nil {
 						continue
 					}
-					ttyChild, err := child.Terminal()
+					ttyChild, err := procextra.TTYOfProc(child)
 					// login shells on the console
 					if err != nil || ttyChild != tty {
 						continue
@@ -243,7 +246,7 @@ Outer:
 	// ignore error - empty parent env will only prevent cleaning
 	var envrnOuter []string
 	if proc != nil {
-		envrnOuter, _ = proc.Environ()
+		envrnOuter, _ = procextra.EnvOfProc(proc)
 	}
 	if procLast == nil {
 		if children, err := proc.Children(); err == nil && len(children) > 0 {
@@ -253,8 +256,8 @@ Outer:
 	var errRet error
 	if procLast != nil {
 		var envrnInner []string
-		if procParent, err := procLast.Parent(); err == nil && procParent != nil {
-			envrnInner, err = procLast.Environ()
+		if procParent, err := procextra.ParentOfProc(procLast); err == nil && procParent != nil {
+			envrnInner, err = procextra.EnvOfProc(procLast)
 			if err != nil {
 				errRet = errors.New(err)
 			}
@@ -276,7 +279,7 @@ func findTTYProc(proc *process.Process) (procTTY, procInner *process.Process, tt
 	if proc == nil || proc.Pid < 2 {
 		return nil, nil, ``, ``, errors.New(`nil param or 0 or init pid`)
 	}
-	tty, err := proc.Terminal()
+	tty, err := procextra.TTYOfProc(proc)
 	if err != nil {
 		return nil, nil, ``, ``, errors.New(err)
 	}
@@ -287,7 +290,7 @@ func findTTYProc(proc *process.Process) (procTTY, procInner *process.Process, tt
 		if err != nil {
 			return nil, nil, ``, ``, errors.New(err)
 		}
-		ttyParent, err = procParent.Terminal()
+		ttyParent, err = procextra.TTYOfProc(procParent)
 		if err != nil {
 			return nil, nil, ``, ``, errors.New(err)
 		}
@@ -451,7 +454,7 @@ func getClientProc(procTerm, procInner *process.Process, termTypeLast string) (p
 	} else if sshTTY, isSSHOrMosh := envTemp.LookupEnv(sshTTYVarName); isSSHOrMosh && len(sshTTY) > 0 {
 		var ttyInner string
 		if procInner != nil {
-			if t, err := procInner.Terminal(); err == nil {
+			if t, err := procextra.TTYOfProc(procInner); err == nil {
 				ttyInner = t
 			}
 		}
@@ -603,7 +606,7 @@ func getClientProc(procTerm, procInner *process.Process, termTypeLast string) (p
 			var cwd, sock string
 			var conns []net.ConnectionStat
 			if procInner != nil {
-				ttyInner, err := procInner.Terminal()
+				ttyInner, err := procextra.TTYOfProc(procInner)
 				if err != nil {
 					goto skipDTachClient
 				}

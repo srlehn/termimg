@@ -7,7 +7,9 @@ import (
 	"log"
 	"runtime"
 
-	"github.com/shirou/gopsutil/process"
+	"github.com/shirou/gopsutil/v3/process"
+
+	"github.com/srlehn/termimg/internal/procextra"
 )
 
 func printProc(pr *process.Process) {
@@ -16,7 +18,7 @@ func printProc(pr *process.Process) {
 	}
 	_, file, line, _ := runtime.Caller(1)
 	name, _ := pr.Name()
-	term, _ := pr.Terminal()
+	term, _ := procextra.TTYOfProc(pr)
 	ppid, _ := pr.Ppid()
 	fmt.Printf("%s:%d: pid:%d ppid:%d %q %q\n", file, line, pr.Pid, ppid, name, term)
 }
@@ -29,7 +31,7 @@ func printProcWithChildren(pr *process.Process) {
 	}
 	_, file, line, _ := runtime.Caller(1)
 	name, _ := pr.Name()
-	term, _ := pr.Terminal()
+	term, _ := procextra.TTYOfProc(pr)
 	ppid, _ := pr.Ppid()
 	fmt.Printf("%s:%d: pid:%d ppid:%d %q %q\n", file, line, pr.Pid, ppid, name, term)
 
@@ -39,7 +41,7 @@ func printProcWithChildren(pr *process.Process) {
 	}
 	for _, child := range children {
 		name, _ := child.Name()
-		term, _ := child.Terminal()
+		term, _ := procextra.TTYOfProc(child)
 		ppid, _ := child.Ppid()
 		fmt.Printf("  %s:%d: pid:%d ppid:%d %q %q\n", file, line, child.Pid, ppid, name, term)
 	}
