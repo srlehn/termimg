@@ -109,6 +109,8 @@ func (d *drawerITerm2) IsApplicable(inp term.DrawerCheckerInput) (bool, environ.
 		}
 		verCnr, err := strconv.ParseUint(verCnrStr, 10, 64)
 		return err == nil && verCnr >= 4, nil
+	case `laterminal`:
+		return true, nil // TODO
 	default:
 		return false, nil
 	}

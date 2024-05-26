@@ -46,7 +46,9 @@ func (d *drawerKitty) IsApplicable(inp term.DrawerCheckerInput) (bool, environ.P
 	case `kitty`:
 		// `wayst`: // untested
 		return true, nil
-	case `urxvt`,
+	case `apple`,
+		`iterm2`, // changes window title
+		`urxvt`,
 		`terminology`,
 		`darktile`:
 		// TODO bugged parsing

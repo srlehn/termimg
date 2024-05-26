@@ -21,6 +21,7 @@ const (
 	TerminalTTY                 = GeneralPrefix + `termTTY` // directly provided tty by the terminal
 	PTYName                     = GeneralPrefix + `ptyName` // opened tty
 	Executable                  = GeneralPrefix + `executable`
+	UseFallback                 = GeneralPrefix + `useFallback` // if terminal type is undecidable
 	TempDir                     = GeneralPrefix + `tempDir`
 	Passages                    = GeneralPrefix + `passages`
 	IsRemote                    = GeneralPrefix + `isRemote`
@@ -30,6 +31,7 @@ const (
 	AvoidDA1                    = GeneralPrefix + `avoidDA1`
 	AvoidDA2                    = GeneralPrefix + `avoidDA2`
 	AvoidDA3                    = GeneralPrefix + `avoidDA3`
+	AvoidTCap                   = GeneralPrefix + `avoidTCap`
 	DeviceAttributesWereQueried = GeneralPrefix + `deviceAttributesWereQueried`
 	DeviceAttributes            = GeneralPrefix + `deviceAttributes`
 	DeviceClass                 = GeneralPrefix + `deviceClass`

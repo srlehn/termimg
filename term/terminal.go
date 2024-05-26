@@ -381,15 +381,15 @@ func findTermChecker(env environ.Properties, tty TTY, qu Querier) (tc TermChecke
 
 	// single out a specific terminal checker if possible
 	var termMatchName string
-	useGenericTermIfUncertain := true // TODO
+	var useGenericTermIfUncertain bool = true
+	if useStr, okUse := pr.Property(propkeys.UseFallback); okUse && useStr == `false` {
+		useGenericTermIfUncertain = false
+	}
 	switch l := len(prTmChkMap); {
 	case l == 0:
 		termMatchName = consts.TermGenericName
 	case l == 1:
-		for k := range prTmChkMap {
-			termMatchName = k
-			break
-		}
+		termMatchName = maps.Keys(prTmChkMap)[0]
 	case l == 2:
 		// assume `generic` is contained
 		for k := range prTmChkMap {

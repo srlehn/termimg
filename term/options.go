@@ -4,6 +4,7 @@ import (
 	"log/slog"
 	"os"
 	"runtime/debug"
+	"strconv"
 	"strings"
 
 	"github.com/srlehn/termimg/env/advanced"
@@ -153,6 +154,18 @@ func SetExe(exe string) Option {
 			return nil
 		}
 		t.SetProperty(propkeys.Executable, exe)
+		return nil
+	})
+}
+
+// UseFallback - use generic terminal fallback if terminal type is undecidable
+// default: true
+func UseFallback(use bool) Option {
+	return OptFunc(func(t *Terminal) error {
+		if t.properties == nil {
+			t.properties = environ.NewProperties()
+		}
+		t.SetProperty(propkeys.UseFallback, strconv.FormatBool(use))
 		return nil
 	})
 }

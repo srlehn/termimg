@@ -3,6 +3,8 @@ package term
 import (
 	"encoding/base64"
 	"encoding/hex"
+	"fmt"
+	"reflect"
 	"strconv"
 	"strings"
 
@@ -34,8 +36,13 @@ func CachedQuery(qu Querier, qs string, tty TTY, p Parser, prIn, prOut environ.P
 	if prOut == nil {
 		prOut = environ.NewProperties()
 	}
+	var k uintptr
+	switch v := reflect.ValueOf(p); v.Kind() {
+	case reflect.Chan, reflect.Func, reflect.Map, reflect.Pointer, reflect.Slice, reflect.UnsafePointer:
+		k = uintptr(v.UnsafePointer())
+	}
 	qsEnc := base64.StdEncoding.EncodeToString([]byte(qs))
-	propKey := propkeys.QueryCachePrefix + qsEnc
+	propKey := propkeys.QueryCachePrefix + fmt.Sprintf(`0x%016x_`, k) + qsEnc
 	repl, ok := prIn.Property(propKey)
 	if ok {
 		prOut.SetProperty(propKey, repl)
@@ -295,10 +302,10 @@ func xtGetTCap(tcap string, qu Querier, tty TTY, prIn, prOut environ.Properties)
 		prOut = environ.NewProperties()
 	}
 	setProps := func(pr environ.Properties, repl string) {
-		prOut.SetProperty(propkeys.XTGETTCAPKeyNamePrefix+tcapHex, repl)
+		pr.SetProperty(propkeys.XTGETTCAPKeyNamePrefix+tcapHex, repl)
 		switch tcap {
 		case `TN`, `Co`, `RGB`:
-			prOut.SetProperty(propkeys.XTGETTCAPSpecialPrefix+tcap, repl)
+			pr.SetProperty(propkeys.XTGETTCAPSpecialPrefix+tcap, repl)
 		}
 	}
 	repl, err := CachedQuery(qu, qsXTGETTCAP, tty, prs, prIn, prOut)

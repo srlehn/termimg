@@ -368,8 +368,10 @@ func termGenericCheck(tty TTY, qu Querier, pr environ.Properties) {
 		return
 	}
 	_ = QueryDeviceAttributes(qu, tty, pr, pr)
-	for _, spcl := range xtGetTCapSpecialStrs {
-		_, _ = xtGetTCap(spcl, qu, tty, pr, pr)
+	if _, avoidTCap := pr.Property(propkeys.AvoidTCap); !avoidTCap {
+		for _, spcl := range xtGetTCapSpecialStrs {
+			_, _ = xtGetTCap(spcl, qu, tty, pr, pr)
+		}
 	}
 	_, _ = xtVersion(qu, tty, pr, pr)
 }

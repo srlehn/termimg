@@ -41,6 +41,7 @@ func (t *termCheckerApple) CheckExclude(pr environ.Properties) (mightBe bool, p 
 	if ver, okV := pr.LookupEnv(`TERM_PROGRAM_VERSION`); okV && len(ver) > 0 {
 		p.SetProperty(propkeys.AppleTermVersion, ver) // CFBundleVersion of Terminal.app
 	}
+	p.SetProperty(propkeys.AvoidTCap, `true`)
 	return true, p
 }
 
