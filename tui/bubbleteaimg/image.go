@@ -24,6 +24,7 @@ var _ tea.Model = (*Image)(nil)
 type Image struct {
 	style *lipgloss.Style
 	*term.Canvas
+	bounds     image.Rectangle
 	term       *term.Terminal
 	tty        *bubbleteatty.TTYBubbleTea
 	renderer   *lipgloss.Renderer
@@ -107,6 +108,37 @@ func (m *Image) SetStyle(style *lipgloss.Style) {
 	m.initRenderer()
 	s := style.Copy().Renderer(m.renderer)
 	m.style = &s
+}
+
+func (m *Image) SetSize(sz image.Point) error {
+	if err := errors.NilReceiver(m); err != nil {
+		return err
+	}
+	m.initStyle()
+	wMax := m.style.GetMaxWidth()
+	hMax := m.style.GetMaxHeight()
+	if (wMax > 0 && sz.X > wMax) || (hMax > 0 && sz.Y > hMax) {
+		return errors.New(`image size is larger than allowed`)
+	}
+	m.style.Width(sz.X).Height(sz.Y)
+	return nil
+}
+
+func (m *Image) SetBounds(bounds image.Rectangle) error {
+	if err := errors.NilReceiver(m); err != nil {
+		return err
+	}
+	m.initStyle()
+	w := bounds.Dx()
+	h := bounds.Dy()
+	wMax := m.style.GetMaxWidth()
+	hMax := m.style.GetMaxHeight()
+	if (wMax > 0 && w > wMax) || (hMax > 0 && h > hMax) {
+		return errors.New(`image size is larger than allowed`)
+	}
+	m.style.Width(w).Height(h)
+	m.bounds = bounds
+	return nil
 }
 
 func (m *Image) fitImage(bounds image.Rectangle) (image.Rectangle, error) {
@@ -277,7 +309,21 @@ func (m *Image) View() string {
 		return `<nil bubbletea.Model>`
 	}
 	m.initStyle()
-	ret := fmt.Sprintf(wrapFmt, m.id, m.style.Render(``))
+	ret := `` // widget text content
+	// check for variable position
+	if m.bounds == (image.Rectangle{}) {
+		ret = fmt.Sprintf(wrapFmt, m.id, m.style.Render(ret))
+	} else {
+		// TODO needs testing
+		ret = lipgloss.Place(
+			m.bounds.Min.X, m.bounds.Min.Y,
+			lipgloss.Right, lipgloss.Bottom,
+			m.style.Render(ret),
+		)
+		if m.scanner != nil {
+			m.scanner.setRectManually(m.id, m.bounds)
+		}
+	}
 	if m.scanner != nil {
 		m.scanner.setAfterWriteFunc(m.id, m.draw)
 	} else {

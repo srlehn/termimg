@@ -70,6 +70,16 @@ func (c *scanner) Scan(b []byte) []byte {
 	return util.StringToBytes(s)
 }
 
+func (c *scanner) setRectManually(id string, bounds image.Rectangle) {
+	if c == nil {
+		return
+	}
+	if c.rects == nil {
+		c.rects = make(map[string]image.Rectangle)
+	}
+	c.rects[id] = bounds
+}
+
 func (c *scanner) getRects(s string) {
 	if c == nil || c.markers == nil {
 		return
