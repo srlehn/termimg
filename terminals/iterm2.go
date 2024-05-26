@@ -77,6 +77,16 @@ func (t *termCheckerITerm2) CheckIsQuery(qu term.Querier, tty term.TTY, pr envir
 		p.SetProperty(propkeys.CheckTermQueryIsPrefix+termNameITerm2, consts.CheckTermFailed)
 		return false, p
 	}
+	// cut CSI
+	if r, found := strings.CutPrefix(replITerm2Ver, "\033"); found {
+		replITerm2Ver = r
+		if r, found = strings.CutPrefix(replITerm2Ver, `[`); found {
+			replITerm2Ver = r
+		}
+	}
+	// split off DA1 response
+	replITerm2Ver = strings.SplitN(replITerm2Ver, "\033", 2)[0]
+
 	iTerm2PropVersionPrefix := `ITERM2 `
 	propVer, hasITerm2Prefix := strings.CutPrefix(replITerm2Ver, iTerm2PropVersionPrefix)
 	if !hasITerm2Prefix {
@@ -123,6 +133,7 @@ func (s *surveyorITerm2) CellSizeQuery(qu term.Querier, tty term.TTY) (width, he
 		return 0, 0, errors.New(`invalid reply to iterm2 ReportCellSize query`)
 	}
 	// height:width(;scale)
+	// TODO scale?
 	var fontRes [2]float64
 	for i := 0; i < 2; i++ {
 		f, err := strconv.ParseFloat(replParts[i], 64)
