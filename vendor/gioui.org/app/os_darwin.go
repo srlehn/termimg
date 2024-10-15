@@ -124,7 +124,7 @@ func stringToNSString(str string) C.CFTypeRef {
 	return C.newNSString(chars, C.NSUInteger(len(u16)))
 }
 
-func NewDisplayLink(callback func()) (*displayLink, error) {
+func newDisplayLink(callback func()) (*displayLink, error) {
 	d := &displayLink{
 		callback: callback,
 		done:     make(chan struct{}),
@@ -260,8 +260,9 @@ func windowSetCursor(from, to pointer.Cursor) pointer.Cursor {
 	return to
 }
 
-func (w *window) Wakeup() {
+func (w *window) wakeup() {
 	runOnMain(func() {
-		w.w.Event(wakeupEvent{})
+		w.loop.Wakeup()
+		w.loop.FlushEvents()
 	})
 }

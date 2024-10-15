@@ -35,7 +35,6 @@ require (
 	github.com/pkg/term v1.2.0-beta.2
 	github.com/rivo/tview v0.0.0-20230621164836-6cc0565babaf
 	github.com/rkoesters/xdg v0.0.1
-	github.com/shirou/gopsutil v3.21.11+incompatible
 	github.com/shirou/gopsutil/v3 v3.24.4
 	github.com/spf13/cobra v1.8.0
 	github.com/srlehn/thumbnails v0.0.0-20231004190311-5a9b465c0dd8

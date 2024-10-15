@@ -89,7 +89,7 @@ func (c *Cmd) start() error {
 
 	// Allocate an attribute list that's large enough to do the operations we care about
 	// 2. Pseudo console setup if one was requested.
-	// Therefore we need a list of size 3.
+	// Therefore we need a list of size 1.
 	attrs, err := windows.NewProcThreadAttributeList(1)
 	if err != nil {
 		return fmt.Errorf("failed to initialize process thread attribute list: %w", err)

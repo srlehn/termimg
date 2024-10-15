@@ -1,4 +1,4 @@
-// Copyright 2022 The TCell Authors
+// Copyright 2023 The TCell Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use file except in compliance with the License.
@@ -27,14 +27,17 @@ func NewSimulationScreen(charset string) SimulationScreen {
 	if charset == "" {
 		charset = "UTF-8"
 	}
-	s := &simscreen{charset: charset}
-	return s
+	ss := &simscreen{charset: charset}
+	ss.Screen = &baseScreen{screenImpl: ss}
+	return ss
 }
 
 // SimulationScreen represents a screen simulation.  This is intended to
 // be a superset of normal Screens, but also adds some important interfaces
 // for testing.
 type SimulationScreen interface {
+	Screen
+
 	// InjectKeyBytes injects a stream of bytes corresponding to
 	// the native encoding (see charset).  It turns true if the entire
 	// set of bytes were processed and delivered as KeyEvents, false
@@ -57,8 +60,6 @@ type SimulationScreen interface {
 
 	// GetCursor returns the cursor details.
 	GetCursor() (x int, y int, visible bool)
-
-	Screen
 }
 
 // SimCell represents a simulated screen cell.  The purpose of this
@@ -98,6 +99,7 @@ type simscreen struct {
 	fillstyle Style
 	fallback  map[rune]string
 
+	Screen
 	sync.Mutex
 }
 
@@ -148,43 +150,6 @@ func (s *simscreen) SetStyle(style Style) {
 	s.Lock()
 	s.style = style
 	s.Unlock()
-}
-
-func (s *simscreen) Clear() {
-	s.Fill(' ', s.style)
-}
-
-func (s *simscreen) Fill(r rune, style Style) {
-	s.Lock()
-	s.back.Fill(r, style)
-	s.Unlock()
-}
-
-func (s *simscreen) SetCell(x, y int, style Style, ch ...rune) {
-
-	if len(ch) > 0 {
-		s.SetContent(x, y, ch[0], ch[1:], style)
-	} else {
-		s.SetContent(x, y, ' ', nil, style)
-	}
-}
-
-func (s *simscreen) SetContent(x, y int, mainc rune, combc []rune, st Style) {
-
-	s.Lock()
-	s.back.SetContent(x, y, mainc, combc, st)
-	s.Unlock()
-}
-
-func (s *simscreen) GetContent(x, y int) (rune, []rune, Style, int) {
-	var mainc rune
-	var combc []rune
-	var style Style
-	var width int
-	s.Lock()
-	mainc, combc, style, width = s.back.GetContent(x, y)
-	s.Unlock()
-	return mainc, combc, style, width
 }
 
 func (s *simscreen) drawCell(x, y int) int {
@@ -344,7 +309,7 @@ func (s *simscreen) resize() {
 	if w != ow || h != oh {
 		s.back.Resize(w, h)
 		ev := NewEventResize(w, h)
-		s.PostEvent(ev)
+		s.postEvent(ev)
 	}
 }
 
@@ -352,60 +317,21 @@ func (s *simscreen) Colors() int {
 	return 256
 }
 
-func (s *simscreen) ChannelEvents(ch chan<- Event, quit <-chan struct{}) {
-	defer close(ch)
-	for {
-		select {
-		case <-quit:
-			return
-		case <-s.quit:
-			return
-		case ev := <-s.evch:
-			select {
-			case <-quit:
-				return
-			case <-s.quit:
-				return
-			case ch <- ev:
-			}
-		}
-	}
-}
-
-func (s *simscreen) PollEvent() Event {
-	select {
-	case <-s.quit:
-		return nil
-	case ev := <-s.evch:
-		return ev
-	}
-}
-
-func (s *simscreen) HasPendingEvent() bool {
-	return len(s.evch) > 0
-}
-
-func (s *simscreen) PostEventWait(ev Event) {
-	s.evch <- ev
-}
-
-func (s *simscreen) PostEvent(ev Event) error {
+func (s *simscreen) postEvent(ev Event) {
 	select {
 	case s.evch <- ev:
-		return nil
-	default:
-		return ErrEventQFull
+	case <-s.quit:
 	}
 }
 
 func (s *simscreen) InjectMouse(x, y int, buttons ButtonMask, mod ModMask) {
 	ev := NewEventMouse(x, y, buttons, mod)
-	s.PostEvent(ev)
+	s.postEvent(ev)
 }
 
 func (s *simscreen) InjectKey(key Key, r rune, mod ModMask) {
 	ev := NewEventKey(key, r, mod)
-	s.PostEvent(ev)
+	s.postEvent(ev)
 }
 
 func (s *simscreen) InjectKeyBytes(b []byte) bool {
@@ -416,7 +342,7 @@ outer:
 		if b[0] >= ' ' && b[0] <= 0x7F {
 			// printable ASCII easy to deal with -- no encodings
 			ev := NewEventKey(KeyRune, rune(b[0]), ModNone)
-			s.PostEvent(ev)
+			s.postEvent(ev)
 			b = b[1:]
 			continue
 		}
@@ -428,7 +354,7 @@ outer:
 				mod = ModCtrl
 			}
 			ev := NewEventKey(Key(b[0]), 0, mod)
-			s.PostEvent(ev)
+			s.postEvent(ev)
 			b = b[1:]
 			continue
 		}
@@ -442,7 +368,7 @@ outer:
 				r, _ := utf8.DecodeRune(utfb[:nout])
 				if r != utf8.RuneError {
 					ev := NewEventKey(KeyRune, r, ModNone)
-					s.PostEvent(ev)
+					s.postEvent(ev)
 				}
 				b = b[nin:]
 				continue outer
@@ -554,21 +480,18 @@ func (s *simscreen) Resume() error {
 	return nil
 }
 
-func (s *simscreen) LockRegion(x, y, width, height int, lock bool) {
-	s.Lock()
-	defer s.Unlock()
-	for j := y; j < (y + height); j += 1 {
-		for i := x; i < (x + width); i += 1 {
-			switch lock {
-			case true:
-				s.back.LockCell(i, j)
-			case false:
-				s.back.UnlockCell(i, j)
-			}
-		}
-	}
-}
-
 func (s *simscreen) Tty() (Tty, bool) {
 	return nil, false
+}
+
+func (s *simscreen) GetCells() *CellBuffer {
+	return &s.back
+}
+
+func (s *simscreen) EventQ() chan Event {
+	return s.evch
+}
+
+func (s *simscreen) StopQ() <-chan struct{} {
+	return s.quit
 }

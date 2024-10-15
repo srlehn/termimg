@@ -4,6 +4,7 @@ package text
 
 import (
 	"bytes"
+	"fmt"
 	"image"
 	"io"
 	"log"
@@ -276,7 +277,8 @@ func newShaperImpl(systemFonts bool, collection []FontFace) *shaperImpl {
 // It returns whether the face is now available for use. FontFaces are prioritized
 // in the order in which they are loaded, with the first face being the default.
 func (s *shaperImpl) Load(f FontFace) {
-	s.fontMap.AddFace(f.Face.Face(), opentype.FontToDescription(f.Font))
+	desc := opentype.FontToDescription(f.Font)
+	s.fontMap.AddFace(f.Face.Face(), fontscan.Location{File: fmt.Sprint(desc)}, desc)
 	s.addFace(f.Face.Face(), f.Font)
 }
 
@@ -284,6 +286,7 @@ func (s *shaperImpl) addFace(f font.Face, md giofont.Font) {
 	if _, ok := s.faceToIndex[f.Font]; ok {
 		return
 	}
+	s.logger.Printf("loaded face %s(style:%s, weight:%d)", md.Typeface, md.Style, md.Weight)
 	idx := len(s.faces)
 	s.faceToIndex[f.Font] = idx
 	s.faces = append(s.faces, f)

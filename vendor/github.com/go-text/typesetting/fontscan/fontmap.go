@@ -281,8 +281,8 @@ func (fm *FontMap) AddFont(fontFile font.Resource, fileID, familyName string) er
 //
 // The order of calls to [AddFont] and [AddFace] determines relative priority
 // of manually loaded fonts. See [ResolveFace] for details about when this matters.
-func (fm *FontMap) AddFace(face font.Face, md meta.Description) {
-	fp := newFootprintFromFont(face.Font, md)
+func (fm *FontMap) AddFace(face font.Face, location Location, md meta.Description) {
+	fp := newFootprintFromFont(face.Font, location, md)
 	fm.cache(fp, face)
 
 	fm.appendFootprints(fp)
@@ -312,6 +312,42 @@ func (fm *FontMap) FontLocation(ft font.Font) Location {
 func (fm *FontMap) FontMetadata(ft font.Font) (family string, aspect meta.Aspect) {
 	item := fm.metaCache[ft]
 	return item.Family, item.Aspect
+}
+
+// FindSystemFont looks for a system font with the given [family],
+// returning the first match, or false is no one is found.
+//
+// User added fonts are ignored, and the [FontMap] must have been
+// initialized with [UseSystemFonts] or this method will always return false.
+//
+// Family names are compared through [meta.Normalize].
+func (fm *FontMap) FindSystemFont(family string) (Location, bool) {
+	family = meta.NormalizeFamily(family)
+	for _, footprint := range fm.database {
+		if footprint.isUserProvided {
+			continue
+		}
+		if footprint.Family == family {
+			return footprint.Location, true
+		}
+	}
+	return Location{}, false
+}
+
+// FindSystemFonts is the same as FindSystemFont, but returns all matched fonts.
+func (fm *FontMap) FindSystemFonts(family string) []Location {
+	var locations []Location
+	family = meta.NormalizeFamily(family)
+	for _, footprint := range fm.database {
+		if footprint.isUserProvided {
+			continue
+		}
+		if footprint.Family == family {
+			locations = append(locations, footprint.Location)
+		}
+	}
+
+	return locations
 }
 
 // SetQuery set the families and aspect required, influencing subsequent

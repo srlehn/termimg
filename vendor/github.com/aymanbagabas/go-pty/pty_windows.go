@@ -114,7 +114,7 @@ func (p *conPty) Read(b []byte) (n int, err error) {
 func (p *conPty) Resize(width int, height int) error {
 	p.mtx.RLock()
 	defer p.mtx.RUnlock()
-	if err := windows.ResizePseudoConsole(p.handle, windows.Coord{X: int16(height), Y: int16(width)}); err != nil {
+	if err := windows.ResizePseudoConsole(p.handle, windows.Coord{X: int16(width), Y: int16(height)}); err != nil {
 		return fmt.Errorf("failed to resize pseudo console: %w", err)
 	}
 	return nil

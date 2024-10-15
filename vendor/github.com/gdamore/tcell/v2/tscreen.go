@@ -1,4 +1,4 @@
-// Copyright 2022 The TCell Authors
+// Copyright 2024 The TCell Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use file except in compliance with the License.
@@ -94,7 +94,7 @@ func NewTerminfoScreenFromTtyTerminfo(tty Tty, ti *terminfo.Terminfo) (s Screen,
 		t.fallback[k] = v
 	}
 
-	return t, nil
+	return &baseScreen{screenImpl: t}, nil
 }
 
 // NewTerminfoScreenFromTty returns a Screen using a custom Tty implementation.
@@ -123,7 +123,6 @@ type tScreen struct {
 	buf          bytes.Buffer
 	curstyle     Style
 	style        Style
-	evch         chan Event
 	resizeQ      chan bool
 	quit         chan struct{}
 	keyexist     map[Key]bool
@@ -159,6 +158,7 @@ type tScreen struct {
 	cursorStyle  CursorStyle
 	saved        *term.State
 	stopQ        chan struct{}
+	eventQ       chan Event
 	running      bool
 	wg           sync.WaitGroup
 	mouseFlags   MouseFlags
@@ -173,7 +173,6 @@ func (t *tScreen) Init() error {
 		return e
 	}
 
-	t.evch = make(chan Event, 10)
 	t.keychan = make(chan []byte, 10)
 	t.keytimer = time.NewTimer(time.Millisecond * 50)
 	t.charset = "UTF-8"
@@ -217,6 +216,7 @@ func (t *tScreen) Init() error {
 	}
 
 	t.quit = make(chan struct{})
+	t.eventQ = make(chan Event, 10)
 
 	t.Lock()
 	t.cx = -1
@@ -595,41 +595,6 @@ func (t *tScreen) SetStyle(style Style) {
 	t.Unlock()
 }
 
-func (t *tScreen) Clear() {
-	t.Fill(' ', t.style)
-}
-
-func (t *tScreen) Fill(r rune, style Style) {
-	t.Lock()
-	if !t.fini {
-		t.cells.Fill(r, style)
-	}
-	t.Unlock()
-}
-
-func (t *tScreen) SetContent(x, y int, mainc rune, combc []rune, style Style) {
-	t.Lock()
-	if !t.fini {
-		t.cells.SetContent(x, y, mainc, combc, style)
-	}
-	t.Unlock()
-}
-
-func (t *tScreen) GetContent(x, y int) (rune, []rune, Style, int) {
-	t.Lock()
-	mainc, combc, style, width := t.cells.GetContent(x, y)
-	t.Unlock()
-	return mainc, combc, style, width
-}
-
-func (t *tScreen) SetCell(x, y int, style Style, ch ...rune) {
-	if len(ch) > 0 {
-		t.SetContent(x, y, ch[0], ch[1:], style)
-	} else {
-		t.SetContent(x, y, ' ', nil, style)
-	}
-}
-
 func (t *tScreen) encodeRune(r rune, buf []byte) []byte {
 
 	nb := make([]byte, 6)
@@ -750,7 +715,7 @@ func (t *tScreen) drawCell(x, y int) int {
 		return width
 	}
 
-	if y == t.h-1 && x == t.w-1 && t.ti.AutoMargin && ti.InsertChar != "" {
+	if y == t.h-1 && x == t.w-1 && t.ti.AutoMargin && ti.DisableAutoMargin == "" && ti.InsertChar != "" {
 		// our solution is somewhat goofy.
 		// we write to the second to the last cell what we want in the last cell, then we
 		// insert a character at that 2nd to last position to shift the last column into
@@ -1106,7 +1071,10 @@ func (t *tScreen) resize() {
 	t.h = ws.Height
 	t.w = ws.Width
 	ev := &EventResize{t: time.Now(), ws: ws}
-	_ = t.PostEvent(ev)
+	select {
+	case t.eventQ <- ev:
+	default:
+	}
 }
 
 func (t *tScreen) Colors() int {
@@ -1122,39 +1090,6 @@ func (t *tScreen) Colors() int {
 // always be a small number. (<= 256)
 func (t *tScreen) nColors() int {
 	return t.ti.Colors
-}
-
-func (t *tScreen) ChannelEvents(ch chan<- Event, quit <-chan struct{}) {
-	defer close(ch)
-	for {
-		select {
-		case <-quit:
-			return
-		case <-t.quit:
-			return
-		case ev := <-t.evch:
-			select {
-			case <-quit:
-				return
-			case <-t.quit:
-				return
-			case ch <- ev:
-			}
-		}
-	}
-}
-
-func (t *tScreen) PollEvent() Event {
-	select {
-	case <-t.quit:
-		return nil
-	case ev := <-t.evch:
-		return ev
-	}
-}
-
-func (t *tScreen) HasPendingEvent() bool {
-	return len(t.evch) > 0
 }
 
 // vtACSNames is a map of bytes defined by terminfo that are used in
@@ -1218,19 +1153,6 @@ func (t *tScreen) buildAcsMap() {
 			t.acs[r] = t.ti.EnterAcs + dstv + t.ti.ExitAcs
 		}
 		acsstr = acsstr[2:]
-	}
-}
-
-func (t *tScreen) PostEventWait(ev Event) {
-	t.evch <- ev
-}
-
-func (t *tScreen) PostEvent(ev Event) error {
-	select {
-	case t.evch <- ev:
-		return nil
-	default:
-		return ErrEventQFull
 	}
 }
 
@@ -1595,7 +1517,11 @@ func (t *tScreen) scanInput(buf *bytes.Buffer, expire bool) {
 	evs := t.collectEventsFromInput(buf, expire)
 
 	for _, ev := range evs {
-		t.PostEventWait(ev)
+		select {
+		case t.eventQ <- ev:
+		case <-t.quit:
+			return
+		}
 	}
 }
 
@@ -1664,7 +1590,7 @@ func (t *tScreen) collectEventsFromInput(buf *bytes.Buffer, expire bool) []Event
 				_, _ = buf.ReadByte()
 				continue
 			}
-			// Nothing was going to match, or we timed out
+			// Nothing was going to match, or we timed-out
 			// waiting for more data -- just deliver the characters
 			// to the app & let them sort it out.  Possibly we
 			// should only do this for control characters like ESC.
@@ -1759,7 +1685,10 @@ func (t *tScreen) inputLoop(stopQ chan struct{}) {
 			running := t.running
 			t.Unlock()
 			if running {
-				_ = t.PostEvent(NewEventError(e))
+				select {
+				case t.eventQ <- NewEventError(e):
+				case <-t.quit:
+				}
 			}
 			return
 		}
@@ -1855,22 +1784,6 @@ func (t *tScreen) Resume() error {
 	return t.engage()
 }
 
-
-func (t *tScreen) LockRegion(x, y, width, height int, lock bool) {
-	t.Lock()
-	defer t.Unlock()
-	for j := y; j < (y + height); j += 1 {
-		for i := x; i < (x + width); i += 1 {
-			switch lock {
-			case true:
-				t.cells.LockCell(i, j)
-			case false:
-				t.cells.UnlockCell(i, j)
-			}
-		}
-	}
-}
-
 func (t *tScreen) Tty() (Tty, bool) {
 	return t.tty, true
 }
@@ -1909,10 +1822,18 @@ func (t *tScreen) engage() error {
 	}
 
 	ti := t.ti
-	t.TPuts(ti.EnterCA)
+	if os.Getenv("TCELL_ALTSCREEN") != "disable" {
+		// Technically this may not be right, but every terminal we know about
+		// (even Wyse 60) uses this to enter the alternate screen buffer, and
+		// possibly save and restore the window title and/or icon.
+		// (In theory there could be terminals that don't support X,Y cursor
+		// positions without a setup command, but we don't support them.)
+		t.TPuts(ti.EnterCA)
+	}
 	t.TPuts(ti.EnterKeypad)
 	t.TPuts(ti.HideCursor)
 	t.TPuts(ti.EnableAcs)
+	t.TPuts(ti.DisableAutoMargin)
 	t.TPuts(ti.Clear)
 
 	t.wg.Add(2)
@@ -1947,13 +1868,16 @@ func (t *tScreen) disengage() {
 	t.cells.Resize(0, 0)
 	t.TPuts(ti.ShowCursor)
 	if t.cursorStyles != nil && t.cursorStyle != CursorStyleDefault {
-		t.TPuts(t.cursorStyles[t.cursorStyle])
+		t.TPuts(t.cursorStyles[CursorStyleDefault])
 	}
 	t.TPuts(ti.ResetFgBg)
 	t.TPuts(ti.AttrOff)
-	t.TPuts(ti.Clear)
-	t.TPuts(ti.ExitCA)
 	t.TPuts(ti.ExitKeypad)
+	t.TPuts(ti.EnableAutoMargin)
+	if os.Getenv("TCELL_ALTSCREEN") != "disable" {
+		t.TPuts(ti.Clear) // only needed if ExitCA is empty
+		t.TPuts(ti.ExitCA)
+	}
 	t.enableMouse(0)
 	t.enablePasting(false)
 	t.disableFocusReporting()
@@ -1972,4 +1896,16 @@ func (t *tScreen) Beep() error {
 func (t *tScreen) finalize() {
 	t.disengage()
 	_ = t.tty.Close()
+}
+
+func (t *tScreen) StopQ() <-chan struct{} {
+	return t.quit
+}
+
+func (t *tScreen) EventQ() chan Event {
+	return t.eventQ
+}
+
+func (t *tScreen) GetCells() *CellBuffer {
+	return &t.cells
 }
