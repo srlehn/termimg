@@ -35,10 +35,9 @@ type Router struct {
 		queue keyQueue
 		// The following fields have the same purpose as the fields in
 		// type handler, but for key.Events.
-		filter          keyFilter
-		nextFilter      keyFilter
-		processedFilter keyFilter
-		scratchFilter   keyFilter
+		filter        keyFilter
+		nextFilter    keyFilter
+		scratchFilter keyFilter
 	}
 	cqueue clipboardQueue
 	// states is the list of pending state changes resulting from
@@ -61,7 +60,7 @@ type Router struct {
 }
 
 // Source implements the interface between a Router and user interface widgets.
-// The value Source is disabled.
+// The zero-value Source is disabled.
 type Source struct {
 	r *Router
 }
@@ -172,22 +171,22 @@ func (q *Router) Source() Source {
 
 // Execute a command.
 func (s Source) Execute(c Command) {
-	if !s.Enabled() {
+	if !s.enabled() {
 		return
 	}
 	s.r.execute(c)
 }
 
-// Enabled reports whether the source is enabled. Only enabled
+// enabled reports whether the source is enabled. Only enabled
 // Sources deliver events and respond to commands.
-func (s Source) Enabled() bool {
+func (s Source) enabled() bool {
 	return s.r != nil
 }
 
 // Focused reports whether tag is focused, according to the most recent
 // [key.FocusEvent] delivered.
 func (s Source) Focused(tag event.Tag) bool {
-	if !s.Enabled() {
+	if !s.enabled() {
 		return false
 	}
 	return s.r.state().keyState.focus == tag
@@ -195,7 +194,7 @@ func (s Source) Focused(tag event.Tag) bool {
 
 // Event returns the next event that matches at least one of filters.
 func (s Source) Event(filters ...event.Filter) (event.Event, bool) {
-	if !s.Enabled() {
+	if !s.enabled() {
 		return nil, false
 	}
 	return s.r.Event(filters...)
@@ -275,28 +274,29 @@ func (q *Router) Event(filters ...event.Filter) (event.Event, bool) {
 			}
 		}
 	}
-	if !q.deferring {
-		for i := range q.changes {
-			change := &q.changes[i]
-			for j, evt := range change.events {
-				match := false
-				switch e := evt.event.(type) {
-				case key.Event:
-					match = q.key.scratchFilter.Matches(change.state.keyState.focus, e, false)
-				default:
-					for _, tf := range q.scratchFilters {
-						if evt.tag == tf.tag && tf.filter.Matches(evt.event) {
-							match = true
-							break
-						}
+	for i := range q.changes {
+		if q.deferring && i > 0 {
+			break
+		}
+		change := &q.changes[i]
+		for j, evt := range change.events {
+			match := false
+			switch e := evt.event.(type) {
+			case key.Event:
+				match = q.key.scratchFilter.Matches(change.state.keyState.focus, e, false)
+			default:
+				for _, tf := range q.scratchFilters {
+					if evt.tag == tf.tag && tf.filter.Matches(evt.event) {
+						match = true
+						break
 					}
 				}
-				if match {
-					change.events = append(change.events[:j], change.events[j+1:]...)
-					// Fast forward state to last matched.
-					q.collapseState(i)
-					return evt.event, true
-				}
+			}
+			if match {
+				change.events = append(change.events[:j], change.events[j+1:]...)
+				// Fast forward state to last matched.
+				q.collapseState(i)
+				return evt.event, true
 			}
 		}
 	}
@@ -304,7 +304,6 @@ func (q *Router) Event(filters ...event.Filter) (event.Event, bool) {
 		h := q.stateFor(tf.tag)
 		h.processedFilter.Merge(tf.filter)
 	}
-	q.key.processedFilter = append(q.key.processedFilter, q.key.scratchFilter...)
 	return nil, false
 }
 
@@ -315,15 +314,15 @@ func (q *Router) collapseState(idx int) {
 	}
 	first := &q.changes[0]
 	first.state = q.changes[idx].state
-	for i := 1; i <= idx; i++ {
-		first.events = append(first.events, q.changes[i].events...)
+	for _, ch := range q.changes[1 : idx+1] {
+		first.events = append(first.events, ch.events...)
 	}
 	q.changes = append(q.changes[:1], q.changes[idx+1:]...)
 }
 
-// Frame replaces the declared handlers from the supplied
-// operation list. The text input state, wakeup time and whether
-// there are active profile handlers is also saved.
+// Frame completes the current frame and starts a new with the
+// handlers from the frame argument. Remaining events are discarded,
+// unless they were deferred by a command.
 func (q *Router) Frame(frame *op.Ops) {
 	var remaining []event.Event
 	if n := len(q.changes); n > 0 {

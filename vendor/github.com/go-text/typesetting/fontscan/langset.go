@@ -10,86 +10,52 @@ import (
 
 // LangID is a compact representation of a language
 // this package has orthographic knowledge of.
-type LangID uint16
+type LangID = language.LangID
 
-// NewLangID returns the compact index of the given language,
-// or false if it is not supported by this package.
+// NewLangID is [language.NewLangID].
 //
-// Derived languages not exactly supported are mapped to their primary part : for instance,
-// 'fr-be' is mapped to 'fr'
-func NewLangID(l language.Language) (LangID, bool) {
-	const N = len(languagesRunes)
-	// binary search
-	i, j := 0, N
-	for i < j {
-		h := i + (j-i)/2
-		entry := languagesRunes[h]
-		if l < entry.lang {
-			j = h
-		} else if entry.lang < l {
-			i = h + 1
-		} else {
-			// extact match
-			return LangID(h), true
-		}
-	}
-	// i is the index where l should be :
-	// try to match the primary part
-	root := l.Primary()
-	for ; i >= 0; i-- {
-		entry := languagesRunes[i]
-		if entry.lang > root { // keep going
-			continue
-		} else if entry.lang < root {
-			// no root match
-			return 0, false
-		} else { // found the root
-			return LangID(i), true
-		}
+// Deprecated: use [language.NewLangID] instead.
+var NewLangID = language.NewLangID
 
-	}
-	return 0, false
-}
-
-// langSet is a bit set for 512 languages
+// LangSet is a bit set for 512 languages
 //
 // It works as a map[LangID]bool, with the limitation
 // that only the 9 low bits of a LangID are used.
 // More precisely, the page of a LangID l is given by its 3 "higher" bits : 8-6
 // and the bit position by its 6 lower bits : 5-0
-type langSet [8]uint64
+type LangSet [8]uint64
 
 // newLangsetFromCoverage compile the languages supported by the given
 // rune coverage
-func newLangsetFromCoverage(rs runeSet) (out langSet) {
-	for id, item := range languagesRunes {
-		if rs.includes(item.runes) {
-			out.add(LangID(id))
+func newLangsetFromCoverage(rs RuneSet) (out LangSet) {
+	for id, runes := range languagesRunes {
+		if rs.includes(runes) {
+			out.Add(LangID(id))
 		}
 	}
 	return out
 }
 
-func (ls langSet) String() string {
+func (ls LangSet) String() string {
 	var chunks []string
 	for pageN, page := range ls {
 		for bit := 0; bit < 64; bit++ {
 			if page&(1<<bit) != 0 {
-				id := pageN<<6 | bit
-				chunks = append(chunks, string(languagesRunes[id].lang))
+				id := LangID(pageN<<6 | bit)
+				chunks = append(chunks, string(id.Language()))
 			}
 		}
 	}
 	return "{" + strings.Join(chunks, "|") + "}"
 }
 
-func (ls *langSet) add(l LangID) {
+func (ls *LangSet) Add(l LangID) {
 	page := (l & 0b111111111 >> 6)
 	bit := l & 0b111111
 	ls[page] |= 1 << bit
 }
 
-func (ls langSet) contains(l LangID) bool {
+func (ls LangSet) Contains(l LangID) bool {
 	page := (l & 0b111111111 >> 6)
 	bit := l & 0b111111
 	return ls[page]&(1<<bit) != 0
@@ -97,7 +63,7 @@ func (ls langSet) contains(l LangID) bool {
 
 const langSetSize = 8 * 8
 
-func (ls langSet) serialize() []byte {
+func (ls LangSet) serialize() []byte {
 	var buffer [langSetSize]byte
 	for i, v := range ls {
 		binary.BigEndian.PutUint64(buffer[i*8:], v)
@@ -107,7 +73,7 @@ func (ls langSet) serialize() []byte {
 
 // deserializeFrom reads the binary format produced by serializeTo
 // it returns the number of bytes read from `data`
-func (ls *langSet) deserializeFrom(data []byte) (int, error) {
+func (ls *LangSet) deserializeFrom(data []byte) (int, error) {
 	if len(data) < langSetSize {
 		return 0, errors.New("invalid lang set (EOF)")
 	}

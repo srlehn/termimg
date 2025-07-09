@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"io"
 	"math"
+	"slices"
 
 	"github.com/golang/geo/s1"
 )
@@ -90,7 +91,7 @@ func (p *Polyline) Equal(b *Polyline) bool {
 // ApproxEqual reports whether two polylines have the same number of vertices,
 // and corresponding vertex pairs are separated by no more the standard margin.
 func (p *Polyline) ApproxEqual(o *Polyline) bool {
-	return p.approxEqual(o, s1.Angle(epsilon))
+	return p.approxEqual(o, s1.Angle(1e-15))
 }
 
 // approxEqual reports whether two polylines are equal within the given margin.
@@ -135,10 +136,8 @@ func (p *Polyline) IntersectsCell(cell Cell) bool {
 	// We only need to check whether the cell contains vertex 0 for correctness,
 	// but these tests are cheap compared to edge crossings so we might as well
 	// check all the vertices.
-	for _, v := range *p {
-		if cell.ContainsPoint(v) {
-			return true
-		}
+	if slices.ContainsFunc(*p, cell.ContainsPoint) {
+		return true
 	}
 
 	cellVertices := []Point{

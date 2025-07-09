@@ -16,6 +16,7 @@ package s2
 
 import (
 	"math"
+	"slices"
 	"sort"
 	"sync"
 	"sync/atomic"
@@ -100,12 +101,7 @@ func (c *clippedShape) numEdges() int {
 func (c *clippedShape) containsEdge(id int) bool {
 	// Linear search is fast because the number of edges per shape is typically
 	// very small (less than 10).
-	for _, e := range c.edges {
-		if e == id {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(c.edges, id)
 }
 
 // ShapeIndexCell stores the index contents for a particular CellID.
@@ -127,6 +123,14 @@ func (s *ShapeIndexCell) numEdges() int {
 		e += cs.numEdges()
 	}
 	return e
+}
+
+// clipped returns the clipped shape at the given index. Shapes are kept sorted in
+// increasing order of shape id.
+//
+// Requires: 0 <= i < len(shapes)
+func (s *ShapeIndexCell) clipped(i int) *clippedShape {
+	return s.shapes[i]
 }
 
 // add adds the given clipped shape to this index cell.
@@ -604,7 +608,7 @@ type ShapeIndex struct {
 	//    the amount of entities added grows.
 	//  - Often the index will never be queried, in which case we can save both
 	//    the time and memory required to build it. Examples:
-	//     + Loops that are created simply to pass to an Polygon. (We don't
+	//     + Loops that are created simply to pass to a Polygon. (We don't
 	//       need the Loop index, because Polygon builds its own index.)
 	//     + Applications that load a database of geometry and then query only
 	//       a small fraction of it.
@@ -892,9 +896,9 @@ func (s *ShapeIndex) addFaceEdge(fe faceEdge, allEdges [][]faceEdge) {
 	// the edge of the face that they don't intersect any (padded) adjacent face.
 	if aFace == face(fe.edge.V1.Vector) {
 		x, y := validFaceXYZToUV(aFace, fe.edge.V0.Vector)
-		fe.a = r2.Point{x, y}
+		fe.a = r2.Point{X: x, Y: y}
 		x, y = validFaceXYZToUV(aFace, fe.edge.V1.Vector)
-		fe.b = r2.Point{x, y}
+		fe.b = r2.Point{X: x, Y: y}
 
 		maxUV := 1 - cellPadding
 		if math.Abs(fe.a.X) <= maxUV && math.Abs(fe.a.Y) <= maxUV &&
@@ -1026,16 +1030,19 @@ func (s *ShapeIndex) updateEdges(pcell *PaddedCell, edges []*clippedEdge, t *tra
 		// the existing cell contents by absorbing the cell.
 		iter := s.Iterator()
 		r := iter.LocateCellID(pcell.id)
-		if r == Disjoint {
+		switch r {
+		case Disjoint:
 			disjointFromIndex = true
-		} else if r == Indexed {
+		case Indexed:
 			// Absorb the index cell by transferring its contents to edges and
 			// deleting it. We also start tracking the interior of any new shapes.
 			s.absorbIndexCell(pcell, iter, edges, t)
 			indexCellAbsorbed = true
 			disjointFromIndex = true
-		} else {
-			// DCHECK_EQ(SUBDIVIDED, r)
+		case Subdivided:
+			// TODO(rsned): Figure out the right way to deal with
+			// this case since we don't DCHECK.
+			// ABSL_DCHECK_EQ(SUBDIVIDED, r)
 		}
 	}
 
@@ -1338,7 +1345,7 @@ func (s *ShapeIndex) clipVBound(edge *clippedEdge, vEnd int, v float64) *clipped
 	return s.updateBound(edge, uEnd, u, vEnd, v)
 }
 
-// cliupVAxis returns the given edge clipped to within the boundaries of the middle
+// clipVAxis returns the given edge clipped to within the boundaries of the middle
 // interval along the v-axis, and adds the result to its children.
 func (s *ShapeIndex) clipVAxis(edge *clippedEdge, middle r1.Interval) (a, b *clippedEdge) {
 	if edge.bound.Y.Hi <= middle.Lo {
@@ -1466,9 +1473,11 @@ func (s *ShapeIndex) absorbIndexCell(p *PaddedCell, iter *ShapeIndexIterator, ed
 	}
 
 	// Update the edge list and delete this cell from the index.
-	edges, newEdges = newEdges, edges
+	// TODO(rsned): Figure out best fix for this. Linters are
+	// flagging the swap because newEdges is no longer used after
+	// this.
+	edges, newEdges = newEdges, edges // nolint
 	delete(s.cellMap, p.id)
-	// TODO(roberts): delete from s.Cells
 }
 
 // testAllEdges calls the trackers testEdge on all edges from shapes that have interiors.

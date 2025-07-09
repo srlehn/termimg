@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"image"
 	"image/color"
-	"reflect"
 	"runtime"
 	"sync"
 	"time"
@@ -36,14 +35,15 @@ type Option func(unit.Metric, *Config)
 
 // Window represents an operating system window.
 //
-// The zero-value Window is useful, and calling any method on
-// it creates and shows a new GUI window. On iOS or Android,
-// the first Window represents the the window previously
-// created by the platform.
+// The zero-value Window is useful; the GUI window is created and shown the first
+// time the [Event] method is called. On iOS or Android, the first Window represents
+// the window previously created by the platform.
 //
-// More than one Window is not supported on iOS, Android,
-// WebAssembly.
+// More than one Window is not supported on iOS, Android, WebAssembly.
 type Window struct {
+	initialOpts    []Option
+	initialActions []system.Action
+
 	ctx context
 	gpu gpu.GPU
 	// timer tracks the delayed invalidate goroutine.
@@ -89,13 +89,18 @@ type Window struct {
 	}
 	imeState editorState
 	driver   driver
-	// basic is the driver interface that is needed even after the window is gone.
-	basic basicDriver
-	once  sync.Once
+	// gpuErr tracks the GPU error that is to be reported when
+	// the window is closed.
+	gpuErr error
+
+	// invMu protects mayInvalidate.
+	invMu         sync.Mutex
+	mayInvalidate bool
+
 	// coalesced tracks the most recent events waiting to be delivered
 	// to the client.
 	coalesced eventSummary
-	// frame tracks the most recently frame event.
+	// frame tracks the most recent frame event.
 	lastFrame struct {
 		sync bool
 		size image.Point
@@ -105,11 +110,12 @@ type Window struct {
 }
 
 type eventSummary struct {
-	wakeup  bool
-	cfg     *ConfigEvent
-	view    *ViewEvent
-	frame   *frameEvent
-	destroy *DestroyEvent
+	wakeup       bool
+	cfg          *ConfigEvent
+	view         *ViewEvent
+	frame        *frameEvent
+	framePending bool
+	destroy      *DestroyEvent
 }
 
 type callbacks struct {
@@ -216,6 +222,7 @@ func (w *Window) frame(frame *op.Ops, viewport image.Point) error {
 }
 
 func (w *Window) processFrame(frame *op.Ops, ack chan<- struct{}) {
+	w.coalesced.framePending = false
 	wrapper := &w.decorations.Ops
 	off := op.Offset(w.lastFrame.off).Push(wrapper)
 	ops.AddCall(&wrapper.Internal, &frame.Internal, ops.PC{}, ops.PCFor(&frame.Internal))
@@ -223,7 +230,8 @@ func (w *Window) processFrame(frame *op.Ops, ack chan<- struct{}) {
 	w.lastFrame.deco.Add(wrapper)
 	if err := w.validateAndProcess(w.lastFrame.size, w.lastFrame.sync, wrapper, ack); err != nil {
 		w.destroyGPU()
-		w.driver.ProcessEvent(DestroyEvent{Err: err})
+		w.gpuErr = err
+		w.driver.Perform(system.ActionClose)
 		return
 	}
 	w.updateState()
@@ -273,8 +281,12 @@ func (w *Window) updateState() {
 //
 // Invalidate is safe for concurrent use.
 func (w *Window) Invalidate() {
-	w.init()
-	w.basic.Invalidate()
+	w.invMu.Lock()
+	defer w.invMu.Unlock()
+	if w.mayInvalidate {
+		w.mayInvalidate = false
+		w.driver.Invalidate()
+	}
 }
 
 // Option applies the options to the window. The options are hints; the platform is
@@ -283,7 +295,10 @@ func (w *Window) Option(opts ...Option) {
 	if len(opts) == 0 {
 		return
 	}
-	w.init(opts...)
+	if w.driver == nil {
+		w.initialOpts = append(w.initialOpts, opts...)
+		return
+	}
 	w.Run(func() {
 		cnf := Config{Decorated: w.decorations.enabled}
 		for _, opt := range opts {
@@ -302,13 +317,14 @@ func (w *Window) Option(opts ...Option) {
 }
 
 // Run f in the same thread as the native window event loop, and wait for f to
-// return or the window to close.
+// return or the window to close. If the window has not yet been created,
+// Run calls f directly.
 //
 // Note that most programs should not call Run; configuring a Window with
 // [CustomRenderer] is a notable exception.
 func (w *Window) Run(f func()) {
-	w.init()
 	if w.driver == nil {
+		f()
 		return
 	}
 	done := make(chan struct{})
@@ -374,11 +390,13 @@ func (w *Window) setNextFrame(at time.Time) {
 	}
 }
 
-func (c *callbacks) SetDriver(d basicDriver) {
-	c.w.basic = d
-	if d, ok := d.(driver); ok {
-		c.w.driver = d
+func (c *callbacks) SetDriver(d driver) {
+	if d == nil {
+		panic("nil driver")
 	}
+	c.w.invMu.Lock()
+	defer c.w.invMu.Unlock()
+	c.w.driver = d
 }
 
 func (c *callbacks) ProcessFrame(frame *op.Ops, ack chan<- struct{}) {
@@ -545,10 +563,20 @@ func (c *callbacks) Invalidate() {
 }
 
 func (c *callbacks) nextEvent() (event.Event, bool) {
-	s := &c.w.coalesced
-	// Every event counts as a wakeup.
-	defer func() { s.wakeup = false }()
+	return c.w.nextEvent()
+}
+
+func (w *Window) nextEvent() (event.Event, bool) {
+	s := &w.coalesced
+	defer func() {
+		// Every event counts as a wakeup.
+		s.wakeup = false
+	}()
 	switch {
+	case s.framePending:
+		// If the user didn't call FrameEvent.Event, process
+		// an empty frame.
+		w.processFrame(new(op.Ops), nil)
 	case s.view != nil:
 		e := *s.view
 		s.view = nil
@@ -565,10 +593,14 @@ func (c *callbacks) nextEvent() (event.Event, bool) {
 	case s.frame != nil:
 		e := *s.frame
 		s.frame = nil
+		s.framePending = true
 		return e.FrameEvent, true
 	case s.wakeup:
 		return wakeupEvent{}, true
 	}
+	w.invMu.Lock()
+	defer w.invMu.Unlock()
+	w.mayInvalidate = w.driver != nil
 	return nil, false
 }
 
@@ -611,15 +643,21 @@ func (w *Window) processEvent(e event.Event) bool {
 		e2.Size = e2.Size.Sub(offset)
 		w.coalesced.frame = &e2
 	case DestroyEvent:
+		if w.gpuErr != nil {
+			e2.Err = w.gpuErr
+		}
 		w.destroyGPU()
+		w.invMu.Lock()
+		w.mayInvalidate = false
 		w.driver = nil
+		w.invMu.Unlock()
 		if q := w.timer.quit; q != nil {
 			q <- struct{}{}
 			<-q
 		}
 		w.coalesced.destroy = &e2
 	case ViewEvent:
-		if reflect.ValueOf(e2).IsZero() && w.gpu != nil {
+		if !e2.Valid() && w.gpu != nil {
 			w.ctx.Lock()
 			w.gpu.Release()
 			w.gpu = nil
@@ -627,6 +665,7 @@ func (w *Window) processEvent(e event.Event) bool {
 		}
 		w.coalesced.view = &e2
 	case ConfigEvent:
+		w.decorations.Decorations.Maximized = e2.Config.Mode == Maximized
 		wasFocused := w.decorations.Config.Focused
 		w.decorations.Config = e2.Config
 		e2.Config = w.effectiveConfig()
@@ -680,48 +719,61 @@ func (w *Window) processEvent(e event.Event) bool {
 }
 
 // Event blocks until an event is received from the window, such as
-// [FrameEvent], or until [Invalidate] is called.
+// [FrameEvent], or until [Invalidate] is called. The window is created
+// and shown the first time Event is called.
 func (w *Window) Event() event.Event {
-	w.init()
-	return w.basic.Event()
+	if w.driver == nil {
+		w.init()
+	}
+	if w.driver == nil {
+		e, ok := w.nextEvent()
+		if !ok {
+			panic("window initialization failed without a DestroyEvent")
+		}
+		return e
+	}
+	return w.driver.Event()
 }
 
-func (w *Window) init(initial ...Option) {
-	w.once.Do(func() {
-		debug.Parse()
-		// Measure decoration height.
-		deco := new(widget.Decorations)
-		theme := material.NewTheme()
-		theme.Shaper = text.NewShaper(text.NoSystemFonts(), text.WithCollection(gofont.Regular()))
-		decoStyle := material.Decorations(theme, deco, 0, "")
-		gtx := layout.Context{
-			Ops: new(op.Ops),
-			// Measure in Dp.
-			Metric: unit.Metric{},
-		}
-		// Allow plenty of space.
-		gtx.Constraints.Max.Y = 200
-		dims := decoStyle.Layout(gtx)
-		decoHeight := unit.Dp(dims.Size.Y)
-		defaultOptions := []Option{
-			Size(800, 600),
-			Title("Gio"),
-			Decorated(true),
-			decoHeightOpt(decoHeight),
-		}
-		options := append(defaultOptions, initial...)
-		var cnf Config
-		cnf.apply(unit.Metric{}, options)
+func (w *Window) init() {
+	debug.Parse()
+	// Measure decoration height.
+	deco := new(widget.Decorations)
+	theme := material.NewTheme()
+	theme.Shaper = text.NewShaper(text.NoSystemFonts(), text.WithCollection(gofont.Regular()))
+	decoStyle := material.Decorations(theme, deco, 0, "")
+	gtx := layout.Context{
+		Ops: new(op.Ops),
+		// Measure in Dp.
+		Metric: unit.Metric{},
+	}
+	// Allow plenty of space.
+	gtx.Constraints.Max.Y = 200
+	dims := decoStyle.Layout(gtx)
+	decoHeight := unit.Dp(dims.Size.Y)
+	defaultOptions := []Option{
+		Size(800, 600),
+		Title("Gio"),
+		Decorated(true),
+		decoHeightOpt(decoHeight),
+	}
+	options := append(defaultOptions, w.initialOpts...)
+	w.initialOpts = nil
+	var cnf Config
+	cnf.apply(unit.Metric{}, options)
 
-		w.nocontext = cnf.CustomRenderer
-		w.decorations.Theme = theme
-		w.decorations.Decorations = deco
-		w.decorations.enabled = cnf.Decorated
-		w.decorations.height = decoHeight
-		w.imeState.compose = key.Range{Start: -1, End: -1}
-		w.semantic.ids = make(map[input.SemanticID]input.SemanticNode)
-		newWindow(&callbacks{w}, options)
-	})
+	w.nocontext = cnf.CustomRenderer
+	w.decorations.Theme = theme
+	w.decorations.Decorations = deco
+	w.decorations.enabled = cnf.Decorated
+	w.decorations.height = decoHeight
+	w.imeState.compose = key.Range{Start: -1, End: -1}
+	w.semantic.ids = make(map[input.SemanticID]input.SemanticNode)
+	newWindow(&callbacks{w}, options)
+	for _, acts := range w.initialActions {
+		w.Perform(acts)
+	}
+	w.initialActions = nil
 }
 
 func (w *Window) updateCursor() {
@@ -759,7 +811,6 @@ func (w *Window) decorate(e FrameEvent, o *op.Ops) image.Point {
 	default:
 		panic(fmt.Errorf("unknown WindowMode %v", m))
 	}
-	deco.Perform(actions)
 	gtx := layout.Context{
 		Ops:         o,
 		Now:         e.Now,
@@ -769,8 +820,12 @@ func (w *Window) decorate(e FrameEvent, o *op.Ops) image.Point {
 	}
 	// Update the window based on the actions on the decorations.
 	opts, acts := splitActions(deco.Update(gtx))
-	w.driver.Configure(opts)
-	w.driver.Perform(acts)
+	if len(opts) > 0 {
+		w.driver.Configure(opts)
+	}
+	if acts != 0 {
+		w.driver.Perform(acts)
+	}
 	style.Layout(gtx)
 	// Offset to place the frame content below the decorations.
 	decoHeight := gtx.Dp(w.decorations.Config.decoHeight)
@@ -815,6 +870,10 @@ func (w *Window) Perform(actions system.Action) {
 	opts, acts := splitActions(actions)
 	w.Option(opts...)
 	if acts == 0 {
+		return
+	}
+	if w.driver == nil {
+		w.initialActions = append(w.initialActions, acts)
 		return
 	}
 	w.Run(func() {

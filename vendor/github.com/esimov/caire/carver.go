@@ -11,6 +11,12 @@ import (
 	pigo "github.com/esimov/pigo/core"
 )
 
+// SeamCarver defines the Carve interface method, which have to be
+// implemented by the Processor struct.
+type SeamCarver interface {
+	Resize(*image.NRGBA) (image.Image, error)
+}
+
 // maxFaceDetAttempts defines the maximum number of attempts of face detections
 const maxFaceDetAttempts = 20
 
@@ -41,10 +47,10 @@ type Seam struct {
 // NewCarver returns an initialized Carver structure.
 func NewCarver(width, height int) *Carver {
 	return &Carver{
-		make([]float64, width*height),
-		nil,
-		width,
-		height,
+		Points: make([]float64, width*height),
+		Seams:  []Seam{},
+		Width:  width,
+		Height: height,
 	}
 }
 
@@ -70,14 +76,13 @@ func (c *Carver) set(x, y int, px float64) {
 //     with the minimum pixel value of the neighboring pixels from the previous row.
 func (c *Carver) ComputeSeams(p *Processor, img *image.NRGBA) (*image.NRGBA, error) {
 	var srcImg *image.NRGBA
-	p.GuiDebug = image.NewNRGBA(img.Bounds())
 
 	width, height := img.Bounds().Dx(), img.Bounds().Dy()
 	sobel = c.SobelDetector(img, float64(p.SobelThreshold))
 
 	dets := []pigo.Detection{}
 
-	if p.PigoFaceDetector != nil && p.FaceDetect && detAttempts < maxFaceDetAttempts {
+	if p.FaceDetector != nil && p.FaceDetect && detAttempts < maxFaceDetAttempts {
 		var ratio float64
 
 		if width < height {
@@ -88,7 +93,7 @@ func (c *Carver) ComputeSeams(p *Processor, img *image.NRGBA) (*image.NRGBA, err
 		minSize := float64(utils.Min(width, height)) * ratio / 3
 
 		// Transform the image to pixel array.
-		pixels := c.rgbToGrayscale(img)
+		pixels := rgbToGrayscale(img)
 
 		cParams := pigo.CascadeParams{
 			MinSize:     int(minSize),
@@ -108,10 +113,10 @@ func (c *Carver) ComputeSeams(p *Processor, img *image.NRGBA) (*image.NRGBA, err
 		}
 		// Run the classifier over the obtained leaf nodes and return the detection results.
 		// The result contains quadruplets representing the row, column, scale and detection score.
-		dets = p.PigoFaceDetector.RunCascade(cParams, p.FaceAngle)
+		dets = p.FaceDetector.RunCascade(cParams, p.FaceAngle)
 
 		// Calculate the intersection over union (IoU) of two clusters.
-		dets = p.PigoFaceDetector.ClusterDetections(dets, 0.1)
+		dets = p.FaceDetector.ClusterDetections(dets, 0.1)
 
 		if len(dets) == 0 {
 			// Retry detecting faces for a certain amount of time.
@@ -128,6 +133,8 @@ func (c *Carver) ComputeSeams(p *Processor, img *image.NRGBA) (*image.NRGBA, err
 	// which we do not want to be altered by the seam carver,
 	// obtain the white patches and apply it to the sobel image.
 	if len(p.MaskPath) > 0 && p.Mask != nil {
+		p.DebugMask = image.NewNRGBA(img.Bounds())
+
 		for i := 0; i < width*height; i++ {
 			x := i % width
 			y := (i - x) / width
@@ -150,6 +157,8 @@ func (c *Carver) ComputeSeams(p *Processor, img *image.NRGBA) (*image.NRGBA, err
 	// we do not want to be retained in the final image, obtain the white patches,
 	// but this time inverse the colors to black and merge it back to the sobel image.
 	if len(p.RMaskPath) > 0 && p.RMask != nil {
+		p.DebugMask = image.NewNRGBA(img.Bounds())
+
 		for i := 0; i < width*height; i++ {
 			x := i % width
 			y := (i - x) / width
@@ -165,9 +174,9 @@ func (c *Carver) ComputeSeams(p *Processor, img *image.NRGBA) (*image.NRGBA, err
 				} else {
 					sobel.Set(x, y, color.Black)
 				}
-				p.GuiDebug.Set(x, y, color.Black)
+				p.DebugMask.Set(x, y, color.Black)
 			} else {
-				p.GuiDebug.Set(x, y, color.Transparent)
+				p.DebugMask.Set(x, y, color.Transparent)
 			}
 		}
 	}
@@ -189,8 +198,9 @@ func (c *Carver) ComputeSeams(p *Processor, img *image.NRGBA) (*image.NRGBA, err
 				face.Col+scale,
 				face.Row+scale,
 			)
+			p.DebugMask = image.NewNRGBA(img.Bounds())
 			draw.Draw(sobel, rect, &image.Uniform{color.White}, image.Point{}, draw.Src)
-			draw.Draw(p.GuiDebug, rect, &image.Uniform{color.White}, image.Point{}, draw.Src)
+			draw.Draw(p.DebugMask, rect, &image.Uniform{color.White}, image.Point{}, draw.Src)
 		}
 	}
 

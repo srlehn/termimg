@@ -216,9 +216,7 @@ type window struct {
 
 	wakeups chan struct{}
 
-	// invMu avoids the race between the destruction of disp and
-	// Invalidate waking it up.
-	invMu sync.Mutex
+	closing bool
 }
 
 type poller struct {
@@ -556,7 +554,7 @@ func gio_onXdgSurfaceConfigure(data unsafe.Pointer, wmSurf *C.struct_xdg_surface
 //export gio_onToplevelClose
 func gio_onToplevelClose(data unsafe.Pointer, topLvl *C.struct_xdg_toplevel) {
 	w := callbackLoad(data).(*window)
-	w.close(nil)
+	w.closing = true
 }
 
 //export gio_onToplevelConfigure
@@ -1139,7 +1137,7 @@ func (w *window) Perform(actions system.Action) {
 	walkActions(actions, func(action system.Action) {
 		switch action {
 		case system.ActionClose:
-			w.close(nil)
+			w.closing = true
 		}
 	})
 }
@@ -1366,6 +1364,9 @@ func gio_onFrameDone(data unsafe.Pointer, callback *C.struct_wl_callback, t C.ui
 func (w *window) close(err error) {
 	w.ProcessEvent(WaylandViewEvent{})
 	w.ProcessEvent(DestroyEvent{Err: err})
+	w.destroy()
+	w.disp.destroy()
+	w.disp = nil
 }
 
 func (w *window) dispatch() {
@@ -1374,7 +1375,7 @@ func (w *window) dispatch() {
 		w.w.Invalidate()
 		return
 	}
-	if err := w.disp.dispatch(); err != nil {
+	if err := w.disp.dispatch(); err != nil || w.closing {
 		w.close(err)
 		return
 	}
@@ -1399,13 +1400,6 @@ func (w *window) Event() event.Event {
 			w.dispatch()
 			continue
 		}
-		if _, destroy := evt.(DestroyEvent); destroy {
-			w.destroy()
-			w.invMu.Lock()
-			w.disp.destroy()
-			w.disp = nil
-			w.invMu.Unlock()
-		}
 		return evt
 	}
 }
@@ -1416,11 +1410,7 @@ func (w *window) Invalidate() {
 	default:
 		return
 	}
-	w.invMu.Lock()
-	defer w.invMu.Unlock()
-	if w.disp != nil {
-		w.disp.wakeup()
-	}
+	w.disp.wakeup()
 }
 
 func (w *window) Run(f func()) {
@@ -1515,6 +1505,10 @@ func (d *wlDisplay) wakeup() {
 }
 
 func (w *window) destroy() {
+	if w.lastFrameCallback != nil {
+		C.wl_callback_destroy(w.lastFrameCallback)
+		w.lastFrameCallback = nil
+	}
 	if w.cursor.surf != nil {
 		C.wl_surface_destroy(w.cursor.surf)
 	}
@@ -1639,6 +1633,14 @@ func (w *window) flushScroll() {
 	if total == (f32.Point{}) {
 		return
 	}
+	if w.scroll.steps == (image.Point{}) {
+		w.fling.xExtrapolation.SampleDelta(w.scroll.time, -w.scroll.dist.X)
+		w.fling.yExtrapolation.SampleDelta(w.scroll.time, -w.scroll.dist.Y)
+	}
+	// Zero scroll distance prior to calling ProcessEvent, otherwise we may recursively
+	// re-process the scroll distance.
+	w.scroll.dist = f32.Point{}
+	w.scroll.steps = image.Point{}
 	w.ProcessEvent(pointer.Event{
 		Kind:      pointer.Scroll,
 		Source:    pointer.Mouse,
@@ -1648,12 +1650,6 @@ func (w *window) flushScroll() {
 		Time:      w.scroll.time,
 		Modifiers: w.disp.xkb.Modifiers(),
 	})
-	if w.scroll.steps == (image.Point{}) {
-		w.fling.xExtrapolation.SampleDelta(w.scroll.time, -w.scroll.dist.X)
-		w.fling.yExtrapolation.SampleDelta(w.scroll.time, -w.scroll.dist.Y)
-	}
-	w.scroll.dist = f32.Point{}
-	w.scroll.steps = image.Point{}
 }
 
 func (w *window) onPointerMotion(x, y C.wl_fixed_t, t C.uint32_t) {

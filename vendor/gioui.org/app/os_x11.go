@@ -113,9 +113,6 @@ type x11Window struct {
 	wakeups chan struct{}
 	handler x11EventHandler
 	buf     [100]byte
-
-	// invMy avoids the race between destroy and Invalidate.
-	invMu sync.Mutex
 }
 
 var (
@@ -389,6 +386,7 @@ func (w *x11Window) ProcessEvent(e event.Event) {
 func (w *x11Window) shutdown(err error) {
 	w.ProcessEvent(X11ViewEvent{})
 	w.ProcessEvent(DestroyEvent{Err: err})
+	w.destroy()
 }
 
 func (w *x11Window) Event() event.Event {
@@ -397,9 +395,6 @@ func (w *x11Window) Event() event.Event {
 		if !ok {
 			w.dispatch()
 			continue
-		}
-		if _, destroy := evt.(DestroyEvent); destroy {
-			w.destroy()
 		}
 		return evt
 	}
@@ -417,11 +412,6 @@ func (w *x11Window) Invalidate() {
 	select {
 	case w.wakeups <- struct{}{}:
 	default:
-	}
-	w.invMu.Lock()
-	defer w.invMu.Unlock()
-	if w.x == nil {
-		return
 	}
 	if _, err := syscall.Write(w.notify.write, x11OneByte); err != nil && err != syscall.EAGAIN {
 		panic(fmt.Errorf("failed to write to pipe: %v", err))
@@ -464,7 +454,12 @@ func (w *x11Window) dispatch() {
 	// Check for pending draw events before checking animation or blocking.
 	// This fixes an issue on Xephyr where on startup XPending() > 0 but
 	// poll will still block. This also prevents no-op calls to poll.
-	if syn = w.handler.handleEvents(); !syn {
+	syn = w.handler.handleEvents()
+	if w.x == nil {
+		// handleEvents received a close request and destroyed the window.
+		return
+	}
+	if !syn {
 		anim = w.animating
 		if !anim {
 			// Clear poll events.
@@ -476,6 +471,9 @@ func (w *x11Window) dispatch() {
 			switch {
 			case *xEvents&syscall.POLLIN != 0:
 				syn = w.handler.handleEvents()
+				if w.x == nil {
+					return
+				}
 			case *xEvents&(syscall.POLLERR|syscall.POLLHUP) != 0:
 			}
 		}
@@ -503,8 +501,6 @@ func (w *x11Window) dispatch() {
 }
 
 func (w *x11Window) destroy() {
-	w.invMu.Lock()
-	defer w.invMu.Unlock()
 	if w.notify.write != 0 {
 		syscall.Close(w.notify.write)
 		w.notify.write = 0

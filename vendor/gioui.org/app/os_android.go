@@ -575,10 +575,7 @@ func Java_org_gioui_GioView_onFrameCallback(env *C.JNIEnv, class C.jclass, view 
 	if !exist {
 		return
 	}
-	if w.visible && w.animating {
-		w.draw(env, false)
-		callVoidMethod(env, w.view, gioView.postFrameCallback)
-	}
+	w.draw(env, false)
 }
 
 //export Java_org_gioui_GioView_onBack
@@ -882,6 +879,9 @@ func (w *window) draw(env *C.JNIEnv, sync bool) {
 		},
 		Sync: sync,
 	})
+	if w.animating {
+		callVoidMethod(env, w.view, gioView.postFrameCallback)
+	}
 	a11yActive, err := callBooleanMethod(env, w.view, gioView.isA11yActive)
 	if err != nil {
 		panic(err)
@@ -1495,3 +1495,6 @@ func Java_org_gioui_Gio_scheduleMainFuncs(env *C.JNIEnv, cls C.jclass) {
 
 func (AndroidViewEvent) implementsViewEvent() {}
 func (AndroidViewEvent) ImplementsEvent()     {}
+func (a AndroidViewEvent) Valid() bool {
+	return a != (AndroidViewEvent{})
+}

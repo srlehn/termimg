@@ -1,8 +1,8 @@
 package harfbuzz
 
 import (
+	"github.com/go-text/typesetting/font/opentype/tables"
 	"github.com/go-text/typesetting/language"
-	"github.com/go-text/typesetting/opentype/tables"
 )
 
 /* ported from harfbuzz/src/hb-buffer.hh and hb-buffer.h
@@ -195,7 +195,7 @@ func (b *Buffer) GuessSegmentProperties() {
 	if b.Props.Script == 0 {
 		for _, info := range b.Info {
 			script := language.LookupScript(info.codepoint)
-			if script != language.Common && script != language.Inherited && script != language.Unknown {
+			if script.Strong() && script != language.Unknown {
 				b.Props.Script = script
 				break
 			}
