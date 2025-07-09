@@ -1,5 +1,3 @@
-// //go:build goexperiment.rangefunc
-
 package procextra
 
 import (

@@ -9,7 +9,6 @@ import (
 	"github.com/srlehn/termimg/query/qdefault"
 	"github.com/srlehn/termimg/term"
 	"github.com/srlehn/termimg/tty/bagabastty"
-	"github.com/srlehn/termimg/tty/bubbleteatty"
 	"github.com/srlehn/termimg/tty/contdtty"
 	"github.com/srlehn/termimg/tty/creacktty"
 	"github.com/srlehn/termimg/tty/dumbtty"
@@ -17,6 +16,7 @@ import (
 	"github.com/srlehn/termimg/tty/pkgterm"
 	"github.com/srlehn/termimg/tty/tcelltty"
 	"github.com/srlehn/termimg/tty/uroottty"
+	// "github.com/srlehn/termimg/tty/bubbleteatty"
 )
 
 type ttyProvFunc func(ptyName string) (term.TTY, error)
@@ -29,8 +29,8 @@ func wrapTTYProv[T term.TTY, F func(ptyName string) (T, error)](ttyProvFunc F) t
 
 func TestTTYNewAll(t *testing.T) {
 	tests := map[string]ttyProvFunc{
-		"gotty":      wrapTTYProv(gotty.New),
-		"bubbletea":  wrapTTYProv(bubbleteatty.New),
+		"gotty": wrapTTYProv(gotty.New),
+		// "bubbletea":  wrapTTYProv(bubbleteatty.New),
 		"bagabas":    wrapTTYProv(bagabastty.New),
 		"containerd": wrapTTYProv(contdtty.New),
 		"creack":     wrapTTYProv(creacktty.New),

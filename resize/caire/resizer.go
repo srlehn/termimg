@@ -23,7 +23,7 @@ type resizer struct {
 var _ term.Resizer = (*resizer)(nil)
 
 // shapeType can be "circle" or "line"
-func NewResizer(blurRadius, sobelThreshold int, faceDetect bool, shapeType string) term.Resizer {
+func NewResizer(blurRadius, sobelThreshold int, faceDetect bool, shapeType caire.ShapeType) term.Resizer {
 	if blurRadius == 0 {
 		// BlurRadius: 4 - github.com/esimov/caire/cmd/caire/main.go
 		// BlurRadius: 1

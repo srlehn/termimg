@@ -59,7 +59,7 @@ The **"/drawers/sane"** drawer collection will only use actual drawing methods,
 installation:
 
 ```sh
-GOEXPERIMENT=rangefunc go install github.com/srlehn/termimg/cmd/timg@master
+go install github.com/srlehn/termimg/cmd/timg@master
 ```
 
 usage:

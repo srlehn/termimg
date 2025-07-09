@@ -3,6 +3,8 @@
 package main
 
 import (
+	"github.com/esimov/caire"
+
 	"github.com/srlehn/termimg/resize/caire"
 	"github.com/srlehn/termimg/term"
 )
@@ -13,7 +15,7 @@ func init() {
 		blurRadius := 4
 		sobelThreshold := 2
 		faceDetect := true
-		shapeType := `circle`
+		shapeType := caire.Circle
 		return caire.NewResizer(blurRadius, sobelThreshold, faceDetect, shapeType)
 	}
 }
