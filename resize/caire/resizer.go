@@ -62,7 +62,6 @@ repeat:
 	switch it := im.(type) {
 	case *image.NRGBA:
 		nimg = it
-		goto end
 	case *term.Image:
 		if it.Original == nil {
 			if lvls > maxLvl {
@@ -83,6 +82,5 @@ repeat:
 		nimg = image.NewNRGBA(image.Rect(0, 0, b.Dx(), b.Dy()))
 		draw.Draw(nimg, nimg.Bounds(), img, b.Min, draw.Src)
 	}
-end:
 	return r.proc.Resize(nimg)
 }
