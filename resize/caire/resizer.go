@@ -78,8 +78,7 @@ repeat:
 			im = it
 			goto repeat
 		}
-	}
-	if nimg == nil {
+	default:
 		b := img.Bounds()
 		nimg = image.NewNRGBA(image.Rect(0, 0, b.Dx(), b.Dy()))
 		draw.Draw(nimg, nimg.Bounds(), img, b.Min, draw.Src)
