@@ -6,7 +6,6 @@ import (
 	"image"
 	"slices"
 	"strings"
-	"time"
 
 	"github.com/muesli/reflow/ansi"
 	"github.com/srlehn/termimg/internal/util"
@@ -41,30 +40,57 @@ func (c *scanner) Scan(b []byte) []byte {
 		return b
 	}
 	s := util.BytesToString(b)
-	var replArgs []string
-	for i := 0; i != -1; i++ {
-		time.Sleep(100 * time.Millisecond)
-		i2 := strings.Index(s[i:], csi)
-		if i2 == -1 {
-			break
-		}
-		i += i2
-		j := strings.Index(s[i:], csiTerm)
-		if j == -1 {
-			break
-		}
-		j += i
-		id := s[i+len(csi) : j+1-len(csiTerm)]
-		replArgs = append(replArgs, s[i:j+1], ``)
-		var v [2]int
-		v, ok := c.markers[id]
-		if !ok {
-			v[0] = i
-		} else {
-			v[1] = i
-		}
-		c.markers[id] = v
+
+	// Quick check: only process if contains our coordinate markers pattern
+	if !strings.Contains(s, csi) || !strings.Contains(s, csiTerm) {
+		return b
 	}
+
+	var replArgs []string
+	foundMarkers := false
+
+	for i := 0; i < len(s); {
+		idx := strings.Index(s[i:], csi)
+		if idx == -1 {
+			break
+		}
+		i += idx
+		termIdx := strings.Index(s[i:], csiTerm)
+		if termIdx == -1 {
+			i++
+			continue
+		}
+
+		id := s[i+len(csi) : i+termIdx]
+		// Widget IDs are numbers from pointer addresses - check for pure digits
+		if len(id) >= 10 && len(id) <= 20 {
+			isValid := true
+			for _, r := range id {
+				if !(r >= '0' && r <= '9') {
+					isValid = false
+					break
+				}
+			}
+			if isValid {
+				foundMarkers = true
+				replArgs = append(replArgs, s[i:i+termIdx+1], ``)
+				var v [2]int
+				v, ok := c.markers[id]
+				if !ok {
+					v[0] = i
+				} else {
+					v[1] = i
+				}
+				c.markers[id] = v
+			}
+		}
+		i++
+	}
+
+	if !foundMarkers {
+		return b // Pass through if no valid markers found
+	}
+
 	c.getRects(s)
 	s = strings.NewReplacer(replArgs...).Replace(s)
 	return util.StringToBytes(s)
@@ -97,8 +123,13 @@ outer:
 			l := strings.LastIndex(s[:p[i]], "\n")
 			if l == -1 {
 				l = 0
+			} else {
+				l++ // move past the newline
 			}
-			x[i] = ansi.PrintableRuneWidth(s[l+1 : p[i]])
+			if l > p[i] {
+				l = p[i] // bounds check
+			}
+			x[i] = ansi.PrintableRuneWidth(s[l:p[i]])
 			y[i] = strings.Count(s[:p[i]], "\n") + 1
 		}
 		c.rects[id] = image.Rect(x[0], y[0], x[1], y[1])

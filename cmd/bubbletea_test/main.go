@@ -45,7 +45,9 @@ func m() error {
 	//defer cancel()
 	teaOpts := []tea.ProgramOption{
 		//tea.WithContext(ctx),
-		// tea.WithAltScreen(),
+		tea.WithAltScreen(),
+		tea.WithInput(os.Stdin),
+		tea.WithOutput(os.Stdout),
 	}
 	var prog *tea.Program
 	timgOpts := []term.Option{

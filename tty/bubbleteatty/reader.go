@@ -5,6 +5,7 @@ package bubbleteatty
 import (
 	"bytes"
 	"io"
+	"strings"
 	"sync"
 	"time"
 
@@ -43,6 +44,7 @@ func (t *teaReader) read(l uint) error {
 	b := make([]byte, l)
 	n, err := t.r.Read(b)
 	if n > 0 {
+		// Send to all readers for now - simpler approach
 		for _, wChan := range t.wChans {
 			if wChan == nil {
 				continue
@@ -62,6 +64,31 @@ func (t *teaReader) read(l uint) error {
 		return err
 	}
 	return nil
+}
+
+// isANSIResponse detects if input looks like an ANSI terminal response
+func (t *teaReader) isANSIResponse(b []byte) bool {
+	if len(b) < 3 {
+		return false
+	}
+	s := string(b)
+
+	// Common ANSI response patterns:
+	// CSI sequences: \033[...
+	// Window size responses: \033[8;rows;cols;...t
+	// Cursor position: \033[row;colR
+	// Device attributes: \033[?...c
+	if strings.HasPrefix(s, "\033[") {
+		// Check for specific response patterns
+		if strings.Contains(s, "R") || // cursor position response
+			strings.Contains(s, "t") || // window size response
+			strings.Contains(s, "c") || // device attributes
+			strings.Contains(s, "y") { // our coordinate markers
+			return true
+		}
+	}
+
+	return false
 }
 
 func (t *teaReader) handleRequests() {
@@ -133,10 +160,14 @@ func (s *subReader) Read(p []byte) (n int, err error) {
 	case s.requChan <- uint(len(p) - n):
 	default:
 	}
+
+	// Balanced timeout: responsive for typing, quick for shutdown
 	select {
 	case <-s.newReadChan:
-	case <-time.After(ioTimeOut):
+	case <-time.After(5 * time.Second):
+		// Longer timeout for keyboard responsiveness
 	}
+
 	n2, err := s.buf.Read(p[n:])
 	if err == nil && n+n2 == len(p) {
 		return n + n2, nil

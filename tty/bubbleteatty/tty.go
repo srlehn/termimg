@@ -142,9 +142,7 @@ func (t *TTYBubbleTea) BubbleTeaOptions() []tea.ProgramOption {
 	}
 	return []tea.ProgramOption{
 		tea.WithInput(t.reader.NewSubReader()),
-		// tea.WithInput(t.ttyContD),
 		tea.WithOutput(t.bubblyWriter()),
-		// tea.WithOutput(t.ttyContD),
 	}
 }
 
@@ -156,7 +154,8 @@ func (t *TTYBubbleTea) Read(p []byte) (n int, err error) {
 	if err := t.file.SetReadDeadline(time.Now().Add(ioDeadLine)); err == nil {
 		defer t.file.SetReadDeadline(time.Time{})
 	}
-	return t.subReader.Read(p)
+	// Always use ttyContD for consistent behavior - teaReader will multiplex to BubbleTea
+	return t.ttyContD.Read(p)
 }
 
 func (t *TTYBubbleTea) Write(b []byte) (n int, err error) {
@@ -187,15 +186,11 @@ func (t *bubblyWriter) Write(b []byte) (n int, err error) {
 	if err := errors.NilReceiver(t, t.TTYBubbleTea); err != nil {
 		return 0, err
 	}
-	// return os.Stdout.Write(b)
 	if t.Scanner != nil {
 		b = t.Scanner.Scan(b)
+		defer t.Scanner.PostWrite()
 	}
-	n, err = t.TTYBubbleTea.Write(b)
-	if t.Scanner != nil {
-		t.Scanner.PostWrite()
-	}
-	return n, err
+	return t.TTYBubbleTea.Write(b)
 }
 
 type Scanner interface {

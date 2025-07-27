@@ -343,27 +343,29 @@ func (m *Image) draw(bounds image.Rectangle) {
 	if m == nil || m.term == nil || m.Canvas == nil {
 		return
 	}
-	x, y, errCursor := m.term.Cursor()
-	if !logx.IsErr(errCursor, m.term, slog.LevelError) {
-		defer func() {
-			errCursor = m.term.SetCursor(x, y)
-			logx.IsErr(errCursor, m.term, slog.LevelError)
-		}()
-		if bounds.Empty() {
-			// fallback
+
+	// If we have valid scanner bounds, use them directly - no cursor queries needed
+	if !bounds.Empty() {
+		// Scanner provided coordinates - skip cursor operations
+	} else {
+		// Fallback to cursor queries only when scanner bounds unavailable
+		x, y, errCursor := m.term.Cursor()
+		if !logx.IsErr(errCursor, m.term, slog.LevelError) {
+			// Set up cursor restoration immediately after successful query
+			defer func() {
+				errCursor = m.term.SetCursor(x, y)
+				logx.IsErr(errCursor, m.term, slog.LevelError)
+			}()
+			// Use style dimensions with cursor position
 			w := m.style.GetWidth()
 			h := m.style.GetHeight()
 			if w == 0 || h == 0 {
 				return
 			}
-			x, y, err := m.term.Cursor()
-			if err != nil {
-				return
-			}
 			bounds = image.Rect(int(x), int(y), int(x)+w, int(y)+h)
+		} else {
+			return
 		}
-	} else if bounds.Empty() {
-		return
 	}
 	bounds, err := m.fitImage(bounds)
 	_ = logx.IsErr(err, m.term, slog.LevelInfo)
