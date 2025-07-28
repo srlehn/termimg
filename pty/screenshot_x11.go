@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	imagingOrig "github.com/disintegration/imaging"
+	imagingOrig "github.com/kovidgoyal/imaging"
 
 	"github.com/srlehn/termimg"
 	"github.com/srlehn/termimg/internal"

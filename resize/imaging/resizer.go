@@ -3,12 +3,12 @@ package imaging
 import (
 	"image"
 
-	"github.com/disintegration/imaging"
+	"github.com/kovidgoyal/imaging"
 
 	"github.com/srlehn/termimg/term"
 )
 
-// Resizer uses "github.com/disintegration/imaging"
+// Resizer uses "github.com/kovidgoyal/imaging"
 type Resizer struct{}
 
 var _ term.Resizer = (*Resizer)(nil)

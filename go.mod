@@ -15,7 +15,6 @@ require (
 	github.com/creack/pty v1.1.24
 	github.com/creack/pty/v2 v2.0.1
 	github.com/disintegration/gift v1.2.1
-	github.com/disintegration/imaging v1.6.2
 	github.com/esimov/caire v1.5.0
 	github.com/fogleman/gg v1.3.0
 	github.com/gdamore/tcell/v2 v2.8.1
@@ -27,6 +26,7 @@ require (
 	github.com/gopxl/beep v1.1.0
 	github.com/iancoleman/strcase v0.3.0
 	github.com/jezek/xgb v1.1.1
+	github.com/kovidgoyal/imaging v1.6.4
 	github.com/lxn/win v0.0.0-20210218163916-a377121e959e
 	github.com/mattn/go-sixel v0.0.5
 	github.com/mattn/go-tty v0.0.7
@@ -44,7 +44,7 @@ require (
 	github.com/stretchr/testify v1.9.0
 	github.com/u-root/u-root v0.14.0
 	golang.org/x/exp v0.0.0-20250620022241-b7579e27df2b
-	golang.org/x/image v0.28.0
+	golang.org/x/image v0.29.0
 	golang.org/x/sys v0.34.0
 	mvdan.cc/sh v2.6.4+incompatible
 )
@@ -56,6 +56,7 @@ require (
 	github.com/BurntSushi/graphics-go v0.0.0-20160129215708-b43f31a4a966 // indirect
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
+	github.com/disintegration/imaging v1.6.2 // indirect
 	github.com/dsoprea/go-exif/v3 v3.0.1 // indirect
 	github.com/dsoprea/go-logging v0.0.0-20200710184922-b02d349568dd // indirect
 	github.com/dsoprea/go-png-image-structure/v2 v2.0.0-20210512210324-29b889a6093d // indirect
