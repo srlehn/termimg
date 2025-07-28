@@ -41,9 +41,9 @@ require (
 	github.com/spf13/cobra v1.9.1
 	github.com/srlehn/thumbnails v0.0.0-20241015211447-48abf86fbf76
 	github.com/srlehn/xgbutil v0.0.0-20230718194130-098830f60574
-	github.com/stretchr/testify v1.9.0
+	github.com/stretchr/testify v1.10.0
 	github.com/u-root/u-root v0.14.0
-	golang.org/x/exp v0.0.0-20250620022241-b7579e27df2b
+	golang.org/x/exp v0.0.0-20250718183923-645b1fa84792
 	golang.org/x/image v0.29.0
 	golang.org/x/sys v0.34.0
 	mvdan.cc/sh v2.6.4+incompatible
@@ -67,7 +67,7 @@ require (
 	github.com/gdamore/encoding v1.0.1 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
 	github.com/go-text/typesetting v0.3.0 // indirect
-	github.com/golang/geo v0.0.0-20250707181242-c5087ca84cf4 // indirect
+	github.com/golang/geo v0.0.0-20250723132703-4547674171cb // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/kr/pretty v0.3.1 // indirect
 	github.com/lucasb-eyer/go-colorful v1.2.0 // indirect
@@ -84,13 +84,13 @@ require (
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/shoenig/go-m1cpu v0.1.6 // indirect
 	github.com/soniakeys/quant v1.0.0 // indirect
-	github.com/spf13/pflag v1.0.6 // indirect
+	github.com/spf13/pflag v1.0.7 // indirect
 	github.com/tklauser/go-sysconf v0.3.15 // indirect
 	github.com/tklauser/numcpus v0.10.0 // indirect
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
-	golang.org/x/crypto v0.39.0 // indirect
-	golang.org/x/exp/shiny v0.0.0-20250620022241-b7579e27df2b // indirect
-	golang.org/x/net v0.41.0 // indirect
+	golang.org/x/crypto v0.40.0 // indirect
+	golang.org/x/exp/shiny v0.0.0-20250718183923-645b1fa84792 // indirect
+	golang.org/x/net v0.42.0 // indirect
 	golang.org/x/sync v0.16.0 // indirect
 	golang.org/x/term v0.33.0 // indirect
 	golang.org/x/text v0.27.0 // indirect
