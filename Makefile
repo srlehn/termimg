@@ -54,6 +54,11 @@ test:
 clean:
 	@rm -f -- timg timg.exe termui termui.exe tcell tcell.exe
 
+# lint
+
+.PHONY: lint
+lint:
+	@go tool golangci-lint run ./...
 
 # line count
 
