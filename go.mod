@@ -1,8 +1,8 @@
 module github.com/srlehn/termimg
 
-go 1.24.0
+go 1.25.0
 
-toolchain go1.24.1
+tool github.com/golangci/golangci-lint/v2/cmd/golangci-lint
 
 require (
 	github.com/anthonynsimon/bild v0.14.0
@@ -287,5 +287,3 @@ require (
 	mvdan.cc/gofumpt v0.8.0 // indirect
 	mvdan.cc/unparam v0.0.0-20250301125049-0df0534333a4 // indirect
 )
-
-tool github.com/golangci/golangci-lint/v2/cmd/golangci-lint
