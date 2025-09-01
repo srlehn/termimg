@@ -14,7 +14,6 @@ import (
 	sixel "github.com/mattn/go-sixel"
 
 	"github.com/srlehn/termimg/internal/consts"
-	"github.com/srlehn/termimg/internal/environ"
 	"github.com/srlehn/termimg/internal/errors"
 	"github.com/srlehn/termimg/internal/logx"
 	"github.com/srlehn/termimg/internal/parser"
@@ -33,7 +32,7 @@ type drawerSixel struct{}
 func (d *drawerSixel) Name() string     { return `sixel` }
 func (d *drawerSixel) New() term.Drawer { return &drawerSixel{} }
 
-func (d *drawerSixel) IsApplicable(inp term.DrawerCheckerInput) (bool, environ.Properties) {
+func (d *drawerSixel) IsApplicable(inp term.DrawerCheckerInput) (bool, term.Properties) {
 	// example query: "\033[0c"
 	// possible answer from the terminal (here xterm): "\033[[?63;1;2;4;6;9;15;22c", vte(?): ...62,9;c
 	// the "4" signals that the terminal is capable of sixel

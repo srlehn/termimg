@@ -13,7 +13,7 @@ var _ TermChecker = (*termCheckerGeneric)(nil)
 type termCheckerGeneric struct{ TermChecker }
 
 func (t *termCheckerGeneric) Name() string { return consts.TermGenericName }
-func (t *termCheckerGeneric) CheckExclude(environ.Properties) (mightBe bool, p environ.Properties) {
+func (t *termCheckerGeneric) CheckExclude(Properties) (mightBe bool, p Properties) {
 	p = environ.NewProperties()
 	p.SetProperty(propkeys.CheckTermEnvExclPrefix+consts.TermGenericName, consts.CheckTermPassed)
 	// inform that this is the final check (no CheckIsQuery)

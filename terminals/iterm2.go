@@ -27,7 +27,7 @@ var _ term.TermChecker = (*termCheckerITerm2)(nil)
 
 type termCheckerITerm2 struct{ term.TermChecker }
 
-func (t *termCheckerITerm2) CheckExclude(pr environ.Properties) (mightBe bool, p environ.Properties) {
+func (t *termCheckerITerm2) CheckExclude(pr term.Properties) (mightBe bool, p term.Properties) {
 	p = environ.NewProperties()
 	if t == nil || pr == nil {
 		p.SetProperty(propkeys.CheckTermEnvExclPrefix+termNameITerm2, consts.CheckTermFailed)
@@ -50,7 +50,7 @@ func (t *termCheckerITerm2) CheckExclude(pr environ.Properties) (mightBe bool, p
 	return true, p
 }
 
-func (t *termCheckerITerm2) CheckIsQuery(qu term.Querier, tty term.TTY, pr environ.Properties) (is bool, p environ.Properties) {
+func (t *termCheckerITerm2) CheckIsQuery(qu term.Querier, tty term.TTY, pr term.Properties) (is bool, p term.Properties) {
 	p = environ.NewProperties()
 	if t == nil || pr == nil {
 		p.SetProperty(propkeys.CheckTermQueryIsPrefix+termNameITerm2, consts.CheckTermFailed)
@@ -100,7 +100,7 @@ func (t *termCheckerITerm2) CheckIsQuery(qu term.Querier, tty term.TTY, pr envir
 	return true, p
 }
 
-func (t *termCheckerITerm2) Surveyor(pr environ.Properties) term.PartialSurveyor {
+func (t *termCheckerITerm2) Surveyor(pr term.Properties) term.PartialSurveyor {
 	// return &term.SurveyorNoANSI{}
 	return &surveyorITerm2{}
 }

@@ -12,7 +12,6 @@ import (
 
 	"github.com/google/btree"
 
-	"github.com/srlehn/termimg/internal/environ"
 	"github.com/srlehn/termimg/internal/errors"
 	"github.com/srlehn/termimg/internal/logx"
 	"github.com/srlehn/termimg/internal/util"
@@ -29,7 +28,7 @@ func AllDrawers() []Drawer {
 type Drawer interface {
 	Name() string
 	New() Drawer
-	IsApplicable(DrawerCheckerInput) (bool, environ.Properties)
+	IsApplicable(DrawerCheckerInput) (bool, Properties)
 	Draw(img image.Image, bounds image.Rectangle, term *Terminal) error
 	Prepare(ctx context.Context, img image.Image, bounds image.Rectangle, term *Terminal) (drawFn func() error, _ error)
 }

@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/srlehn/termimg/internal/consts"
-	"github.com/srlehn/termimg/internal/environ"
 	"github.com/srlehn/termimg/internal/errors"
 	"github.com/srlehn/termimg/internal/iointernal"
 	"github.com/srlehn/termimg/term"
@@ -195,7 +194,7 @@ read:
 }
 
 // CachedQuery ...
-func (q *querierDefault) CachedQuery(qs string, tty term.TTY, p term.Parser, pr environ.Properties) (string, error) {
+func (q *querierDefault) CachedQuery(qs string, tty term.TTY, p term.Parser, pr term.Properties) (string, error) {
 	if q == nil {
 		return ``, errors.NilReceiver()
 	}

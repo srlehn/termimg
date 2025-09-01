@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/srlehn/termimg/internal/consts"
-	"github.com/srlehn/termimg/internal/environ"
 	"github.com/srlehn/termimg/internal/errors"
 	"github.com/srlehn/termimg/internal/logx"
 	"github.com/srlehn/termimg/internal/parser"
@@ -34,7 +33,7 @@ type drawerKitty struct {
 func (d *drawerKitty) Name() string     { return `kitty` }
 func (d *drawerKitty) New() term.Drawer { return &drawerKitty{} }
 
-func (d *drawerKitty) IsApplicable(inp term.DrawerCheckerInput) (bool, environ.Properties) {
+func (d *drawerKitty) IsApplicable(inp term.DrawerCheckerInput) (bool, term.Properties) {
 	if inp == nil {
 		return false, nil
 	}

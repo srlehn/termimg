@@ -11,7 +11,6 @@ import (
 
 	"github.com/srlehn/termimg/internal/consts"
 	"github.com/srlehn/termimg/internal/encoder/encpng"
-	"github.com/srlehn/termimg/internal/environ"
 	"github.com/srlehn/termimg/internal/errors"
 	"github.com/srlehn/termimg/internal/logx"
 	"github.com/srlehn/termimg/mux"
@@ -27,7 +26,7 @@ type drawerURXVT struct{}
 func (d *drawerURXVT) Name() string     { return `urxvt` }
 func (d *drawerURXVT) New() term.Drawer { return &drawerURXVT{} }
 
-func (d *drawerURXVT) IsApplicable(inp term.DrawerCheckerInput) (bool, environ.Properties) {
+func (d *drawerURXVT) IsApplicable(inp term.DrawerCheckerInput) (bool, term.Properties) {
 	return inp != nil && inp.Name() == `urxvt`, nil
 }
 

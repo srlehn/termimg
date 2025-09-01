@@ -27,7 +27,7 @@ var _ term.TermChecker = (*termCheckerVTE)(nil)
 
 type termCheckerVTE struct{ term.TermChecker }
 
-func (t *termCheckerVTE) CheckExclude(pr environ.Properties) (mightBe bool, p environ.Properties) {
+func (t *termCheckerVTE) CheckExclude(pr term.Properties) (mightBe bool, p term.Properties) {
 	p = environ.NewProperties()
 	if t == nil || pr == nil {
 		p.SetProperty(propkeys.CheckTermEnvExclPrefix+termNameVTE, consts.CheckTermFailed)
@@ -55,7 +55,7 @@ func (t *termCheckerVTE) CheckExclude(pr environ.Properties) (mightBe bool, p en
 
 	return true, p
 }
-func (t *termCheckerVTE) CheckIsQuery(qu term.Querier, tty term.TTY, pr environ.Properties) (is bool, p environ.Properties) {
+func (t *termCheckerVTE) CheckIsQuery(qu term.Querier, tty term.TTY, pr term.Properties) (is bool, p term.Properties) {
 	p = environ.NewProperties()
 	if t == nil || pr == nil {
 		p.SetProperty(propkeys.CheckTermQueryIsPrefix+termNameVTE, consts.CheckTermFailed)
@@ -73,7 +73,7 @@ func (t *termCheckerVTE) CheckIsQuery(qu term.Querier, tty term.TTY, pr environ.
 	return true, p
 }
 
-func (t *termCheckerVTE) Exe(pr environ.Properties) string {
+func (t *termCheckerVTE) Exe(pr term.Properties) string {
 	vteTerms := []string{
 		"mate-terminal",
 		"gnome-terminal",
@@ -98,7 +98,7 @@ func (t *termCheckerVTE) Exe(pr environ.Properties) string {
 	return vteTerm
 }
 
-func (t *termCheckerVTE) Surveyor(pr environ.Properties) term.PartialSurveyor {
+func (t *termCheckerVTE) Surveyor(pr term.Properties) term.PartialSurveyor {
 	var major, minor uint64
 	envVMaj, okVMaj := pr.Property(propkeys.VTEVersionMajor)
 	if okVMaj || len(envVMaj) > 0 {

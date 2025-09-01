@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/srlehn/termimg/internal/consts"
-	"github.com/srlehn/termimg/internal/environ"
 	"github.com/srlehn/termimg/internal/errors"
 	"github.com/srlehn/termimg/internal/logx"
 	"github.com/srlehn/termimg/term"
@@ -24,7 +23,7 @@ type drawerFramebuffer struct{}
 func (d *drawerFramebuffer) Name() string     { return `framebuffer` }
 func (d *drawerFramebuffer) New() term.Drawer { return &drawerFramebuffer{} }
 
-func (d *drawerFramebuffer) IsApplicable(inp term.DrawerCheckerInput) (bool, environ.Properties) {
+func (d *drawerFramebuffer) IsApplicable(inp term.DrawerCheckerInput) (bool, term.Properties) {
 	if inp == nil {
 		return false, nil
 	}

@@ -16,7 +16,6 @@ import (
 
 	"github.com/srlehn/termimg/internal/consts"
 	"github.com/srlehn/termimg/internal/encoder/encpng"
-	"github.com/srlehn/termimg/internal/environ"
 	"github.com/srlehn/termimg/internal/errors"
 	"github.com/srlehn/termimg/internal/logx"
 	"github.com/srlehn/termimg/term"
@@ -40,7 +39,7 @@ type drawerW3MImgDisplay struct{}
 func (d *drawerW3MImgDisplay) Name() string     { return `w3mimgdisplay` }
 func (d *drawerW3MImgDisplay) New() term.Drawer { return &drawerW3MImgDisplay{} }
 
-func (d *drawerW3MImgDisplay) IsApplicable(inp term.DrawerCheckerInput) (bool, environ.Properties) {
+func (d *drawerW3MImgDisplay) IsApplicable(inp term.DrawerCheckerInput) (bool, term.Properties) {
 	if inp == nil {
 		return false, nil
 	}

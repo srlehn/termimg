@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/srlehn/termimg/internal/consts"
-	"github.com/srlehn/termimg/internal/environ"
 	"github.com/srlehn/termimg/internal/errors"
 	"github.com/srlehn/termimg/internal/logx"
 	"github.com/srlehn/termimg/term"
@@ -36,7 +35,7 @@ type drawerGeneric2 struct {
 func (d *drawerGeneric2) Name() string     { return `generic2` }
 func (d *drawerGeneric2) New() term.Drawer { return &drawerGeneric2{} }
 
-func (d *drawerGeneric2) IsApplicable(inp term.DrawerCheckerInput) (bool, environ.Properties) {
+func (d *drawerGeneric2) IsApplicable(inp term.DrawerCheckerInput) (bool, term.Properties) {
 	// TODO disable sextants on xterm, terminology (font drawn)
 	return true, nil
 }

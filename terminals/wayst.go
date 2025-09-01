@@ -22,7 +22,7 @@ var _ term.TermChecker = (*termCheckerWayst)(nil)
 
 type termCheckerWayst struct{ term.TermChecker }
 
-func (t *termCheckerWayst) CheckIsWindow(w wm.Window) (is bool, p environ.Properties) {
+func (t *termCheckerWayst) CheckIsWindow(w wm.Window) (is bool, p term.Properties) {
 	p = environ.NewProperties()
 	if t == nil || w == nil {
 		p.SetProperty(propkeys.CheckTermWindowIsPrefix+termNameWayst, consts.CheckTermFailed)

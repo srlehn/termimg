@@ -32,11 +32,11 @@ import (
 // this stage.
 // CheckIs is the final check, ANSI querying is allowed, if not prohibited by the
 // TerminalCheckerInput properties.
-// Alternatively a wm.Window can be compared against with CheckWindow.
+// Alternatively a Window can be compared against with CheckWindow.
 //
 //   - CheckExclude(TerminalCheckerInput) (mightBe bool, p Proprietor)
 //   - CheckIs(Querier, TTY, TerminalCheckerInput) (is bool, p Proprietor)
-//   - CheckWindow(wm.Window) (is bool, p Proprietor)
+//   - CheckWindow(Window) (is bool, p Proprietor)
 //
 // A new TermChecker has to embed NewTermCheckerCore(name string) providing the
 // TermChecker type identity and the Name() method.
@@ -48,17 +48,17 @@ import (
 //   - TTY(pytName string, ci environ.Proprietor) (TTY, error)
 //   - Querier(environ.Proprietor) Querier
 //   - Surveyor(environ.Proprietor) PartialSurveyor
-//   - Window(environ.Proprietor) (wm.Window, error)
+//   - Window(environ.Proprietor) (Window, error)
 //   - Args(environ.Proprietor) []string
 //   - Exe(environ.Proprietor) string
 type TermChecker interface {
 	// TODO: implement all optional methods through the core and check for nil?
 	// The following methods are implemented by embedded *termCheckerCore.
 	Name() string
-	CheckExclude(environ.Properties) (mightBe bool, p environ.Properties)
-	CheckIsQuery(Querier, TTY, environ.Properties) (is bool, p environ.Properties)
-	CheckIsWindow(wm.Window) (is bool, p environ.Properties)
-	Check(qu Querier, tty TTY, inp environ.Properties) (is bool, p environ.Properties)
+	CheckExclude(Properties) (mightBe bool, p Properties)
+	CheckIsQuery(Querier, TTY, Properties) (is bool, p Properties)
+	CheckIsWindow(Window) (is bool, p Properties)
+	Check(qu Querier, tty TTY, inp Properties) (is bool, p Properties)
 	NewTerminal(...Option) (*Terminal, error)
 	Init(tc TermChecker) // called during registration
 }
@@ -76,7 +76,7 @@ func (c *termCheckerCore) Name() string {
 }
 
 // combines CheckExclude and CheckIs
-func (c *termCheckerCore) Check(qu Querier, tty TTY, inp environ.Properties) (is bool, p environ.Properties) {
+func (c *termCheckerCore) Check(qu Querier, tty TTY, inp Properties) (is bool, p Properties) {
 	// TODO include CheckIsWindow?
 	if c == nil || c.parent == nil {
 		return false, nil
@@ -101,17 +101,17 @@ func (c *termCheckerCore) Check(qu Querier, tty TTY, inp environ.Properties) (is
 	return true, pr
 }
 
-func (c *termCheckerCore) CheckExclude(environ.Properties) (mightBe bool, p environ.Properties) {
+func (c *termCheckerCore) CheckExclude(Properties) (mightBe bool, p Properties) {
 	p = environ.NewProperties()
 	p.SetProperty(propkeys.CheckTermEnvExclPrefix+c.Name(), consts.CheckTermDummy)
 	return false, p
 }
-func (c *termCheckerCore) CheckIsQuery(Querier, TTY, environ.Properties) (is bool, p environ.Properties) {
+func (c *termCheckerCore) CheckIsQuery(Querier, TTY, Properties) (is bool, p Properties) {
 	p = environ.NewProperties()
 	p.SetProperty(propkeys.CheckTermQueryIsPrefix+c.Name(), consts.CheckTermDummy)
 	return false, p
 }
-func (c *termCheckerCore) CheckIsWindow(wm.Window) (is bool, p environ.Properties) {
+func (c *termCheckerCore) CheckIsWindow(Window) (is bool, p Properties) {
 	p = environ.NewProperties()
 	p.SetProperty(propkeys.CheckTermWindowIsPrefix+c.Name(), consts.CheckTermDummy)
 	return false, p
@@ -168,26 +168,26 @@ func (c *termCheckerCore) NewTerminal(opts ...Option) (*Terminal, error) {
 	}
 	var exe string
 	if ex, okExe := c.parent.(interface {
-		Exe(environ.Properties) string
+		Exe(Properties) string
 	}); okExe {
 		exe = ex.Exe(tm.properties)
 	}
 	var ar internal.Arger
 	if arg, okArger := c.parent.(interface {
-		Args(environ.Properties) []string
+		Args(Properties) []string
 	}); okArger {
 		ar = newArger(arg.Args(tm.properties))
 	}
 	if err := tm.SetOptions(setTTYAndQuerier(c)); logx.IsErr(err, tm, slog.LevelInfo) {
 		return nil, err
 	}
-	var w wm.Window
+	var w Window
 	if tm.windowProvider != nil {
 		w = tm.windowProvider(c.parent.CheckIsWindow, tm.properties)
 	}
 	if w == nil {
 		if wdwer, okWdwer := c.parent.(interface {
-			Window(environ.Properties) (wm.Window, error)
+			Window(Properties) (Window, error)
 		}); okWdwer {
 			wChk, err := wdwer.Window(tm.properties)
 			if err == nil && wChk != nil {
@@ -200,7 +200,7 @@ func (c *termCheckerCore) NewTerminal(opts ...Option) (*Terminal, error) {
 	}
 	if tm.partialSurveyor == nil {
 		if surver, okSurver := c.parent.(interface {
-			Surveyor(environ.Properties) PartialSurveyor
+			Surveyor(Properties) PartialSurveyor
 		}); okSurver {
 			tm.partialSurveyor = surver.Surveyor(tm.properties)
 		}
@@ -344,7 +344,7 @@ func (c *termCheckerCore) NewTerminal(opts ...Option) (*Terminal, error) {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-func termGenericPreCheck(pr environ.Properties) {
+func termGenericPreCheck(pr Properties) {
 	if isRemotePreCheck(pr) {
 		pr.SetProperty(propkeys.IsRemote, `true`)
 	}
@@ -363,7 +363,7 @@ func termGenericPreCheck(pr environ.Properties) {
 	}
 }
 
-func termGenericCheck(tty TTY, qu Querier, pr environ.Properties) {
+func termGenericCheck(tty TTY, qu Querier, pr Properties) {
 	if _, avoidANSI := pr.Property(propkeys.AvoidANSI); avoidANSI {
 		return
 	}
@@ -411,19 +411,19 @@ func isRemotePreCheck(e environ.Enver) bool {
 
 type DrawerCheckerInput interface {
 	Name() string
-	environ.Properties
+	Properties
 	Querier
 	TTY
-	wm.Window // TODO remove Close()
+	Window // TODO remove Close()
 }
 
 var _ DrawerCheckerInput = (*drawerCheckerInput)(nil)
 
 type drawerCheckerInput struct {
-	environ.Properties
+	Properties
 	Querier
 	TTY
-	w    wm.Window
+	w    Window
 	name string
 }
 
@@ -434,7 +434,7 @@ func (in *drawerCheckerInput) Name() string {
 	return in.name
 }
 
-var _ wm.Window = (*drawerCheckerInput)(nil)
+var _ Window = (*drawerCheckerInput)(nil)
 
 func (in *drawerCheckerInput) WindowConn() wm.Connection {
 	if in == nil {

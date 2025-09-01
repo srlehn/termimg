@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/srlehn/termimg/internal/consts"
-	"github.com/srlehn/termimg/internal/environ"
 	"github.com/srlehn/termimg/internal/errors"
 	"github.com/srlehn/termimg/internal/logx"
 	"github.com/srlehn/termimg/mux"
@@ -28,7 +27,7 @@ type drawerDomTerm struct{}
 func (d *drawerDomTerm) Name() string     { return `domterm` }
 func (d *drawerDomTerm) New() term.Drawer { return &drawerDomTerm{} }
 
-func (d *drawerDomTerm) IsApplicable(inp term.DrawerCheckerInput) (bool, environ.Properties) {
+func (d *drawerDomTerm) IsApplicable(inp term.DrawerCheckerInput) (bool, term.Properties) {
 	return inp != nil && inp.Name() == `domterm`, nil
 }
 

@@ -21,7 +21,7 @@ var _ term.TermChecker = (*termCheckerLaTerminal)(nil)
 
 type termCheckerLaTerminal struct{ term.TermChecker }
 
-func (t *termCheckerLaTerminal) CheckExclude(pr environ.Properties) (mightBe bool, p environ.Properties) {
+func (t *termCheckerLaTerminal) CheckExclude(pr term.Properties) (mightBe bool, p term.Properties) {
 	p = environ.NewProperties()
 	if t == nil || pr == nil {
 		p.SetProperty(propkeys.CheckTermEnvExclPrefix+termNameLaTerminal, consts.CheckTermFailed)

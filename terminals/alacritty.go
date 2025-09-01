@@ -22,7 +22,7 @@ var _ term.TermChecker = (*termCheckerAlacritty)(nil)
 
 type termCheckerAlacritty struct{ term.TermChecker }
 
-func (t *termCheckerAlacritty) CheckExclude(pr environ.Properties) (mightBe bool, p environ.Properties) {
+func (t *termCheckerAlacritty) CheckExclude(pr term.Properties) (mightBe bool, p term.Properties) {
 	p = environ.NewProperties()
 	if t == nil || pr == nil {
 		p.SetProperty(propkeys.CheckTermEnvExclPrefix+termNameAlacritty, consts.CheckTermFailed)
@@ -36,7 +36,7 @@ func (t *termCheckerAlacritty) CheckExclude(pr environ.Properties) (mightBe bool
 	p.SetProperty(propkeys.CheckTermEnvExclPrefix+termNameAlacritty, consts.CheckTermFailed)
 	return false, p
 }
-func (t *termCheckerAlacritty) CheckIsWindow(w wm.Window) (is bool, p environ.Properties) {
+func (t *termCheckerAlacritty) CheckIsWindow(w wm.Window) (is bool, p term.Properties) {
 	p = environ.NewProperties()
 	if t == nil || w == nil {
 		p.SetProperty(propkeys.CheckTermWindowIsPrefix+termNameAlacritty, consts.CheckTermFailed)

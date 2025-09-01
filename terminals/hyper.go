@@ -25,7 +25,7 @@ var _ term.TermChecker = (*termCheckerHyper)(nil)
 
 type termCheckerHyper struct{ term.TermChecker }
 
-func (t *termCheckerHyper) CheckExclude(pr environ.Properties) (mightBe bool, p environ.Properties) {
+func (t *termCheckerHyper) CheckExclude(pr term.Properties) (mightBe bool, p term.Properties) {
 	p = environ.NewProperties()
 	if t == nil || pr == nil {
 		p.SetProperty(propkeys.CheckTermEnvExclPrefix+termNameHyper, consts.CheckTermFailed)
@@ -69,7 +69,7 @@ end:
 	return true, p
 }
 
-func (t *termCheckerHyper) Surveyor(pr environ.Properties) term.PartialSurveyor {
+func (t *termCheckerHyper) Surveyor(pr term.Properties) term.PartialSurveyor {
 	// BUG in v4.0.0-canary.4: CSI 14t reports wrong pixel size
 	return &surveyorHyperWrong14t{}
 }

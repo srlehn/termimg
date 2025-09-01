@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/srlehn/termimg/internal/consts"
-	"github.com/srlehn/termimg/internal/environ"
 	"github.com/srlehn/termimg/internal/errors"
 	"github.com/srlehn/termimg/internal/logx"
 	"github.com/srlehn/termimg/term"
@@ -24,7 +23,7 @@ type DrawerGeneric struct{}
 
 func (d *DrawerGeneric) Name() string     { return consts.DrawerGenericName }
 func (d *DrawerGeneric) New() term.Drawer { return &DrawerGeneric{} }
-func (d *DrawerGeneric) IsApplicable(term.DrawerCheckerInput) (bool, environ.Properties) {
+func (d *DrawerGeneric) IsApplicable(term.DrawerCheckerInput) (bool, term.Properties) {
 	return true, nil
 }
 

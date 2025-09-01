@@ -21,7 +21,7 @@ var _ term.TermChecker = (*termCheckerApple)(nil)
 
 type termCheckerApple struct{ term.TermChecker }
 
-func (t *termCheckerApple) CheckExclude(pr environ.Properties) (mightBe bool, p environ.Properties) {
+func (t *termCheckerApple) CheckExclude(pr term.Properties) (mightBe bool, p term.Properties) {
 	p = environ.NewProperties()
 	if t == nil || pr == nil {
 		p.SetProperty(propkeys.CheckTermEnvExclPrefix+termNameApple, consts.CheckTermFailed)

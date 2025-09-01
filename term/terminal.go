@@ -48,21 +48,25 @@ type Terminal interface {
 	Surveyor
 	environ.Proprietor
 	TTY
-	wm.Window
+	Window
 }
 */
 
 var _ interface {
 	internal.Closer
 	Surveyor
-	environ.Properties
+	Properties
 	TTY
 } = (*Terminal)(nil)
 
 type (
+	Properties     = environ.Properties
+	Window         = wm.Window
+	WindowProvider = wm.WindowProvider
+	// unexport for struct embedding
 	tty        = TTY
 	querier    = Querier
-	properties = environ.Properties
+	properties = Properties
 	arger      = internal.Arger
 	closer     = internal.Closer
 )
@@ -73,7 +77,7 @@ type Terminal struct {
 	properties // Data
 	surveyor   SurveyorLight
 	arger
-	window wm.Window
+	window Window
 	closer
 	drawers         []Drawer
 	resizer         Resizer
@@ -85,7 +89,7 @@ type Terminal struct {
 	querierDefault                          Querier
 	ttyProv, ttyProvDefault                 ttyProvider
 	partialSurveyor, partialSurveyorDefault PartialSurveyor
-	windowProvider, windowProviderDefault   wm.WindowProvider
+	windowProvider, windowProviderDefault   WindowProvider
 
 	// resolution
 	resTermInCellsW, resTermInCellsH uint
@@ -108,7 +112,7 @@ type Terminal struct {
 //   - TTY(ptyName string, ci environ.Proprietor) (TTY, error)
 //   - Querier(environ.Proprietor) Querier
 //   - Surveyor(environ.Proprietor) PartialSurveyor
-//   - Window(environ.Proprietor) (wm.Window, error)
+//   - Window(environ.Proprietor) (Window, error)
 //   - Args(environ.Proprietor) []string
 //   - Exe(environ.Proprietor) string // alternative executable name if it differs from Name()
 //
@@ -190,7 +194,7 @@ func getTTYAndQuerier(tm *Terminal, tc *termCheckerCore) (TTY, Querier, error) {
 	} else {
 		if tc != nil {
 			if ttyProv, okTTYProv := tc.parent.(interface {
-				TTY(pytName string, ci environ.Properties) (TTY, error)
+				TTY(pytName string, ci Properties) (TTY, error)
 			}); okTTYProv {
 				tty, err := ttyProv.TTY(tm.ptyName(), tm.properties)
 				if err != nil {
@@ -229,7 +233,7 @@ func getTTYAndQuerier(tm *Terminal, tc *termCheckerCore) (TTY, Querier, error) {
 	} else {
 		if tc != nil {
 			if querier, okQuerier := tc.parent.(interface {
-				Querier(environ.Properties) Querier
+				Querier(Properties) Querier
 			}); okQuerier {
 				quTemp = querier.Querier(tm.properties)
 			}
@@ -244,7 +248,7 @@ func getTTYAndQuerier(tm *Terminal, tc *termCheckerCore) (TTY, Querier, error) {
 	return ttyTemp, quTemp, nil
 }
 
-func findTermChecker(env environ.Properties, tty TTY, qu Querier) (tc TermChecker, _ environ.Properties, e error) {
+func findTermChecker(env Properties, tty TTY, qu Querier) (tc TermChecker, _ Properties, e error) {
 	var ttyTemp TTY
 	if tty == nil || qu == nil {
 		return RegisteredTermChecker(consts.TermGenericName), nil, errors.NilParam()
@@ -890,7 +894,7 @@ func (t *Terminal) Env() environ.Enver {
 // default
 func init() { wm.SetImpl(wminternal.DummyImpl()) }
 
-func (t *Terminal) Window() wm.Window {
+func (t *Terminal) Window() Window {
 	if t == nil {
 		return nil
 	}

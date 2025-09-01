@@ -45,7 +45,7 @@ func TestTermCheckerXTermCheckIsWindow(t *testing.T) {
 	}
 }
 
-func propFromText(e string) environ.Properties {
+func propFromText(e string) term.Properties {
 	env := environ.NewProperties()
 	for _, line := range strings.Split(e, "\n") {
 		parts := strings.SplitN(line, `=`, 2)

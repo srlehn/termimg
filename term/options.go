@@ -109,7 +109,7 @@ func SetSurveyor(ps PartialSurveyor, enforce bool) Option {
 	})
 }
 
-func SetWindowProvider(wProv wm.WindowProvider, enforce bool) Option {
+func SetWindowProvider(wProv WindowProvider, enforce bool) Option {
 	return OptFunc(func(t *Terminal) error {
 		if enforce {
 			t.windowProvider = wProv
@@ -124,7 +124,7 @@ func SetResizer(rsz Resizer) Option {
 	return OptFunc(func(t *Terminal) error { t.resizer = rsz; return nil })
 }
 
-func SetProprietor(pr environ.Properties, merge bool) Option {
+func SetProprietor(pr Properties, merge bool) Option {
 	return OptFunc(func(t *Terminal) error {
 		if merge && t.properties != nil {
 			t.properties.MergeProperties(pr)
@@ -178,7 +178,7 @@ func SetDrawers(drs []Drawer) Option {
 	return OptFunc(func(t *Terminal) error { t.drawers = drs; return nil })
 }
 
-func SetWindow(w wm.Window) Option {
+func SetWindow(w Window) Option {
 	return OptFunc(func(t *Terminal) error { t.window = w; return nil })
 }
 

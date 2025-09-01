@@ -8,7 +8,6 @@ import (
 
 	"github.com/srlehn/termimg/internal/errors"
 	"github.com/srlehn/termimg/internal/parser"
-	"github.com/srlehn/termimg/wm"
 )
 
 func sizeInCellsAndPixels(tty TTY) (widthCells, heightCells, widthPixels, heightPixels uint, err error) {
@@ -197,7 +196,7 @@ func (s *SurveyorDefault) SizeInPixelsQuery(qu Querier, tty TTY) (widthPixels, h
 }
 
 // SizeInPixelsWindow
-func (s *SurveyorDefault) SizeInPixelsWindow(w wm.Window) (widthPixels, heightPixels uint, err error) {
+func (s *SurveyorDefault) SizeInPixelsWindow(w Window) (widthPixels, heightPixels uint, err error) {
 	if err := w.WindowFind(); err != nil {
 		return 0, 0, err
 	}

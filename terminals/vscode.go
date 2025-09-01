@@ -17,7 +17,7 @@ var _ term.TermChecker = (*termCheckerVSCode)(nil)
 
 type termCheckerVSCode struct{ term.TermChecker }
 
-func (t *termCheckerVSCode) CheckExclude(pr environ.Properties) (mightBe bool, p environ.Properties) {
+func (t *termCheckerVSCode) CheckExclude(pr term.Properties) (mightBe bool, p term.Properties) {
 	p = environ.NewProperties()
 	if t == nil || pr == nil {
 		p.SetProperty(propkeys.CheckTermEnvExclPrefix+termNameVSCode, consts.CheckTermFailed)

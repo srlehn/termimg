@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/srlehn/termimg/internal/consts"
-	"github.com/srlehn/termimg/internal/environ"
 	"github.com/srlehn/termimg/internal/errors"
 	"github.com/srlehn/termimg/internal/logx"
 	"github.com/srlehn/termimg/internal/util"
@@ -27,7 +26,7 @@ type drawerBraille struct{}
 func (d *drawerBraille) Name() string     { return `generic2` }
 func (d *drawerBraille) New() term.Drawer { return &drawerBraille{} }
 
-func (d *drawerBraille) IsApplicable(inp term.DrawerCheckerInput) (bool, environ.Properties) {
+func (d *drawerBraille) IsApplicable(inp term.DrawerCheckerInput) (bool, term.Properties) {
 	return true, nil
 }
 

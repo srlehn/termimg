@@ -33,7 +33,7 @@ type drawerX11 struct{}
 func (d *drawerX11) Name() string     { return drawerNameX11 }
 func (d *drawerX11) New() term.Drawer { return &drawerX11{} }
 
-func (d *drawerX11) IsApplicable(inp term.DrawerCheckerInput) (bool, environ.Properties) {
+func (d *drawerX11) IsApplicable(inp term.DrawerCheckerInput) (bool, term.Properties) {
 	if d == nil || inp == nil {
 		return false, nil
 	}

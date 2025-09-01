@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/srlehn/termimg/internal/consts"
-	"github.com/srlehn/termimg/internal/environ"
 	"github.com/srlehn/termimg/internal/errors"
 	"github.com/srlehn/termimg/internal/logx"
 	"github.com/srlehn/termimg/internal/propkeys"
@@ -30,7 +29,7 @@ type drawerITerm2 struct{}
 func (d *drawerITerm2) Name() string     { return `iterm2` }
 func (d *drawerITerm2) New() term.Drawer { return &drawerITerm2{} }
 
-func (d *drawerITerm2) IsApplicable(inp term.DrawerCheckerInput) (bool, environ.Properties) {
+func (d *drawerITerm2) IsApplicable(inp term.DrawerCheckerInput) (bool, term.Properties) {
 	if inp == nil {
 		return false, nil
 	}

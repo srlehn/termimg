@@ -97,7 +97,7 @@ func TakeScreenshot(termName string, termProvider TermProviderFunc, drawerName s
 	} else {
 		var exeName string
 		if exer, okExe := termChecker.(interface {
-			Exe(environ.Properties) string
+			Exe(term.Properties) string
 		}); okExe {
 			exeName = exer.Exe(nil) // TODO
 		} else {

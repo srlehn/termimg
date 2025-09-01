@@ -25,10 +25,10 @@ type Querier interface {
 
 // CachedQuerier ...
 type CachedQuerier interface {
-	CachedQuery(string, TTY, Parser, environ.Properties) (string, error)
+	CachedQuery(string, TTY, Parser, Properties) (string, error)
 }
 
-func CachedQuery(qu Querier, qs string, tty TTY, p Parser, prIn, prOut environ.Properties) (string, error) {
+func CachedQuery(qu Querier, qs string, tty TTY, p Parser, prIn, prOut Properties) (string, error) {
 	// TODO bug same value for different parsers
 	if prIn == nil {
 		return ``, errors.NilParam()
@@ -60,7 +60,7 @@ type queryCacher struct{ Querier }
 
 func NewCachedQuerier(qu Querier) CachedQuerier { return &queryCacher{Querier: qu} }
 
-func (q *queryCacher) CachedQuery(qs string, tty TTY, p Parser, pr environ.Properties) (string, error) {
+func (q *queryCacher) CachedQuery(qs string, tty TTY, p Parser, pr Properties) (string, error) {
 	if q == nil {
 		return ``, errors.NilReceiver()
 	}
@@ -123,7 +123,7 @@ func (t *ttyDummy) TTYDevName() string {
 ////////////////////////////////////////////////////////////////////////////////
 
 // QueryDeviceAttributes should only be used for external TermCheckers
-func QueryDeviceAttributes(qu Querier, tty TTY, prIn, prOut environ.Properties) error {
+func QueryDeviceAttributes(qu Querier, tty TTY, prIn, prOut Properties) error {
 	// TODO add mux.Wrap()
 	if qu == nil || tty == nil || prIn == nil {
 		return errors.NilParam()
@@ -259,7 +259,7 @@ var (
 	xtGetTCapSpecialStrs = []string{`TN`, `Co`, `RGB`}
 )
 
-func xtGetTCap(tcap string, qu Querier, tty TTY, prIn, prOut environ.Properties) (string, error) {
+func xtGetTCap(tcap string, qu Querier, tty TTY, prIn, prOut Properties) (string, error) {
 	// TODO multiple tcaps
 	// https://invisible-island.net/xterm/ctlseqs/ctlseqs.html /XTGETTCAP
 	// https://github.com/dankamongmen/notcurses/blob/master/TERMINALS.md#queries
@@ -301,7 +301,7 @@ func xtGetTCap(tcap string, qu Querier, tty TTY, prIn, prOut environ.Properties)
 	if prOut == nil {
 		prOut = environ.NewProperties()
 	}
-	setProps := func(pr environ.Properties, repl string) {
+	setProps := func(pr Properties, repl string) {
 		pr.SetProperty(propkeys.XTGETTCAPKeyNamePrefix+tcapHex, repl)
 		switch tcap {
 		case `TN`, `Co`, `RGB`:
@@ -360,7 +360,7 @@ end:
 	return repl, nil
 }
 
-func xtVersion(qu Querier, tty TTY, prIn, prOut environ.Properties) (string, error) {
+func xtVersion(qu Querier, tty TTY, prIn, prOut Properties) (string, error) {
 	xtVer, okXTVer := prIn.Property(propkeys.XTVERSION)
 	if !okXTVer {
 		repl, err := CachedQuery(qu, queries.XTVERSION+queries.DA1, tty, parser.NewParser(false, true), prIn, prOut)
