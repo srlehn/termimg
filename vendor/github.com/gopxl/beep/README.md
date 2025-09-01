@@ -1,4 +1,11 @@
-# Beep [![GoDoc](https://godoc.org/github.com/gopxl/beep?status.svg)](https://godoc.org/github.com/gopxl/beep) [![Go Report Card](https://goreportcard.com/badge/github.com/gopxl/beep)](https://goreportcard.com/report/github.com/gopxl/beep) [![Discord Chat](https://img.shields.io/discord/699679031603494954)](https://discord.gg/q2DK4MP)
+# Beep
+
+[![GoDoc](https://godoc.org/github.com/gopxl/beep?status.svg)](https://godoc.org/github.com/gopxl/beep)
+[![Go build status](https://github.com/gopxl/beep/actions/workflows/go.yml/badge.svg?branch=main)](https://github.com/gopxl/beep/actions/workflows/go.yml?query=branch%3Amain)
+[![Coverage Status](https://coveralls.io/repos/github/gopxl/beep/badge.svg?branch=main)](https://coveralls.io/github/gopxl/beep?branch=main)
+[![Go Report Card](https://goreportcard.com/badge/github.com/gopxl/beep)](https://goreportcard.com/report/github.com/gopxl/beep)
+[![Discord Chat](https://img.shields.io/discord/1158461233121468496)](https://discord.gg/erpa32cB)
+
 
 A little package that brings sound to any Go application. Suitable for playback and audio-processing.
 
@@ -29,9 +36,9 @@ The [Wiki](https://github.com/gopxl/beep/wiki) contains a handful of tutorials f
 
 ## Examples
 
-| [Speedy Player](https://github.com/gopxl/beep/tree/master/examples/speedy-player) | [Doppler Stereo Room](https://github.com/gopxl/beep/tree/master/examples/doppler-stereo-room) |
-| --- | --- |
-| ![Speedy Player](https://github.com/gopxl/beep/blob/master/examples/speedy-player/screenshot.png) | ![Doppler Stereo Room](https://github.com/gopxl/beep/blob/master/examples/doppler-stereo-room/screenshot.png) |
+| [Speedy Player](https://github.com/gopxl/beep/tree/main/examples/speedy-player)                 | [Doppler Stereo Room](https://github.com/gopxl/beep/tree/main/examples/doppler-stereo-room)                 |
+|-------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------|
+| ![Speedy Player](https://github.com/gopxl/beep/blob/main/examples/speedy-player/screenshot.png) | ![Doppler Stereo Room](https://github.com/gopxl/beep/blob/main/examples/doppler-stereo-room/screenshot.png) |
 
 ## Dependencies
 
@@ -39,10 +46,14 @@ For playback, Beep uses [Oto](https://github.com/hajimehoshi/oto) under the hood
 
 Running an already built application should work with no extra dependencies.
 
-## Licence
+## License
 
-[MIT](https://github.com/gopxl/beep/blob/master/LICENSE)
+[MIT](https://github.com/gopxl/beep/blob/main/LICENSE)
 
-## Projects using beep
+## Related projects
 
+- [Microphone support for Beep (a wrapper around PortAudio)](https://github.com/MarkKremer/microphone)
+
+## Projects using Beep
+- [retro](https://github.com/Malwarize/retro)
 - [Mifasol music server](https://github.com/jypelle/mifasol)

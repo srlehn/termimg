@@ -1,8 +1,6 @@
 package tview
 
 import (
-	"strings"
-
 	"github.com/gdamore/tcell/v2"
 )
 
@@ -34,7 +32,7 @@ type Modal struct {
 // NewModal returns a new modal message window.
 func NewModal() *Modal {
 	m := &Modal{
-		Box:       NewBox(),
+		Box:       NewBox().SetBorder(true).SetBackgroundColor(Styles.ContrastBackgroundColor),
 		textColor: Styles.PrimaryTextColor,
 	}
 	m.form = NewForm().
@@ -48,8 +46,7 @@ func NewModal() *Modal {
 		}
 	})
 	m.frame = NewFrame(m.form).SetBorders(0, 0, 1, 0, 0, 0)
-	m.frame.SetBorder(true).
-		SetBackgroundColor(Styles.ContrastBackgroundColor).
+	m.frame.SetBackgroundColor(Styles.ContrastBackgroundColor).
 		SetBorderPadding(1, 1, 1, 1)
 	return m
 }
@@ -101,7 +98,7 @@ func (m *Modal) SetDoneFunc(handler func(buttonIndex int, buttonLabel string)) *
 }
 
 // SetText sets the message text of the window. The text may contain line
-// breaks but color tag states will not transfer to following lines. Note that
+// breaks but style tag states will not transfer to following lines. Note that
 // words are wrapped, too, based on the final size of the window.
 func (m *Modal) SetText(text string) *Modal {
 	m.text = text
@@ -172,15 +169,7 @@ func (m *Modal) Draw(screen tcell.Screen) {
 
 	// Reset the text and find out how wide it is.
 	m.frame.Clear()
-	var lines []string
-	for _, line := range strings.Split(m.text, "\n") {
-		if len(line) == 0 {
-			lines = append(lines, "")
-			continue
-		}
-		lines = append(lines, WordWrap(line, width)...)
-	}
-	//lines := WordWrap(m.text, width)
+	lines := WordWrap(m.text, width)
 	for _, line := range lines {
 		m.frame.AddText(line, true, AlignCenter, m.textColor)
 	}
@@ -193,6 +182,8 @@ func (m *Modal) Draw(screen tcell.Screen) {
 	m.SetRect(x, y, width, height)
 
 	// Draw the frame.
+	m.Box.DrawForSubclass(screen, m)
+	x, y, width, height = m.GetInnerRect()
 	m.frame.SetRect(x, y, width, height)
 	m.frame.Draw(screen)
 }

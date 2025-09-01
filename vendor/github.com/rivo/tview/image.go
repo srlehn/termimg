@@ -294,7 +294,7 @@ func (i *Image) Focus(delegate func(p Primitive)) {
 	i.Box.Focus(delegate)
 }
 
-// render re-populates the [Image.pixels] slice besed on the current settings,
+// render re-populates the [Image.pixels] slice based on the current settings,
 // if [Image.lastWidth] and [Image.lastHeight] don't match the current image's
 // size. It also sets the new image size in these two variables.
 func (i *Image) render() {
@@ -729,7 +729,7 @@ func (i *Image) Draw(screen tcell.Screen) {
 		viewX += labelWidth
 		viewWidth -= labelWidth
 	} else {
-		_, drawnWidth, _, _ := printWithStyle(screen, i.label, viewX, viewY, 0, viewWidth, AlignLeft, i.labelStyle, labelBg == tcell.ColorDefault)
+		_, _, drawnWidth := printWithStyle(screen, i.label, viewX, viewY, 0, viewWidth, AlignLeft, i.labelStyle, labelBg == tcell.ColorDefault)
 		viewX += drawnWidth
 		viewWidth -= drawnWidth
 	}

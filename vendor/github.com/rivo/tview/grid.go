@@ -77,11 +77,12 @@ func NewGrid() *Grid {
 
 // SetColumns defines how the columns of the grid are distributed. Each value
 // defines the size of one column, starting with the leftmost column. Values
-// greater 0 represent absolute column widths (gaps not included). Values less
-// or equal 0 represent proportional column widths or fractions of the remaining
-// free space, where 0 is treated the same as -1. That is, a column with a value
-// of -3 will have three times the width of a column with a value of -1 (or 0).
-// The minimum width set with SetMinSize() is always observed.
+// greater than 0 represent absolute column widths (gaps not included). Values
+// less than or equal to 0 represent proportional column widths or fractions of
+// the remaining free space, where 0 is treated the same as -1. That is, a
+// column with a value of -3 will have three times the width of a column with a
+// value of -1 (or 0). The minimum width set with SetMinSize() is always
+// observed.
 //
 // Primitives may extend beyond the columns defined explicitly with this
 // function. A value of 0 is assumed for any undefined column. In fact, if you
@@ -183,8 +184,9 @@ func (g *Grid) SetBordersColor(color tcell.Color) *Grid {
 // The minGridWidth and minGridHeight values will then determine which of those
 // positions will be used. This is similar to CSS media queries. These minimum
 // values refer to the overall size of the grid. If multiple items for the same
-// primitive apply, the one that has at least one highest minimum value will be
-// used, or the primitive added last if those values are the same. Example:
+// primitive apply, the one with the highest minimum value (width or height,
+// whatever is higher) will be used, or the primitive added last if those values
+// are the same. Example:
 //
 //	grid.AddItem(p, 0, 0, 0, 0, 0, 0, true). // Hide in small grids.
 //	  AddItem(p, 0, 0, 1, 2, 100, 0, true).  // One-column layout for medium grids.
@@ -264,55 +266,6 @@ func (g *Grid) HasFocus() bool {
 	return g.Box.HasFocus()
 }
 
-// InputHandler returns the handler for this primitive.
-func (g *Grid) InputHandler() func(event *tcell.EventKey, setFocus func(p Primitive)) {
-	return g.WrapInputHandler(func(event *tcell.EventKey, setFocus func(p Primitive)) {
-		if !g.hasFocus {
-			// Pass event on to child primitive.
-			for _, item := range g.items {
-				if item != nil && item.Item.HasFocus() {
-					if handler := item.Item.InputHandler(); handler != nil {
-						handler(event, setFocus)
-						return
-					}
-				}
-			}
-			return
-		}
-
-		// Process our own key events if we have direct focus.
-		switch event.Key() {
-		case tcell.KeyRune:
-			switch event.Rune() {
-			case 'g':
-				g.rowOffset, g.columnOffset = 0, 0
-			case 'G':
-				g.rowOffset = math.MaxInt32
-			case 'j':
-				g.rowOffset++
-			case 'k':
-				g.rowOffset--
-			case 'h':
-				g.columnOffset--
-			case 'l':
-				g.columnOffset++
-			}
-		case tcell.KeyHome:
-			g.rowOffset, g.columnOffset = 0, 0
-		case tcell.KeyEnd:
-			g.rowOffset = math.MaxInt32
-		case tcell.KeyUp:
-			g.rowOffset--
-		case tcell.KeyDown:
-			g.rowOffset++
-		case tcell.KeyLeft:
-			g.columnOffset--
-		case tcell.KeyRight:
-			g.columnOffset++
-		}
-	})
-}
-
 // Draw draws this primitive onto the screen.
 func (g *Grid) Draw(screen tcell.Screen) {
 	g.Box.DrawForSubclass(screen, g)
@@ -320,17 +273,43 @@ func (g *Grid) Draw(screen tcell.Screen) {
 	screenWidth, screenHeight := screen.Size()
 
 	// Make a list of items which apply.
-	items := make(map[Primitive]*gridItem)
+	items := make([]*gridItem, 0, len(g.items))
+ItemLoop:
 	for _, item := range g.items {
 		item.visible = false
-		if item.Width <= 0 || item.Height <= 0 || width < item.MinGridWidth || height < item.MinGridHeight {
-			continue
+		if item.Item == nil || item.Width <= 0 || item.Height <= 0 || width < item.MinGridWidth || height < item.MinGridHeight {
+			continue // Disqualified.
 		}
-		previousItem, ok := items[item.Item]
-		if ok && item.MinGridWidth < previousItem.MinGridWidth && item.MinGridHeight < previousItem.MinGridHeight {
-			continue
+
+		// Check for overlaps and multiple layouts of the same item.
+		for index, existing := range items {
+			// Do they overlap or are identical?
+			if item.Item != existing.Item &&
+				(item.Row >= existing.Row+existing.Height || item.Row+item.Height <= existing.Row ||
+					item.Column >= existing.Column+existing.Width || item.Column+item.Width <= existing.Column) {
+				continue // They don't and aren't.
+			}
+
+			// What's their minimum size?
+			itemMin := item.MinGridWidth
+			if item.MinGridHeight > itemMin {
+				itemMin = item.MinGridHeight
+			}
+			existingMin := existing.MinGridWidth
+			if existing.MinGridHeight > existingMin {
+				existingMin = existing.MinGridHeight
+			}
+
+			// Which one is more important?
+			if itemMin < existingMin {
+				continue ItemLoop // This one isn't. Drop it.
+			}
+			items[index] = item // This one is. Replace the other.
+			continue ItemLoop
 		}
-		items[item.Item] = item
+
+		// This item will be visible.
+		items = append(items, item)
 	}
 
 	// How many rows and columns do we have?
@@ -468,7 +447,7 @@ func (g *Grid) Draw(screen tcell.Screen) {
 
 	// Calculate primitive positions.
 	var focus *gridItem // The item which has focus.
-	for primitive, item := range items {
+	for _, item := range items {
 		px := columnPos[item.Column]
 		py := rowPos[item.Row]
 		var pw, ph int
@@ -487,7 +466,7 @@ func (g *Grid) Draw(screen tcell.Screen) {
 		}
 		item.x, item.y, item.w, item.h = px, py, pw, ph
 		item.visible = true
-		if primitive.HasFocus() {
+		if item.Item.HasFocus() {
 			focus = item
 		}
 	}
@@ -512,20 +491,6 @@ func (g *Grid) Draw(screen tcell.Screen) {
 			break
 		}
 		offsetX += width + add
-	}
-
-	// Line up the last row/column with the end of the available area.
-	var border int
-	if g.borders {
-		border = 1
-	}
-	last := len(rowPos) - 1
-	if rowPos[last]+rowHeight[last]+border-offsetY < height {
-		offsetY = rowPos[last] - height + rowHeight[last] + border
-	}
-	last = len(columnPos) - 1
-	if columnPos[last]+columnWidth[last]+border-offsetX < width {
-		offsetX = columnPos[last] - width + columnWidth[last] + border
 	}
 
 	// The focused item must be within the visible area.
@@ -578,7 +543,7 @@ func (g *Grid) Draw(screen tcell.Screen) {
 
 	// Draw primitives and borders.
 	borderStyle := tcell.StyleDefault.Background(g.backgroundColor).Foreground(g.bordersColor)
-	for primitive, item := range items {
+	for _, item := range items {
 		// Final primitive position.
 		if !item.visible {
 			continue
@@ -609,13 +574,13 @@ func (g *Grid) Draw(screen tcell.Screen) {
 		}
 		item.x += x
 		item.y += y
-		primitive.SetRect(item.x, item.y, item.w, item.h)
+		item.Item.SetRect(item.x, item.y, item.w, item.h)
 
 		// Draw primitive.
 		if item == focus {
-			defer primitive.Draw(screen)
+			defer item.Item.Draw(screen)
 		} else {
-			primitive.Draw(screen)
+			item.Item.Draw(screen)
 		}
 
 		// Draw border around primitive.
@@ -685,5 +650,68 @@ func (g *Grid) MouseHandler() func(action MouseAction, event *tcell.EventMouse, 
 		}
 
 		return
+	})
+}
+
+// InputHandler returns the handler for this primitive.
+func (g *Grid) InputHandler() func(event *tcell.EventKey, setFocus func(p Primitive)) {
+	return g.WrapInputHandler(func(event *tcell.EventKey, setFocus func(p Primitive)) {
+		if !g.hasFocus {
+			// Pass event on to child primitive.
+			for _, item := range g.items {
+				if item != nil && item.Item.HasFocus() {
+					if handler := item.Item.InputHandler(); handler != nil {
+						handler(event, setFocus)
+						return
+					}
+				}
+			}
+			return
+		}
+
+		// Process our own key events if we have direct focus.
+		switch event.Key() {
+		case tcell.KeyRune:
+			switch event.Rune() {
+			case 'g':
+				g.rowOffset, g.columnOffset = 0, 0
+			case 'G':
+				g.rowOffset = math.MaxInt32
+			case 'j':
+				g.rowOffset++
+			case 'k':
+				g.rowOffset--
+			case 'h':
+				g.columnOffset--
+			case 'l':
+				g.columnOffset++
+			}
+		case tcell.KeyHome:
+			g.rowOffset, g.columnOffset = 0, 0
+		case tcell.KeyEnd:
+			g.rowOffset = math.MaxInt32
+		case tcell.KeyUp:
+			g.rowOffset--
+		case tcell.KeyDown:
+			g.rowOffset++
+		case tcell.KeyLeft:
+			g.columnOffset--
+		case tcell.KeyRight:
+			g.columnOffset++
+		}
+	})
+}
+
+// PasteHandler returns the handler for this primitive.
+func (g *Grid) PasteHandler() func(pastedText string, setFocus func(p Primitive)) {
+	return g.WrapPasteHandler(func(pastedText string, setFocus func(p Primitive)) {
+		for _, item := range g.items {
+			if item != nil && item.Item.HasFocus() {
+				if handler := item.Item.PasteHandler(); handler != nil {
+					handler(pastedText, setFocus)
+					return
+				}
+			}
+		}
 	})
 }

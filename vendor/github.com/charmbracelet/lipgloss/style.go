@@ -4,26 +4,31 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/muesli/reflow/truncate"
-	"github.com/muesli/reflow/wordwrap"
-	"github.com/muesli/reflow/wrap"
+	"github.com/charmbracelet/x/ansi"
+	"github.com/charmbracelet/x/cellbuf"
 	"github.com/muesli/termenv"
 )
 
 const tabWidthDefault = 4
 
 // Property for a key.
-type propKey int
+type propKey int64
 
 // Available properties.
 const (
-	boldKey propKey = iota
+	// Boolean props come first.
+	boldKey propKey = 1 << iota
 	italicKey
 	underlineKey
 	strikethroughKey
 	reverseKey
 	blinkKey
 	faintKey
+	underlineSpacesKey
+	strikethroughSpacesKey
+	colorWhitespaceKey
+
+	// Non-boolean props.
 	foregroundKey
 	backgroundKey
 	widthKey
@@ -36,8 +41,6 @@ const (
 	paddingRightKey
 	paddingBottomKey
 	paddingLeftKey
-
-	colorWhitespaceKey
 
 	// Margins.
 	marginTopKey
@@ -71,12 +74,27 @@ const (
 	maxWidthKey
 	maxHeightKey
 	tabWidthKey
-	underlineSpacesKey
-	strikethroughSpacesKey
+
+	transformKey
 )
 
-// A set of properties.
-type rules map[propKey]interface{}
+// props is a set of properties.
+type props int64
+
+// set sets a property.
+func (p props) set(k propKey) props {
+	return p | props(k)
+}
+
+// unset unsets a property.
+func (p props) unset(k propKey) props {
+	return p &^ props(k)
+}
+
+// has checks if a property is set.
+func (p props) has(k propKey) bool {
+	return p&props(k) != 0
+}
 
 // NewStyle returns a new, empty Style. While it's syntactic sugar for the
 // Style{} primitive, it's recommended to use this function for creating styles
@@ -98,8 +116,48 @@ func (r *Renderer) NewStyle() Style {
 // Style contains a set of rules that comprise a style as a whole.
 type Style struct {
 	r     *Renderer
-	rules map[propKey]interface{}
+	props props
 	value string
+
+	// we store bool props values here
+	attrs int
+
+	// props that have values
+	fgColor TerminalColor
+	bgColor TerminalColor
+
+	width  int
+	height int
+
+	alignHorizontal Position
+	alignVertical   Position
+
+	paddingTop    int
+	paddingRight  int
+	paddingBottom int
+	paddingLeft   int
+
+	marginTop     int
+	marginRight   int
+	marginBottom  int
+	marginLeft    int
+	marginBgColor TerminalColor
+
+	borderStyle         Border
+	borderTopFgColor    TerminalColor
+	borderRightFgColor  TerminalColor
+	borderBottomFgColor TerminalColor
+	borderLeftFgColor   TerminalColor
+	borderTopBgColor    TerminalColor
+	borderRightBgColor  TerminalColor
+	borderBottomBgColor TerminalColor
+	borderLeftBgColor   TerminalColor
+
+	maxWidth  int
+	maxHeight int
+	tabWidth  int
+
+	transform func(string) string
 }
 
 // joinString joins a list of strings into a single string separated with a
@@ -131,15 +189,11 @@ func (s Style) String() string {
 }
 
 // Copy returns a copy of this style, including any underlying string values.
+//
+// Deprecated: to copy just use assignment (i.e. a := b). All methods also
+// return a new style.
 func (s Style) Copy() Style {
-	o := NewStyle()
-	o.init()
-	for k, v := range s.rules {
-		o.rules[k] = v
-	}
-	o.r = s.r
-	o.value = s.value
-	return o
+	return s
 }
 
 // Inherit overlays the style in the argument onto this style by copying each explicitly
@@ -148,9 +202,11 @@ func (s Style) Copy() Style {
 //
 // Margins, padding, and underlying string values are not inherited.
 func (s Style) Inherit(i Style) Style {
-	s.init()
+	for k := boldKey; k <= transformKey; k <<= 1 {
+		if !i.isSet(k) {
+			continue
+		}
 
-	for k, v := range i.rules {
 		switch k { //nolint:exhaustive
 		case marginTopKey, marginRightKey, marginBottomKey, marginLeftKey:
 			// Margins are not inherited
@@ -161,14 +217,15 @@ func (s Style) Inherit(i Style) Style {
 		case backgroundKey:
 			// The margins also inherit the background color
 			if !s.isSet(marginBackgroundKey) && !i.isSet(marginBackgroundKey) {
-				s.rules[marginBackgroundKey] = v
+				s.set(marginBackgroundKey, i.bgColor)
 			}
 		}
 
-		if _, exists := s.rules[k]; exists {
+		if s.isSet(k) {
 			continue
 		}
-		s.rules[k] = v
+
+		s.setFrom(k, i)
 	}
 	return s
 }
@@ -216,18 +273,24 @@ func (s Style) Render(strs ...string) string {
 		maxWidth        = s.getAsInt(maxWidthKey)
 		maxHeight       = s.getAsInt(maxHeightKey)
 
-		underlineSpaces     = underline && s.getAsBool(underlineSpacesKey, true)
-		strikethroughSpaces = strikethrough && s.getAsBool(strikethroughSpacesKey, true)
+		underlineSpaces     = s.getAsBool(underlineSpacesKey, false) || (underline && s.getAsBool(underlineSpacesKey, true))
+		strikethroughSpaces = s.getAsBool(strikethroughSpacesKey, false) || (strikethrough && s.getAsBool(strikethroughSpacesKey, true))
 
 		// Do we need to style whitespace (padding and space outside
 		// paragraphs) separately?
 		styleWhitespace = reverse
 
 		// Do we need to style spaces separately?
-		useSpaceStyler = underlineSpaces || strikethroughSpaces
+		useSpaceStyler = (underline && !underlineSpaces) || (strikethrough && !strikethroughSpaces) || underlineSpaces || strikethroughSpaces
+
+		transform = s.getAsTransform(transformKey)
 	)
 
-	if len(s.rules) == 0 {
+	if transform != nil {
+		str = transform(str)
+	}
+
+	if s.props == 0 {
 		return s.maybeConvertTabs(str)
 	}
 
@@ -245,9 +308,7 @@ func (s Style) Render(strs ...string) string {
 		te = te.Underline()
 	}
 	if reverse {
-		if reverse {
-			teWhitespace = teWhitespace.Reverse()
-		}
+		teWhitespace = teWhitespace.Reverse()
 		te = te.Reverse()
 	}
 	if blink {
@@ -293,6 +354,8 @@ func (s Style) Render(strs ...string) string {
 
 	// Potentially convert tabs to spaces
 	str = s.maybeConvertTabs(str)
+	// carriage returns can cause strange behaviour when rendering.
+	str = strings.ReplaceAll(str, "\r\n", "\n")
 
 	// Strip newlines in single line mode
 	if inline {
@@ -302,8 +365,7 @@ func (s Style) Render(strs ...string) string {
 	// Word wrap
 	if !inline && width > 0 {
 		wrapAt := width - leftPadding - rightPadding
-		str = wordwrap.String(str, wrapAt)
-		str = wrap.String(str, wrapAt) // force-wrap long strings
+		str = cellbuf.Wrap(str, wrapAt, "")
 	}
 
 	// Render core text
@@ -333,7 +395,7 @@ func (s Style) Render(strs ...string) string {
 	}
 
 	// Padding
-	if !inline {
+	if !inline { //nolint:nestif
 		if leftPadding > 0 {
 			var st *termenv.Style
 			if colorWhitespace || styleWhitespace {
@@ -370,7 +432,7 @@ func (s Style) Render(strs ...string) string {
 	{
 		numLines := strings.Count(str, "\n")
 
-		if !(numLines == 0 && width == 0) {
+		if numLines != 0 || width != 0 {
 			var st *termenv.Style
 			if colorWhitespace || styleWhitespace {
 				st = &teWhitespace
@@ -389,7 +451,7 @@ func (s Style) Render(strs ...string) string {
 		lines := strings.Split(str, "\n")
 
 		for i := range lines {
-			lines[i] = truncate.String(lines[i], uint(maxWidth))
+			lines[i] = ansi.Truncate(lines[i], maxWidth, "")
 		}
 
 		str = strings.Join(lines, "\n")
@@ -398,7 +460,10 @@ func (s Style) Render(strs ...string) string {
 	// Truncate according to MaxHeight
 	if maxHeight > 0 {
 		lines := strings.Split(str, "\n")
-		str = strings.Join(lines[:min(maxHeight, len(lines))], "\n")
+		height := min(maxHeight, len(lines))
+		if len(lines) > 0 {
+			str = strings.Join(lines[:height], "\n")
+		}
 	}
 
 	return str
@@ -456,36 +521,23 @@ func (s Style) applyMargins(str string, inline bool) string {
 
 // Apply left padding.
 func padLeft(str string, n int, style *termenv.Style) string {
-	if n == 0 {
-		return str
-	}
-
-	sp := strings.Repeat(" ", n)
-	if style != nil {
-		sp = style.Styled(sp)
-	}
-
-	b := strings.Builder{}
-	l := strings.Split(str, "\n")
-
-	for i := range l {
-		b.WriteString(sp)
-		b.WriteString(l[i])
-		if i != len(l)-1 {
-			b.WriteRune('\n')
-		}
-	}
-
-	return b.String()
+	return pad(str, -n, style)
 }
 
 // Apply right padding.
 func padRight(str string, n int, style *termenv.Style) string {
-	if n == 0 || str == "" {
+	return pad(str, n, style)
+}
+
+// pad adds padding to either the left or right side of a string.
+// Positive values add to the right side while negative values
+// add to the left side.
+func pad(str string, n int, style *termenv.Style) string {
+	if n == 0 {
 		return str
 	}
 
-	sp := strings.Repeat(" ", n)
+	sp := strings.Repeat(" ", abs(n))
 	if style != nil {
 		sp = style.Styled(sp)
 	}
@@ -494,8 +546,17 @@ func padRight(str string, n int, style *termenv.Style) string {
 	l := strings.Split(str, "\n")
 
 	for i := range l {
-		b.WriteString(l[i])
-		b.WriteString(sp)
+		switch {
+		// pad right
+		case n > 0:
+			b.WriteString(l[i])
+			b.WriteString(sp)
+		// pad left
+		default:
+			b.WriteString(sp)
+			b.WriteString(l[i])
+		}
+
 		if i != len(l)-1 {
 			b.WriteRune('\n')
 		}
@@ -504,16 +565,24 @@ func padRight(str string, n int, style *termenv.Style) string {
 	return b.String()
 }
 
-func max(a, b int) int {
+func max(a, b int) int { //nolint:unparam,predeclared
 	if a > b {
 		return a
 	}
 	return b
 }
 
-func min(a, b int) int {
+func min(a, b int) int { //nolint:predeclared
 	if a < b {
 		return a
 	}
 	return b
+}
+
+func abs(a int) int {
+	if a < 0 {
+		return -a
+	}
+
+	return a
 }

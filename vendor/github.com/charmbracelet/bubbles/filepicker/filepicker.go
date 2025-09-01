@@ -1,3 +1,5 @@
+// Package filepicker provides a file picker component for Bubble Tea
+// applications.
 package filepicker
 
 import (
@@ -5,8 +7,9 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
-	"sync"
+	"sync/atomic"
 
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
@@ -14,17 +17,10 @@ import (
 	"github.com/dustin/go-humanize"
 )
 
-var (
-	lastID int
-	idMtx  sync.Mutex
-)
+var lastID int64
 
-// Return the next ID we should use on the Model.
 func nextID() int {
-	idMtx.Lock()
-	defer idMtx.Unlock()
-	lastID++
-	return lastID
+	return int(atomic.AddInt64(&lastID, 1))
 }
 
 // New returns a new filepicker model with default styling and key bindings.
@@ -35,6 +31,8 @@ func New() Model {
 		Cursor:           ">",
 		AllowedTypes:     []string{},
 		selected:         0,
+		ShowPermissions:  true,
+		ShowSize:         true,
 		ShowHidden:       false,
 		DirAllowed:       false,
 		FileAllowed:      true,
@@ -61,7 +59,7 @@ type readDirMsg struct {
 
 const (
 	marginBottom  = 5
-	fileSizeWidth = 8
+	fileSizeWidth = 7
 	paddingLeft   = 2
 )
 
@@ -145,11 +143,13 @@ type Model struct {
 	// If empty the user may select any file.
 	AllowedTypes []string
 
-	KeyMap      KeyMap
-	files       []os.DirEntry
-	ShowHidden  bool
-	DirAllowed  bool
-	FileAllowed bool
+	KeyMap          KeyMap
+	files           []os.DirEntry
+	ShowPermissions bool
+	ShowSize        bool
+	ShowHidden      bool
+	DirAllowed      bool
+	FileAllowed     bool
 
 	FileSelected  string
 	selected      int
@@ -160,6 +160,9 @@ type Model struct {
 	maxStack stack
 	minStack stack
 
+	// Height of the picker.
+	//
+	// Deprecated: use [Model.SetHeight] instead.
 	Height     int
 	AutoHeight bool
 
@@ -190,13 +193,13 @@ func newStack() stack {
 	}
 }
 
-func (m Model) pushView() {
-	m.minStack.Push(m.min)
-	m.maxStack.Push(m.max)
-	m.selectedStack.Push(m.selected)
+func (m *Model) pushView(selected, minimum, maximum int) {
+	m.selectedStack.Push(selected)
+	m.minStack.Push(minimum)
+	m.maxStack.Push(maximum)
 }
 
-func (m Model) popView() (int, int, int) {
+func (m *Model) popView() (int, int, int) {
 	return m.selectedStack.Pop(), m.minStack.Pop(), m.maxStack.Pop()
 }
 
@@ -235,6 +238,14 @@ func (m Model) Init() tea.Cmd {
 	return m.readDir(m.CurrentDirectory, m.ShowHidden)
 }
 
+// SetHeight sets the height of the filepicker.
+func (m *Model) SetHeight(height int) {
+	m.Height = height
+	if m.max > m.Height-1 {
+		m.max = m.min + m.Height - 1
+	}
+}
+
 // Update handles user interactions within the file picker model.
 func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	switch msg := msg.(type) {
@@ -243,7 +254,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 			break
 		}
 		m.files = msg.entries
-		m.max = m.Height - 1
+		m.max = max(m.max, m.Height-1)
 	case tea.WindowSizeMsg:
 		if m.AutoHeight {
 			m.Height = msg.Height - marginBottom
@@ -347,7 +358,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 			}
 
 			m.CurrentDirectory = filepath.Join(m.CurrentDirectory, f.Name())
-			m.pushView()
+			m.pushView(m.selected, m.min, m.max)
 			m.selected = 0
 			m.min = 0
 			m.max = m.Height - 1
@@ -360,22 +371,19 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 // View returns the view of the file picker.
 func (m Model) View() string {
 	if len(m.files) == 0 {
-		return m.Styles.EmptyDirectory.String()
+		return m.Styles.EmptyDirectory.Height(m.Height).MaxHeight(m.Height).String()
 	}
 	var s strings.Builder
 
 	for i, f := range m.files {
-		if i < m.min {
+		if i < m.min || i > m.max {
 			continue
-		}
-		if i > m.max {
-			break
 		}
 
 		var symlinkPath string
 		info, _ := f.Info()
 		isSymlink := info.Mode()&os.ModeSymlink != 0
-		size := humanize.Bytes(uint64(info.Size()))
+		size := strings.Replace(humanize.Bytes(uint64(info.Size())), " ", "", 1) //nolint:gosec
 		name := f.Name()
 
 		if isSymlink {
@@ -384,10 +392,17 @@ func (m Model) View() string {
 
 		disabled := !m.canSelect(name) && !f.IsDir()
 
-		if m.selected == i {
-			selected := fmt.Sprintf(" %s %"+fmt.Sprint(m.Styles.FileSize.GetWidth())+"s %s", info.Mode().String(), size, name)
+		if m.selected == i { //nolint:nestif
+			selected := ""
+			if m.ShowPermissions {
+				selected += " " + info.Mode().String()
+			}
+			if m.ShowSize {
+				selected += fmt.Sprintf("%"+strconv.Itoa(m.Styles.FileSize.GetWidth())+"s", size)
+			}
+			selected += " " + name
 			if isSymlink {
-				selected = fmt.Sprintf("%s → %s", selected, symlinkPath)
+				selected += " → " + symlinkPath
 			}
 			if disabled {
 				s.WriteString(m.Styles.DisabledSelected.Render(m.Cursor) + m.Styles.DisabledSelected.Render(selected))
@@ -408,10 +423,21 @@ func (m Model) View() string {
 		}
 
 		fileName := style.Render(name)
+		s.WriteString(m.Styles.Cursor.Render(" "))
 		if isSymlink {
-			fileName = fmt.Sprintf("%s → %s", fileName, symlinkPath)
+			fileName += " → " + symlinkPath
 		}
-		s.WriteString(fmt.Sprintf("  %s %s %s", m.Styles.Permission.Render(info.Mode().String()), m.Styles.FileSize.Render(size), fileName))
+		if m.ShowPermissions {
+			s.WriteString(" " + m.Styles.Permission.Render(info.Mode().String()))
+		}
+		if m.ShowSize {
+			s.WriteString(m.Styles.FileSize.Render(size))
+		}
+		s.WriteString(" " + fileName)
+		s.WriteRune('\n')
+	}
+
+	for i := lipgloss.Height(s.String()); i <= m.Height; i++ {
 		s.WriteRune('\n')
 	}
 

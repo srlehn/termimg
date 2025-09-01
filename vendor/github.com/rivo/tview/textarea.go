@@ -1,6 +1,7 @@
 package tview
 
 import (
+	"math"
 	"strings"
 	"unicode"
 	"unicode/utf8"
@@ -20,11 +21,11 @@ const (
 	// could be longer but it would be highly unusual.
 	maxGraphemeClusterSize = 40
 
-	// The minimum width of text (if available) to be shown left of the cursor.
-	minCursorPrefix = 5
+	// The default value for the [TextArea.minCursorPrefix] variable.
+	minCursorPrefixDefault = 5
 
-	// The minimum width of text (if available) to be shown right of the cursor.
-	minCursorSuffix = 3
+	// The default value for the [TextArea.minCursorSuffix] variable.
+	minCursorSuffixDefault = 3
 )
 
 // Types of user actions on a text area.
@@ -92,9 +93,6 @@ type textAreaUndoItem struct {
 // TextArea implements a simple text editor for multi-line text. Multi-color
 // text is not supported. Word-wrapping is enabled by default but can be turned
 // off or be changed to character-wrapping.
-//
-// At this point, a text area cannot be added to a [Form]. This will be added in
-// the future.
 //
 // # Navigation and Editing
 //
@@ -165,13 +163,15 @@ type textAreaUndoItem struct {
 // operating system's key bindings for copy+paste functionality may not have the
 // expected effect as tview will not be able to handle these keys. Pasting text
 // using your operating system's or terminal's own methods may be very slow as
-// each character will be pasted individually.
+// each character will be pasted individually. However, some terminals support
+// pasting text blocks which is supported by the text area, see
+// [Application.EnablePaste] for details.
 //
-// The default clipboard is an internal text buffer, i.e. the operating system's
-// clipboard is not used. If you want to implement your own clipboard (or make
-// use of your operating system's clipboard), you can use
-// [TextArea.SetClipboard] which  provides all the functionality needed to
-// implement your own clipboard.
+// The default clipboard is an internal text buffer local to this text area
+// instance, i.e. the operating system's clipboard is not used. If you want to
+// implement your own clipboard (or make use of your operating system's
+// clipboard), you can use [TextArea.SetClipboard] which  provides all the
+// functionality needed to implement your own clipboard.
 //
 // The text area also supports Undo:
 //
@@ -245,6 +245,10 @@ type TextArea struct {
 	// deleted from this slice.
 	spans []textAreaSpan
 
+	// An optional function which transforms grapheme clusters. This can be used
+	// to hide characters from the screen while preserving the original text.
+	transform func(cluster, rest string, boundaries int) (newCluster string, newBoundaries int)
+
 	// Display, navigation, and cursor related fields:
 
 	// If set to true, lines that are longer than the available width are
@@ -275,9 +279,9 @@ type TextArea struct {
 	lineStarts [][3]int
 
 	// The cursor always points to the next position where a new character would
-	// be placed. The selection start is the same as cursor as long as there is
-	// no selection. When there is one, the selection is between selectionStart
-	// and cursor.
+	// be placed. The selection start is the same as the cursor as long as there
+	// is no selection. When there is one, the selection is between
+	// selectionStart and cursor.
 	cursor, selectionStart struct {
 		// The row and column in screen space but relative to the start of the
 		// text which may be outside the text area's box. The column value may
@@ -290,6 +294,12 @@ type TextArea struct {
 		// The textAreaSpan position with state for the actual next character.
 		pos [3]int
 	}
+
+	// The minimum width of text (if available) to be shown left of the cursor.
+	minCursorPrefix int
+
+	// The minimum width of text (if available) to be shown right of the cursor.
+	minCursorSuffix int
 
 	// Set to true when the mouse is dragging to select text.
 	dragging bool
@@ -349,6 +359,10 @@ func NewTextArea() *TextArea {
 		selectedStyle:    tcell.StyleDefault.Background(Styles.PrimaryTextColor).Foreground(Styles.PrimitiveBackgroundColor),
 		spans:            make([]textAreaSpan, 2, pieceChainMinCap), // We reserve some space to avoid reallocations right when editing starts.
 		lastAction:       taActionOther,
+		minCursorPrefix:  minCursorPrefixDefault,
+		minCursorSuffix:  minCursorSuffixDefault,
+		lastWidth:        math.MaxInt / 2, // We need this so some functions work before the first draw.
+		lastHeight:       1,
 	}
 	t.editText.Grow(editBufferMinCap)
 	t.spans[0] = textAreaSpan{previous: -1, next: 1}
@@ -439,6 +453,63 @@ func (t *TextArea) GetText() string {
 			text.WriteString(t.editText.String()[span.offset : span.offset+span.length])
 		}
 		spanIndex = t.spans[spanIndex].next
+	}
+
+	return text.String()
+}
+
+// getTextBeforeCursor returns the text of the text area up until the cursor.
+// Note that this will result in a new allocation for the returned text.
+func (t *TextArea) getTextBeforeCursor() string {
+	if t.length == 0 || t.cursor.pos[0] == t.spans[0].next && t.cursor.pos[1] == 0 {
+		return ""
+	}
+
+	var text strings.Builder
+	spanIndex := t.spans[0].next
+	for spanIndex != 1 {
+		span := &t.spans[spanIndex]
+		length := span.length
+		if length < 0 {
+			if t.cursor.pos[0] == spanIndex {
+				length = -t.cursor.pos[1]
+			}
+			text.WriteString(t.initialText[span.offset : span.offset-length])
+		} else {
+			if t.cursor.pos[0] == spanIndex {
+				length = t.cursor.pos[1]
+			}
+			text.WriteString(t.editText.String()[span.offset : span.offset+length])
+		}
+		if t.cursor.pos[0] == spanIndex {
+			break
+		}
+		spanIndex = t.spans[spanIndex].next
+	}
+
+	return text.String()
+}
+
+// getTextAfterCursor returns the text of the text area after the cursor. Note
+// that this will result in a new allocation for the returned text.
+func (t *TextArea) getTextAfterCursor() string {
+	if t.length == 0 || t.cursor.pos[0] == 1 {
+		return ""
+	}
+
+	var text strings.Builder
+	spanIndex := t.cursor.pos[0]
+	cursorOffset := t.cursor.pos[1]
+	for spanIndex != 1 {
+		span := &t.spans[spanIndex]
+		length := span.length
+		if length < 0 {
+			text.WriteString(t.initialText[span.offset+cursorOffset : span.offset-length])
+		} else {
+			text.WriteString(t.editText.String()[span.offset+cursorOffset : span.offset+length])
+		}
+		spanIndex = t.spans[spanIndex].next
+		cursorOffset = 0
 	}
 
 	return text.String()
@@ -551,10 +622,11 @@ func (t *TextArea) GetTextLength() int {
 // half-open interval). They may be the same, in which case text is inserted at
 // the given position. If the text is an empty string, text between start and
 // end is deleted. Index positions will be shifted to line up with character
-// boundaries.
+// boundaries. A "changed" event will be triggered.
 //
 // Previous selections are cleared. The cursor will be located at the end of the
-// replaced text. Scroll offsets will not be changed.
+// replaced text. Scroll offsets will not be changed. A "moved" event will be
+// triggered.
 //
 // The effects of this function can be undone (and redone) by the user.
 func (t *TextArea) Replace(start, end int, text string) *TextArea {
@@ -565,12 +637,10 @@ func (t *TextArea) Replace(start, end int, text string) *TextArea {
 	t.truncateLines(row - 1)
 	t.findCursor(false, row)
 	t.selectionStart = t.cursor
-	if t.changed != nil {
-		t.changed()
-	}
 	if t.moved != nil {
 		t.moved()
 	}
+	// The "changed" event will have been triggered by the "replace" function.
 	return t
 }
 
@@ -632,7 +702,8 @@ RowLoop:
 		for {
 			if pos[0] == next[0] {
 				if start >= index+lineIndex && start < index+lineIndex+next[1]-pos[1] ||
-					end >= index+lineIndex && end < index+lineIndex+next[1]-pos[1] {
+					end >= index+lineIndex && end < index+lineIndex+next[1]-pos[1] ||
+					next[0] == 1 && (start == t.length || end == t.length) { // Special case for the end of the text.
 					break
 				}
 				index += lineIndex + next[1] - pos[1]
@@ -644,7 +715,8 @@ RowLoop:
 					length = -length
 				}
 				if start >= index+lineIndex && start < index+lineIndex+length-pos[1] ||
-					end >= index+lineIndex && end < index+lineIndex+length-pos[1] {
+					end >= index+lineIndex && end < index+lineIndex+length-pos[1] ||
+					next[0] == 1 && (start == t.length || end == t.length) { // Special case for the end of the text.
 					break
 				}
 				lineIndex += length - pos[1]
@@ -673,6 +745,7 @@ RowLoop:
 			index += len(cluster)
 			column += width
 		}
+		row++
 	}
 
 	if t.cursor.row < 0 {
@@ -733,6 +806,11 @@ func (t *TextArea) SetLabelWidth(width int) *TextArea {
 	return t
 }
 
+// GetLabelWidth returns the screen width of the label.
+func (t *TextArea) GetLabelWidth() int {
+	return t.labelWidth
+}
+
 // SetSize sets the screen size of the input element of the text area. The input
 // element is always located next to the label which is always located in the
 // top left corner. If any of the values are 0 or larger than the available
@@ -762,11 +840,24 @@ func (t *TextArea) SetDisabled(disabled bool) FormItem {
 	return t
 }
 
+// GetDisabled returns whether or not the item is disabled / read-only.
+func (t *TextArea) GetDisabled() bool {
+	return t.disabled
+}
+
 // SetMaxLength sets the maximum number of bytes allowed in the text area. A
 // value of 0 means there is no limit. If the text area currently contains more
 // bytes than this, it may violate this constraint.
 func (t *TextArea) SetMaxLength(maxLength int) *TextArea {
 	t.maxLength = maxLength
+	return t
+}
+
+// setMinCursorPadding sets a minimum width to be reserved left and right of the
+// cursor. This is ignored if wrapping is enabled.
+func (t *TextArea) setMinCursorPadding(prefix, suffix int) *TextArea {
+	t.minCursorPrefix = prefix
+	t.minCursorSuffix = suffix
 	return t
 }
 
@@ -781,11 +872,15 @@ func (t *TextArea) GetLabelStyle() tcell.Style {
 	return t.labelStyle
 }
 
-// SetTextStyle sets the style of the text. Background colors different from the
-// Box's background color may lead to unwanted artefacts.
+// SetTextStyle sets the style of the text.
 func (t *TextArea) SetTextStyle(style tcell.Style) *TextArea {
 	t.textStyle = style
 	return t
+}
+
+// GetTextStyle returns the style of the text.
+func (t *TextArea) GetTextStyle() tcell.Style {
+	return t.textStyle
 }
 
 // SetSelectedStyle sets the style of the selected text.
@@ -798,6 +893,11 @@ func (t *TextArea) SetSelectedStyle(style tcell.Style) *TextArea {
 func (t *TextArea) SetPlaceholderStyle(style tcell.Style) *TextArea {
 	t.placeholderStyle = style
 	return t
+}
+
+// GetPlaceholderStyle returns the style of the placeholder text.
+func (t *TextArea) GetPlaceholderStyle() tcell.Style {
+	return t.placeholderStyle
 }
 
 // GetOffset returns the text's offset, that is, the number of rows and columns
@@ -822,7 +922,8 @@ func (t *TextArea) SetOffset(row, column int) *TextArea {
 // retrieve text from the clipboard (pasteFromClipboard).
 //
 // Providing nil values will cause the default clipboard implementation to be
-// used.
+// used. Note that the default clipboard is local to this text area instance.
+// Copying text to other widgets will not work.
 func (t *TextArea) SetClipboard(copyToClipboard func(string), pasteFromClipboard func() string) *TextArea {
 	t.copyToClipboard = copyToClipboard
 	if t.copyToClipboard == nil {
@@ -839,6 +940,12 @@ func (t *TextArea) SetClipboard(copyToClipboard func(string), pasteFromClipboard
 	}
 
 	return t
+}
+
+// GetClipboardText returns the current text of the clipboard by calling the
+// pasteFromClipboard function set with [TextArea.SetClipboard].
+func (t *TextArea) GetClipboardText() string {
+	return t.pasteFromClipboard()
 }
 
 // SetChangedFunc sets a handler which is called whenever the text of the text
@@ -885,7 +992,7 @@ func (t *TextArea) SetFormAttributes(labelWidth int, labelColor, bgColor, fieldT
 // replace deletes a range of text and inserts the given text at that position.
 // If the resulting text would exceed the maximum length, the function does not
 // do anything. The function returns the end position of the deleted/inserted
-// range. The provided row is the row of the deleted range start.
+// range.
 //
 // The function can hang if "deleteStart" is located after "deleteEnd".
 //
@@ -893,7 +1000,10 @@ func (t *TextArea) SetFormAttributes(labelWidth int, labelColor, bgColor, fieldT
 // either appended to the end of a span or a span is shortened at the beginning
 // or the end (and nothing else).
 //
-// This function does not modify [TextArea.lineStarts].
+// This function only modifies [TextArea.lineStarts] to update span references
+// but does not change it to reflect the new layout.
+//
+// A "changed" event will be triggered.
 func (t *TextArea) replace(deleteStart, deleteEnd [3]int, insert string, continuation bool) [3]int {
 	// Maybe nothing needs to be done?
 	if deleteStart == deleteEnd && insert == "" || t.maxLength > 0 && len(insert) > 0 && t.length+len(insert) >= t.maxLength {
@@ -1073,7 +1183,7 @@ func (t *TextArea) Draw(screen tcell.Screen) {
 		x += labelWidth
 		width -= labelWidth
 	} else {
-		_, drawnWidth, _, _ := printWithStyle(screen, t.label, x, y, 0, width, AlignLeft, t.labelStyle, labelBg == tcell.ColorDefault)
+		_, _, drawnWidth := printWithStyle(screen, t.label, x, y, 0, width, AlignLeft, t.labelStyle, labelBg == tcell.ColorDefault)
 		x += drawnWidth
 		width -= drawnWidth
 	}
@@ -1120,9 +1230,14 @@ func (t *TextArea) Draw(screen tcell.Screen) {
 		}
 	}()
 
-	// Placeholder.
-	if t.length == 0 && len(t.placeholder) > 0 {
-		t.drawPlaceholder(screen, x, y, width, height)
+	// No text, show placeholder.
+	if t.length == 0 {
+		t.lastHeight, t.lastWidth = height, width
+		t.cursor.row, t.cursor.column, t.cursor.actualColumn, t.cursor.pos = 0, 0, 0, [3]int{1, 0, -1}
+		t.rowOffset, t.columnOffset = 0, 0
+		if len(t.placeholder) > 0 {
+			t.drawPlaceholder(screen, x, y, width, height)
+		}
 		return // We're done already.
 	}
 
@@ -1177,6 +1292,13 @@ func (t *TextArea) Draw(screen tcell.Screen) {
 			}
 		}
 
+		// Selected tabs are a bit special.
+		if cluster == "\t" && style == t.selectedStyle {
+			for colX := 0; colX < clusterWidth && posX+colX-columnOffset < width; colX++ {
+				screen.SetContent(x+posX+colX-columnOffset, y+posY, ' ', nil, style)
+			}
+		}
+
 		// Draw character.
 		if posX+clusterWidth-columnOffset <= width && posX-columnOffset >= 0 && clusterWidth > 0 {
 			screen.SetContent(x+posX-columnOffset, y+posY, runes[0], runes[1:], style)
@@ -1200,49 +1322,13 @@ func (t *TextArea) Draw(screen tcell.Screen) {
 // not do anything if the text area already contains text or if there is no
 // placeholder text.
 func (t *TextArea) drawPlaceholder(screen tcell.Screen, x, y, width, height int) {
-	posX, posY := x, y
-	lastLineBreak, lastGraphemeBreak := x, x // Screen positions of the last possible line/grapheme break.
-	iterateString(t.placeholder, func(main rune, comb []rune, textPos, textWidth, screenPos, screenWidth, boundaries int) bool {
-		if posX+screenWidth > x+width {
-			// This character doesn't fit. Break over to the next line.
-			// Perform word wrapping first by copying the last word over to
-			// the next line.
-			clearX := lastLineBreak
-			if lastLineBreak == x {
-				clearX = lastGraphemeBreak
-			}
-			posY++
-			if posY >= y+height {
-				return true
-			}
-			newPosX := x
-			for clearX < posX {
-				main, comb, _, _ := screen.GetContent(clearX, posY-1)
-				screen.SetContent(clearX, posY-1, ' ', nil, tcell.StyleDefault.Background(t.backgroundColor))
-				screen.SetContent(newPosX, posY, main, comb, t.placeholderStyle)
-				clearX++
-				newPosX++
-			}
-			lastLineBreak, lastGraphemeBreak, posX = x, x, newPosX
-		}
-
-		// Draw this character.
-		screen.SetContent(posX, posY, main, comb, t.placeholderStyle)
-		posX += screenWidth
-		switch boundaries & uniseg.MaskLine {
-		case uniseg.LineMustBreak:
-			posY++
-			if posY >= y+height {
-				return true
-			}
-			posX = x
-		case uniseg.LineCanBreak:
-			lastLineBreak = posX
-		}
-		lastGraphemeBreak = posX
-
-		return false
-	})
+	// We use a TextView to draw the placeholder. It will take care of word
+	// wrapping etc.
+	textView := NewTextView().
+		SetText(t.placeholder).
+		SetTextStyle(t.placeholderStyle)
+	textView.SetRect(x, y, width, height)
+	textView.Draw(screen)
 }
 
 // reset resets many of the local variables of the text area because they cannot
@@ -1344,6 +1430,10 @@ func (t *TextArea) extendLines(width, maxLines int) {
 			break
 		}
 	}
+
+	if lineWidth > t.widestLine {
+		t.widestLine = lineWidth
+	}
 }
 
 // truncateLines truncates the trailing lines of the [TextArea.lineStarts]
@@ -1376,7 +1466,7 @@ func (t *TextArea) findCursor(clamp bool, startRow int) {
 		t.cursor.column = t.cursor.actualColumn
 	}()
 
-	if !clamp && t.cursor.row >= 0 {
+	if !clamp && t.cursor.row >= 0 || t.lastWidth <= 0 {
 		return // Nothing to do.
 	}
 
@@ -1403,15 +1493,15 @@ func (t *TextArea) findCursor(clamp bool, startRow int) {
 			}
 		}
 		if !t.wrap {
-			if t.cursor.actualColumn < t.columnOffset+minCursorPrefix {
+			if t.cursor.actualColumn < t.columnOffset+t.minCursorPrefix {
 				// We're left of the viewport.
-				t.columnOffset = t.cursor.actualColumn - minCursorPrefix
+				t.columnOffset = t.cursor.actualColumn - t.minCursorPrefix
 				if t.columnOffset < 0 {
 					t.columnOffset = 0
 				}
-			} else if t.cursor.actualColumn >= t.columnOffset+t.lastWidth-minCursorSuffix {
+			} else if t.cursor.actualColumn >= t.columnOffset+t.lastWidth-t.minCursorSuffix {
 				// We're right of the viewport.
-				t.columnOffset = t.cursor.actualColumn - t.lastWidth + minCursorSuffix
+				t.columnOffset = t.cursor.actualColumn - t.lastWidth + t.minCursorSuffix
 				if t.columnOffset >= t.widestLine {
 					t.columnOffset = t.widestLine - 1
 					if t.columnOffset < 0 {
@@ -1505,9 +1595,22 @@ RowLoop:
 	}
 }
 
+// setTransform sets the transform function to be used when drawing the text.
+// This function is called for each grapheme cluster and can be used to modify
+// the cluster, the cluster's screen width, and the cluster's boundaries. The
+// function is called with the original cluster, the rest of the text, the
+// original cluster's width, and the original cluster's boundaries. The function
+// must return the new cluster, the new width, and the new boundaries. This only
+// affects the drawing of the text, not the text content itself. The boundaries
+// values correspond to the values returned by
+// [github.com/rivo/uniseg.StepString].
+func (t *TextArea) setTransform(transform func(cluster, rest string, boundaries int) (newCluster string, newBoundaries int)) {
+	t.transform = transform
+}
+
 // step is similar to [github.com/rivo/uniseg.StepString] but it iterates over
 // the piece chain, starting with "pos", a span position plus state (which may
-// be -1 for the start of the text). The returned "boundaries" value is same
+// be -1 for the start of the text). The returned "boundaries" value is the same
 // value returned by [github.com/rivo/uniseg.StepString], "width" is the screen
 // width of the grapheme. The "pos" and "endPos" positions refer to the start
 // and the end of the "text" string, respectively. For the first call, text may
@@ -1565,6 +1668,10 @@ func (t *TextArea) step(text string, pos, endPos [3]int) (cluster, rest string, 
 			pos[1] -= span.length
 		}
 		span = t.spans[pos[0]]
+	}
+
+	if t.transform != nil {
+		cluster, boundaries = t.transform(cluster, text, boundaries)
 	}
 
 	if cluster == "\t" {
@@ -2324,5 +2431,17 @@ func (t *TextArea) MouseHandler() func(action MouseAction, event *tcell.EventMou
 		}
 
 		return
+	})
+}
+
+// PasteHandler returns the handler for this primitive.
+func (t *TextArea) PasteHandler() func(pastedText string, setFocus func(p Primitive)) {
+	return t.WrapPasteHandler(func(pastedText string, setFocus func(p Primitive)) {
+		from, to, row := t.getSelection()
+		t.cursor.pos = t.replace(from, to, pastedText, false)
+		t.cursor.row = -1
+		t.truncateLines(row - 1)
+		t.findCursor(true, row)
+		t.selectionStart = t.cursor
 	})
 }

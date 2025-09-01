@@ -1,6 +1,7 @@
 package tview
 
 import (
+	"strings"
 	"sync"
 	"time"
 
@@ -41,6 +42,11 @@ const (
 	MouseScrollDown
 	MouseScrollLeft
 	MouseScrollRight
+
+	// The following special value will not be provided as a mouse action but
+	// indicate that an overridden mouse event was consumed. See
+	// [Box.SetMouseCapture] for details.
+	MouseConsumed
 )
 
 // queuedUpdate represented the execution of f queued by
@@ -71,6 +77,10 @@ type Application struct {
 	// Fini(), to set a new screen (or nil to stop the application).
 	screen tcell.Screen
 
+	// The application's title. If not empty, it will be set on every new screen
+	// that is added.
+	title string
+
 	// The primitive which currently has the keyboard focus.
 	focus Primitive
 
@@ -82,6 +92,9 @@ type Application struct {
 
 	// Set to true if mouse events are enabled.
 	enableMouse bool
+
+	// Set to true if paste events are enabled.
+	enablePaste bool
 
 	// An optional capture function which receives a key event and returns the
 	// event to be forwarded to the default input handler (nil if nothing should
@@ -145,6 +158,9 @@ func NewApplication() *Application {
 //     forward the Ctrl-C event to primitives down the hierarchy, return a new
 //     key event with the same key and modifiers, e.g.
 //     tcell.NewEventKey(tcell.KeyCtrlC, 0, tcell.ModNone).
+//
+// Pasted key events are not forwarded to the input capture function if pasting
+// is enabled (see [Application.EnablePaste]).
 func (a *Application) SetInputCapture(capture func(event *tcell.EventKey) *tcell.EventKey) *Application {
 	a.inputCapture = capture
 	return a
@@ -160,7 +176,8 @@ func (a *Application) GetInputCapture() func(event *tcell.EventKey) *tcell.Event
 // the original tcell mouse event and the semantic mouse action) before they are
 // forwarded to the appropriate mouse event handler. This function can then
 // choose to forward that event (or a different one) by returning it or stop
-// the event processing by returning a nil mouse event.
+// the event processing by returning a nil mouse event. In such a case, the
+// event is considered consumed and the screen will be redrawn.
 func (a *Application) SetMouseCapture(capture func(event *tcell.EventMouse, action MouseAction) (*tcell.EventMouse, MouseAction)) *Application {
 	a.mouseCapture = capture
 	return a
@@ -174,7 +191,9 @@ func (a *Application) GetMouseCapture() func(event *tcell.EventMouse, action Mou
 
 // SetScreen allows you to provide your own tcell.Screen object. For most
 // applications, this is not needed and you should be familiar with
-// tcell.Screen when using this function.
+// tcell.Screen when using this function. As the tcell.Screen interface may
+// change in the future, you may need to update your code when this package
+// updates to a new tcell version.
 //
 // This function is typically called before the first call to Run(). Init() need
 // not be called on the screen.
@@ -201,6 +220,19 @@ func (a *Application) SetScreen(screen tcell.Screen) *Application {
 	return a
 }
 
+// SetTitle sets the title of the terminal window, to the extent that the
+// terminal supports it. A non-empty title will be set on every new tcell.Screen
+// that is created by or added to this application.
+func (a *Application) SetTitle(title string) *Application {
+	a.Lock()
+	defer a.Unlock()
+	a.title = title
+	if a.screen != nil {
+		a.screen.SetTitle(title)
+	}
+	return a
+}
+
 // EnableMouse enables mouse events or disables them (if "false" is provided).
 func (a *Application) EnableMouse(enable bool) *Application {
 	a.Lock()
@@ -216,8 +248,34 @@ func (a *Application) EnableMouse(enable bool) *Application {
 	return a
 }
 
+// EnablePaste enables the capturing of paste events or disables them (if
+// "false" is provided). This must be supported by the terminal.
+//
+// Widgets won't interpret paste events for navigation or selection purposes.
+// Paste events are typically only used to insert a block of text into an
+// [InputField] or a [TextArea].
+func (a *Application) EnablePaste(enable bool) *Application {
+	a.Lock()
+	defer a.Unlock()
+	if enable != a.enablePaste && a.screen != nil {
+		if enable {
+			a.screen.EnablePaste()
+		} else {
+			a.screen.DisablePaste()
+		}
+	}
+	a.enablePaste = enable
+	return a
+}
+
 // Run starts the application and thus the event loop. This function returns
-// when Stop() was called.
+// when [Application.Stop] was called.
+//
+// Note that while an application is running, it fully claims stdin, stdout, and
+// stderr. If you use these standard streams, they may not work as expected.
+// Consider stopping the application first or suspending it (using
+// [Application.Suspend]) if you have to interact with the standard streams, for
+// example when needing to print a call stack during a panic.
 func (a *Application) Run() error {
 	var (
 		err, appErr error
@@ -239,6 +297,16 @@ func (a *Application) Run() error {
 		}
 		if a.enableMouse {
 			a.screen.EnableMouse()
+		} else {
+			a.screen.DisableMouse()
+		}
+		if a.enablePaste {
+			a.screen.EnablePaste()
+		} else {
+			a.screen.DisablePaste()
+		}
+		if a.title != "" {
+			a.screen.SetTitle(a.title)
 		}
 	}
 
@@ -279,11 +347,11 @@ func (a *Application) Run() error {
 				continue
 			}
 
-			// A screen was finalized (event is nil). Wait for a new scren.
+			// A screen was finalized (event is nil). Wait for a new screen.
 			screen = <-a.screenReplacement
 			if screen == nil {
 				// No new screen. We're done.
-				a.QueueEvent(nil)
+				a.QueueEvent(nil) // Stop the event loop.
 				return
 			}
 
@@ -291,6 +359,7 @@ func (a *Application) Run() error {
 			a.Lock()
 			a.screen = screen
 			enableMouse := a.enableMouse
+			enablePaste := a.enablePaste
 			a.Unlock()
 
 			// Initialize and draw this screen.
@@ -299,15 +368,30 @@ func (a *Application) Run() error {
 			}
 			if enableMouse {
 				screen.EnableMouse()
+			} else {
+				screen.DisableMouse()
+			}
+			if enablePaste {
+				screen.EnablePaste()
+			} else {
+				screen.DisablePaste()
+			}
+			if a.title != "" {
+				screen.SetTitle(a.title)
 			}
 			a.draw()
 		}
 	}()
 
 	// Start event loop.
+	var (
+		pasteBuffer strings.Builder
+		pasting     bool // Set to true while we receive paste key events.
+	)
 EventLoop:
 	for {
 		select {
+		// If we received an event, handle it.
 		case event := <-a.events:
 			if event == nil {
 				break EventLoop
@@ -315,6 +399,19 @@ EventLoop:
 
 			switch event := event.(type) {
 			case *tcell.EventKey:
+				// If we are pasting, collect runes, nothing else.
+				if pasting {
+					switch event.Key() {
+					case tcell.KeyRune:
+						pasteBuffer.WriteRune(event.Rune())
+					case tcell.KeyEnter:
+						pasteBuffer.WriteRune('\n')
+					case tcell.KeyTab:
+						pasteBuffer.WriteRune('\t')
+					}
+					break
+				}
+
 				a.RLock()
 				root := a.root
 				inputCapture := a.inputCapture
@@ -327,7 +424,7 @@ EventLoop:
 					event = inputCapture(event)
 					if event == nil {
 						a.draw()
-						continue // Don't forward event.
+						break // Don't forward event.
 					}
 					draw = true
 				}
@@ -352,6 +449,30 @@ EventLoop:
 				if draw {
 					a.draw()
 				}
+			case *tcell.EventPaste:
+				if !a.enablePaste {
+					break
+				}
+				if event.Start() {
+					pasting = true
+					pasteBuffer.Reset()
+				} else if event.End() {
+					pasting = false
+					a.RLock()
+					root := a.root
+					a.RUnlock()
+					if root != nil && root.HasFocus() && pasteBuffer.Len() > 0 {
+						// Pass paste event to the root primitive.
+						if handler := root.PasteHandler(); handler != nil {
+							handler(pasteBuffer.String(), func(p Primitive) {
+								a.SetFocus(p)
+							})
+						}
+
+						// Redraw.
+						a.draw()
+					}
+				}
 			case *tcell.EventResize:
 				if time.Since(lastRedraw) < redrawPause {
 					if redrawTimer != nil {
@@ -365,7 +486,7 @@ EventLoop:
 				screen := a.screen
 				a.RUnlock()
 				if screen == nil {
-					continue
+					break
 				}
 				lastRedraw = time.Now()
 				screen.Clear()
@@ -569,8 +690,8 @@ func (a *Application) Draw() *Application {
 
 // ForceDraw refreshes the screen immediately. Use this function with caution as
 // it may lead to race conditions with updates to primitives in other
-// goroutines. It is always preferrable to use Draw() instead. Never call this
-// function from a goroutine.
+// goroutines. It is always preferable to call [Application.Draw] instead.
+// Never call this function from a goroutine.
 //
 // It is safe to call this function during queued updates and direct event
 // handling.
@@ -595,10 +716,13 @@ func (a *Application) draw() *Application {
 	}
 
 	// Resize if requested.
-	if fullscreen && root != nil {
+	if fullscreen { // root is not nil here.
 		width, height := screen.Size()
 		root.SetRect(0, 0, width, height)
 	}
+
+	// Clear screen to remove unwanted artifacts from the previous cycle.
+	screen.Clear()
 
 	// Call before handler if there is one.
 	if before != nil {

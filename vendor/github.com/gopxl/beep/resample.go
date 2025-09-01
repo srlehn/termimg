@@ -1,6 +1,9 @@
 package beep
 
-import "fmt"
+import (
+	"fmt"
+	"math"
+)
 
 // Resample takes a Streamer which is assumed to stream at the old sample rate and returns a
 // Streamer, which streams the data from the original Streamer resampled to the new sample rate.
@@ -10,23 +13,23 @@ import "fmt"
 // Streamer which stream at a different sample rate will lead to a changed speed and pitch of the
 // playback.
 //
-//   sr := beep.SampleRate(48000)
-//   speaker.Init(sr, sr.N(time.Second/2))
-//   speaker.Play(beep.Resample(3, format.SampleRate, sr, s))
+//	sr := beep.SampleRate(48000)
+//	speaker.Init(sr, sr.N(time.Second/2))
+//	speaker.Play(beep.Resample(3, format.SampleRate, sr, s))
 //
-// In the example, the original sample rate of the source if format.SampleRate. We want to play it
-// at the speaker's native sample rate and thus we need to resample.
+// In the example above, the original sample rate of the source is format.SampleRate. We want to play
+// it at the speaker's native sample rate and thus we need to resample.
 //
 // The quality argument specifies the quality of the resampling process. Higher quality implies
 // worse performance. Values below 1 or above 64 are invalid and Resample will panic. Here's a table
 // for deciding which quality to pick.
 //
-//   quality | use case
-//   --------|---------
-//   1       | very high performance, on-the-fly resampling, low quality
-//   3-4     | good performance, on-the-fly resampling, good quality
-//   6       | higher CPU usage, usually not suitable for on-the-fly resampling, very good quality
-//   >6      | even higher CPU usage, for offline resampling, very good quality
+//	quality | use case
+//	--------|---------
+//	1       | very high performance, on-the-fly resampling, low quality
+//	3-4     | good performance, on-the-fly resampling, good quality
+//	6       | higher CPU usage, usually not suitable for on-the-fly resampling, very good quality
+//	>6      | even higher CPU usage, for offline resampling, very good quality
 //
 // Sane quality values are usually below 16. Higher values will consume too much CPU, giving
 // negligible quality improvements.
@@ -43,6 +46,9 @@ func Resample(quality int, old, new SampleRate, s Streamer) *Resampler {
 func ResampleRatio(quality int, ratio float64, s Streamer) *Resampler {
 	if quality < 1 || 64 < quality {
 		panic(fmt.Errorf("resample: invalid quality: %d", quality))
+	}
+	if math.IsInf(ratio, 0) || math.IsNaN(ratio) {
+		panic(fmt.Errorf("resample: invalid ratio: %f", ratio))
 	}
 	return &Resampler{
 		s:     s,
@@ -148,6 +154,9 @@ func (r *Resampler) Ratio() float64 {
 
 // SetRatio sets the resampling ratio. This does not cause any glitches in the stream.
 func (r *Resampler) SetRatio(ratio float64) {
+	if math.IsInf(ratio, 0) || math.IsNaN(ratio) {
+		panic(fmt.Errorf("resample: invalid ratio: %f", ratio))
+	}
 	r.pos = int(float64(r.pos) * r.ratio / ratio)
 	r.ratio = ratio
 }

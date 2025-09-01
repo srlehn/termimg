@@ -3,7 +3,7 @@ package lipgloss
 import (
 	"strings"
 
-	"github.com/muesli/reflow/ansi"
+	"github.com/charmbracelet/x/ansi"
 )
 
 // GetBold returns the style's bold value. If no value is set false is returned.
@@ -300,7 +300,7 @@ func (s Style) GetBorderTopWidth() int {
 // runes of varying widths, the widest rune is returned. If no border exists on
 // the top edge, 0 is returned.
 func (s Style) GetBorderTopSize() int {
-	if !s.getAsBool(borderTopKey, false) {
+	if !s.getAsBool(borderTopKey, false) && !s.implicitBorders() {
 		return 0
 	}
 	return s.getBorderStyle().GetTopSize()
@@ -310,7 +310,7 @@ func (s Style) GetBorderTopSize() int {
 // runes of varying widths, the widest rune is returned. If no border exists on
 // the left edge, 0 is returned.
 func (s Style) GetBorderLeftSize() int {
-	if !s.getAsBool(borderLeftKey, false) {
+	if !s.getAsBool(borderLeftKey, false) && !s.implicitBorders() {
 		return 0
 	}
 	return s.getBorderStyle().GetLeftSize()
@@ -320,7 +320,7 @@ func (s Style) GetBorderLeftSize() int {
 // contain runes of varying widths, the widest rune is returned. If no border
 // exists on the left edge, 0 is returned.
 func (s Style) GetBorderBottomSize() int {
-	if !s.getAsBool(borderBottomKey, false) {
+	if !s.getAsBool(borderBottomKey, false) && !s.implicitBorders() {
 		return 0
 	}
 	return s.getBorderStyle().GetBottomSize()
@@ -330,7 +330,7 @@ func (s Style) GetBorderBottomSize() int {
 // contain runes of varying widths, the widest rune is returned. If no border
 // exists on the right edge, 0 is returned.
 func (s Style) GetBorderRightSize() int {
-	if !s.getAsBool(borderRightKey, false) {
+	if !s.getAsBool(borderRightKey, false) && !s.implicitBorders() {
 		return 0
 	}
 	return s.getBorderStyle().GetRightSize()
@@ -408,65 +408,136 @@ func (s Style) GetFrameSize() (x, y int) {
 	return s.GetHorizontalFrameSize(), s.GetVerticalFrameSize()
 }
 
+// GetTransform returns the transform set on the style. If no transform is set
+// nil is returned.
+func (s Style) GetTransform() func(string) string {
+	return s.getAsTransform(transformKey)
+}
+
 // Returns whether or not the given property is set.
 func (s Style) isSet(k propKey) bool {
-	_, exists := s.rules[k]
-	return exists
+	return s.props.has(k)
 }
 
 func (s Style) getAsBool(k propKey, defaultVal bool) bool {
-	v, ok := s.rules[k]
-	if !ok {
+	if !s.isSet(k) {
 		return defaultVal
 	}
-	if b, ok := v.(bool); ok {
-		return b
-	}
-	return defaultVal
+	return s.attrs&int(k) != 0
 }
 
 func (s Style) getAsColor(k propKey) TerminalColor {
-	v, ok := s.rules[k]
-	if !ok {
+	if !s.isSet(k) {
 		return noColor
 	}
-	if c, ok := v.(TerminalColor); ok {
+
+	var c TerminalColor
+	switch k { //nolint:exhaustive
+	case foregroundKey:
+		c = s.fgColor
+	case backgroundKey:
+		c = s.bgColor
+	case marginBackgroundKey:
+		c = s.marginBgColor
+	case borderTopForegroundKey:
+		c = s.borderTopFgColor
+	case borderRightForegroundKey:
+		c = s.borderRightFgColor
+	case borderBottomForegroundKey:
+		c = s.borderBottomFgColor
+	case borderLeftForegroundKey:
+		c = s.borderLeftFgColor
+	case borderTopBackgroundKey:
+		c = s.borderTopBgColor
+	case borderRightBackgroundKey:
+		c = s.borderRightBgColor
+	case borderBottomBackgroundKey:
+		c = s.borderBottomBgColor
+	case borderLeftBackgroundKey:
+		c = s.borderLeftBgColor
+	}
+
+	if c != nil {
 		return c
 	}
+
 	return noColor
 }
 
 func (s Style) getAsInt(k propKey) int {
-	v, ok := s.rules[k]
-	if !ok {
+	if !s.isSet(k) {
 		return 0
 	}
-	if i, ok := v.(int); ok {
-		return i
+	switch k { //nolint:exhaustive
+	case widthKey:
+		return s.width
+	case heightKey:
+		return s.height
+	case paddingTopKey:
+		return s.paddingTop
+	case paddingRightKey:
+		return s.paddingRight
+	case paddingBottomKey:
+		return s.paddingBottom
+	case paddingLeftKey:
+		return s.paddingLeft
+	case marginTopKey:
+		return s.marginTop
+	case marginRightKey:
+		return s.marginRight
+	case marginBottomKey:
+		return s.marginBottom
+	case marginLeftKey:
+		return s.marginLeft
+	case maxWidthKey:
+		return s.maxWidth
+	case maxHeightKey:
+		return s.maxHeight
+	case tabWidthKey:
+		return s.tabWidth
 	}
 	return 0
 }
 
 func (s Style) getAsPosition(k propKey) Position {
-	v, ok := s.rules[k]
-	if !ok {
+	if !s.isSet(k) {
 		return Position(0)
 	}
-	if p, ok := v.(Position); ok {
-		return p
+	switch k { //nolint:exhaustive
+	case alignHorizontalKey:
+		return s.alignHorizontal
+	case alignVerticalKey:
+		return s.alignVertical
 	}
 	return Position(0)
 }
 
 func (s Style) getBorderStyle() Border {
-	v, ok := s.rules[borderStyleKey]
-	if !ok {
+	if !s.isSet(borderStyleKey) {
 		return noBorder
 	}
-	if b, ok := v.(Border); ok {
-		return b
+	return s.borderStyle
+}
+
+// Returns whether or not the style has implicit borders. This happens when
+// a border style has been set but no border sides have been explicitly turned
+// on or off.
+func (s Style) implicitBorders() bool {
+	var (
+		borderStyle = s.getBorderStyle()
+		topSet      = s.isSet(borderTopKey)
+		rightSet    = s.isSet(borderRightKey)
+		bottomSet   = s.isSet(borderBottomKey)
+		leftSet     = s.isSet(borderLeftKey)
+	)
+	return borderStyle != noBorder && !(topSet || rightSet || bottomSet || leftSet)
+}
+
+func (s Style) getAsTransform(propKey) func(string) string {
+	if !s.isSet(transformKey) {
+		return nil
 	}
-	return noBorder
+	return s.transform
 }
 
 // Split a string into lines, additionally returning the size of the widest
@@ -475,7 +546,7 @@ func getLines(s string) (lines []string, widest int) {
 	lines = strings.Split(s, "\n")
 
 	for _, l := range lines {
-		w := ansi.PrintableRuneWidth(l)
+		w := ansi.StringWidth(l)
 		if widest < w {
 			widest = w
 		}
