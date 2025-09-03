@@ -6,21 +6,18 @@ import (
 
 	"github.com/srlehn/termimg/internal/consts"
 	"github.com/srlehn/termimg/internal/errors"
-	"github.com/srlehn/termimg/resize/imaging"
+	"github.com/srlehn/termimg/resize/xdraw"
 	"github.com/srlehn/termimg/resize/rez"
 	"github.com/srlehn/termimg/term"
 )
 
-type Resizer struct {
-	rszRez rez.Resizer
-	rszImg imaging.Resizer
-}
+type Resizer struct{}
 
 var _ term.Resizer = (*Resizer)(nil)
 
 func (r *Resizer) Resize(img image.Image, size image.Point) (image.Image, error) {
 	if runtime.GOARCH != `amd64` {
-		return r.rszImg.Resize(img, size)
+		return xdraw.ApproxBiLinear().Resize(img, size)
 	}
 	im := img
 	var lvls int
@@ -29,9 +26,9 @@ repeat:
 	switch it := im.(type) {
 	case *image.YCbCr, *image.RGBA, *image.NRGBA, *image.Gray:
 		// use SIMD assembly if possible
-		imgRet, err := r.rszRez.Resize(im, size)
+		imgRet, err := rez.Resizer{}.Resize(im, size)
 		if err != nil {
-			imgRet, err = r.rszImg.Resize(img, size)
+			imgRet, err = xdraw.ApproxBiLinear().Resize(img, size)
 		}
 		if err != nil {
 			return nil, err
@@ -53,5 +50,5 @@ repeat:
 			goto repeat
 		}
 	}
-	return r.rszImg.Resize(img, size)
+	return xdraw.ApproxBiLinear().Resize(img, size)
 }
