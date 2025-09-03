@@ -566,7 +566,22 @@ type resizerFallback struct{}
 func ResizerDefault() Resizer { return &resizerFallback{} }
 
 func (r *resizerFallback) Resize(img image.Image, size image.Point) (image.Image, error) {
-	return cropImage(img, size)
+	if size.X <= 0 || size.Y <= 0 {
+		return nil, errors.New("invalid size")
+	}
+
+	srcB := img.Bounds()
+	dst := image.NewRGBA(image.Rect(0, 0, size.X, size.Y))
+
+	for y := 0; y < size.Y; y++ {
+		srcY := srcB.Min.Y + y*srcB.Dy()/size.Y
+		for x := 0; x < size.X; x++ {
+			srcX := srcB.Min.X + x*srcB.Dx()/size.X
+			dst.Set(x, y, img.At(srcX, srcY))
+		}
+	}
+
+	return dst, nil
 }
 
 func cropImage(img image.Image, size image.Point) (image.Image, error) {
