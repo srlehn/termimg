@@ -13,7 +13,6 @@ import (
 	"github.com/srlehn/termimg"
 	"github.com/srlehn/termimg/internal"
 	"github.com/srlehn/termimg/internal/consts"
-	"github.com/srlehn/termimg/internal/environ"
 	"github.com/srlehn/termimg/internal/errors"
 	"github.com/srlehn/termimg/resize/rdefault"
 	"github.com/srlehn/termimg/term"
@@ -78,15 +77,13 @@ func TakeScreenshot(termName string, termProvider TermProviderFunc, drawerName s
 
 	x11ScrFunc := TakeScreenshotFunc(termProvider, termChecker, drawerName, drawFuncProvider(img, cellBounds), rsz, imgRetChan)
 	wg := &sync.WaitGroup{}
-	wg.Add(1)
 
-	go func() {
+	wg.Go(func() {
 		imgRet = <-imgRetChan
 		if imgRet == nil {
 			errRet = errors.New(consts.ErrNilImage)
 		}
-		wg.Done()
-	}()
+	})
 
 	if len(termName) == 0 {
 		if err := x11ScrFunc(``, 0); err != nil {

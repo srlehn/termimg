@@ -4,16 +4,16 @@ import (
 	"fmt"
 	"image"
 	"log/slog"
+	"maps"
 	"math"
 	"os"
 	"runtime"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
 	"time"
 	"unsafe"
-
-	"golang.org/x/exp/maps"
 
 	"github.com/srlehn/termimg/internal"
 	"github.com/srlehn/termimg/internal/consts"
@@ -393,7 +393,7 @@ func findTermChecker(env Properties, tty TTY, qu Querier) (tc TermChecker, _ Pro
 	case l == 0:
 		termMatchName = consts.TermGenericName
 	case l == 1:
-		termMatchName = maps.Keys(prTmChkMap)[0]
+		termMatchName = slices.Collect(maps.Keys(prTmChkMap))[0]
 	case l == 2:
 		// assume `generic` is contained
 		for k := range prTmChkMap {
@@ -407,7 +407,7 @@ func findTermChecker(env Properties, tty TTY, qu Querier) (tc TermChecker, _ Pro
 		if useGenericTermIfUncertain {
 			termMatchName = consts.TermGenericName
 		} else {
-			termNames := maps.Keys(prTmChkMap)
+			termNames := slices.Collect(maps.Keys(prTmChkMap))
 			sort.Strings(termNames)
 			termNamesStr := strings.Join(termNames, ` `)
 			return RegisteredTermChecker(consts.TermGenericName), nil, errors.Errorf(`more than 1 terminal check matched: %s`, termNamesStr)

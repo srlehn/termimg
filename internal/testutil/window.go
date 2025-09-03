@@ -3,7 +3,7 @@ package testutil
 import (
 	"fmt"
 
-	"github.com/srlehn/termimg/internal/environ"
+	"github.com/srlehn/termimg/term"
 	"github.com/srlehn/termimg/wm"
 )
 

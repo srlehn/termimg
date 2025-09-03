@@ -49,14 +49,13 @@ func (t *teaReader) read(l uint) error {
 			if wChan == nil {
 				continue
 			}
-			wg.Add(1)
-			go func(wChan chan<- []byte) {
-				defer wg.Done()
+			wg.Go(func() {
+				wChan := wChan
 				select {
 				case wChan <- b[:n]:
 				case <-time.After(ioTimeOut):
 				}
-			}(wChan)
+			})
 		}
 	}
 	wg.Wait()

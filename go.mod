@@ -45,7 +45,6 @@ require (
 	github.com/srlehn/xgbutil v0.0.0-20230718194130-098830f60574
 	github.com/stretchr/testify v1.10.0
 	github.com/u-root/u-root v0.15.0
-	golang.org/x/exp v0.0.0-20250819193227-8b4c13bb791b
 	golang.org/x/image v0.30.0
 	golang.org/x/sys v0.35.0
 	mvdan.cc/sh v2.6.4+incompatible
@@ -269,6 +268,7 @@ require (
 	go.uber.org/multierr v1.10.0 // indirect
 	go.uber.org/zap v1.27.0 // indirect
 	golang.org/x/crypto v0.41.0 // indirect
+	golang.org/x/exp v0.0.0-20250819193227-8b4c13bb791b // indirect
 	golang.org/x/exp/shiny v0.0.0-20250819193227-8b4c13bb791b // indirect
 	golang.org/x/exp/typeparams v0.0.0-20250620022241-b7579e27df2b // indirect
 	golang.org/x/mod v0.27.0 // indirect

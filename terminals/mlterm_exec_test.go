@@ -1,11 +1,10 @@
 package terminals_test
 
 import (
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
-
-	"golang.org/x/exp/slices"
 
 	"github.com/srlehn/termimg/internal/parser"
 	"github.com/srlehn/termimg/pty"

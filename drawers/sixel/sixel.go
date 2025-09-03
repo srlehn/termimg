@@ -6,10 +6,9 @@ import (
 	"fmt"
 	"image"
 	"log/slog"
+	"slices"
 	"strings"
 	"time"
-
-	"golang.org/x/exp/slices"
 
 	sixel "github.com/mattn/go-sixel"
 

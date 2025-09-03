@@ -3,10 +3,9 @@ package routines
 import (
 	"fmt"
 	"os"
+	"slices"
 	"strings"
 	"text/tabwriter"
-
-	"golang.org/x/exp/slices"
 
 	"github.com/srlehn/termimg"
 	"github.com/srlehn/termimg/internal/propkeys"

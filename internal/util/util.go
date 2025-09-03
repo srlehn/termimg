@@ -1,26 +1,26 @@
 package util
 
 import (
+	"cmp"
 	"fmt"
+	"maps"
 	"path"
 	"reflect"
 	"runtime"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
 	"unsafe"
 
-	"golang.org/x/exp/constraints"
-	"golang.org/x/exp/maps"
-
 	"github.com/srlehn/termimg/internal/errors"
 )
 
-func MapsKeysSorted[M ~map[K]V, K constraints.Ordered, V any](m M) []K {
+func MapsKeysSorted[M ~map[K]V, K cmp.Ordered, V any](m M) []K {
 	if m == nil {
 		return nil
 	}
-	keys := maps.Keys(m)
+	keys := slices.Collect(maps.Keys(m))
 	sort.Slice(keys, func(i, j int) bool { return keys[i] < keys[j] })
 	return keys
 }

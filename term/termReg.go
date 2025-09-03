@@ -1,9 +1,8 @@
 package term
 
 import (
+	"slices"
 	"strings"
-
-	"golang.org/x/exp/slices"
 )
 
 // ResetTerminalCheckerList

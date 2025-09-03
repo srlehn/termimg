@@ -7,11 +7,10 @@ import (
 	"os"
 	"os/signal"
 	"runtime"
+	"slices"
 	"sort"
 	"strings"
 	"syscall"
-
-	"golang.org/x/exp/slices"
 
 	"github.com/srlehn/termimg/internal"
 	"github.com/srlehn/termimg/internal/consts"

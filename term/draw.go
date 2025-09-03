@@ -358,15 +358,15 @@ func (c *Canvas) prepImagesParallelUnordered(ctx context.Context, vid <-chan ima
 	}
 	drawFnCombChan := make(chan drawFn)
 	var wg sync.WaitGroup
-	wg.Add(len(drawFnChans))
 	for i, drawFnChan := range drawFnChans {
-		go func(drawFnChan <-chan drawFn, workerID int) {
+		wg.Go(func() {
+			drawFnChan := drawFnChan
+			workerID := i
 			for drawFn := range drawFnChan {
 				logx.Debug("drawer func id", c.terminal, "worker-id", workerID, "frame", drawFn.id)
 				drawFnCombChan <- drawFn
 			}
-			wg.Done()
-		}(drawFnChan, i)
+		})
 	}
 	go func() {
 		wg.Wait()
